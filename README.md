@@ -1,4 +1,4 @@
-powerapi
+PowerAPI
 ========
 
 Implementation of the PowerAPI library
