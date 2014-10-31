@@ -37,3 +37,28 @@ object LookupBus extends EventBus with LookupClassification {
   // used internally (i.e. the expected number of different classifiers)
   override protected def mapSize: Int = 128
 }
+
+class Channel {
+    def subscribe(bus: EventBus)(topic:String)(subscriber: ActorRef)
+    def publish[R<:Report](bus: EventBus)(report: R)
+}
+
+object PowerChannel extends Channel[Power] {
+  /**
+   * Power is represented as a dedicated type of report.
+   * 
+   * @param suid: subscription UID of the report.
+   * @param power: raw value of the power consumption.
+   * @param unit: unit used by the power consumption.
+   * @param rate: sampling rate of the power consumption.
+   */
+  object PowerUnit extends Enumeration {
+      val W, kW = Value
+  }
+  case class Power(override val suid: Long,
+                   power: Double,
+                   unit: PowerUnit
+                   rate: Duration) extends Report(suid)
+  def subscribe(bus: EventBus)(subscriber: ActorRef)
+  def publish(bus: EventBus)(report: Power)
+}
