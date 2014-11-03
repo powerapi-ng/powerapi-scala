@@ -1,24 +1,34 @@
 package org.powerapi.core
 
-import akka.event.EventBus
-import akka.event.LookupClassification
+import scala.concurrent.duration._
 
+import akka.actor.ActorRef
+import akka.event.LookupClassification
 
 /**
  * Reports are the base messages exchanged between PowerAPI components.
- *
- * @param suid: a report is associated with a subscription unique identifier (SUID), which is at the origin of the report flow.
  */
-class Report(val topic: String, val suid: Long)
+trait Report {
+  /**
+   * A report is associated with a subscription unique identifier (SUID), which is at the origin of the report flow.
+   */
+  def suid: Long
+  /**
+   * A report is associated with a topic which is used to route the messages on the bus.
+   */
+  def topic: String
+}
+
+trait EventBus extends akka.event.EventBus {
+  type Event = Report
+  type Classifier = String
+  type Subscriber = ActorRef
+}
 
 /**
  * Common event bus used by PowerAPI components to communicate.
  */
-object LookupBus extends EventBus with LookupClassification {
-  type Event = Report
-  type Classifier = String
-  type Subscriber = ActorRef
-  
+class LookupBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
   override protected def classify(event: Event): Classifier = event.topic
   
@@ -38,27 +48,70 @@ object LookupBus extends EventBus with LookupClassification {
   override protected def mapSize: Int = 128
 }
 
-class Channel {
-    def subscribe(bus: EventBus)(topic:String)(subscriber: ActorRef)
-    def publish[R<:Report](bus: EventBus)(report: R)
+/**
+ * Initializing the event bus.
+ */
+object LookupBus {
+  val eventBus = new LookupBus
 }
 
-object PowerChannel extends Channel[Power] {
+class Channel {
+  type Event = Report
+  type Classifier = String
+  type Subscriber = ActorRef
+
+  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
+    bus.subscribe(subscriber, topic)
+  }
+
+  def publish(bus: EventBus)(report: Report) = {
+    bus.publish(report)
+  }
+}
+
+/**
+ * Clock channel and messages.
+ */
+object ClockChannel extends Channel {
   /**
-   * Power is represented as a dedicated type of report.
+   * ClockTick is represented as a dedicated type of report.
    * 
    * @param suid: subscription UID of the report.
-   * @param power: raw value of the power consumption.
-   * @param unit: unit used by the power consumption.
-   * @param rate: sampling rate of the power consumption.
+   * @param topic: subject used for routing the message.
+   * @param frequency: clock frequency.
    */
-  object PowerUnit extends Enumeration {
-      val W, kW = Value
+  case class ClockTick(suid: Long,
+                       topic: String,
+                       frequency: FiniteDuration,
+                       timestamp: Long = System.currentTimeMillis) extends Report
+
+  /**
+   * Messages.
+   */
+  case class StartClock(frequency: FiniteDuration, report: Report)
+  case class StopClock(frequency: FiniteDuration)
+  
+  object StopAllClocks
+
+  object OK
+
+  val topic = "tick:subscription"
+
+  def subscribe: EventBus => ActorRef => Unit = subscribe(topic)
+
+  def formatTopicFromFrequency(frequency: FiniteDuration) = {
+    val nanoSecs = frequency.toNanos
+    s"tick:$nanoSecs"
   }
-  case class Power(override val suid: Long,
-                   power: Double,
-                   unit: PowerUnit
-                   rate: Duration) extends Report(suid)
-  def subscribe(bus: EventBus)(subscriber: ActorRef)
-  def publish(bus: EventBus)(report: Power)
+}
+
+/**
+ * Used to inject the bus for different actors.
+ */
+trait ClockChannel {
+  import ClockChannel.{ ClockTick, publish, subscribe }
+
+  // Null for compilation purpose
+  def subscribeOnBus: ActorRef => Unit = subscribe(LookupBus.eventBus)
+  def publishOnBus: ClockTick => Unit = publish(LookupBus.eventBus)
 }
