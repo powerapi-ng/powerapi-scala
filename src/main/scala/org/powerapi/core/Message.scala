@@ -28,7 +28,7 @@ trait EventBus extends akka.event.EventBus {
 /**
  * Common event bus used by PowerAPI components to communicate.
  */
-class LookupBus extends EventBus with LookupClassification {
+class ReportBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
   override protected def classify(event: Event): Classifier = event.topic
   
@@ -51,67 +51,21 @@ class LookupBus extends EventBus with LookupClassification {
 /**
  * Initializing the event bus.
  */
-object LookupBus {
-  val eventBus = new LookupBus
+object ReportBus {
+  val eventBus = new ReportBus
 }
 
+/**
+ * Used to specify the channels used by the components.
+ */
 class Channel {
-  type Event = Report
-  type Classifier = String
-  type Subscriber = ActorRef
+  type R <: Report
 
   def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
     bus.subscribe(subscriber, topic)
   }
 
-  def publish(bus: EventBus)(report: Report) = {
+  def publish(bus: EventBus)(report: R) = {
     bus.publish(report)
   }
-}
-
-/**
- * Clock channel and messages.
- */
-object ClockChannel extends Channel {
-  /**
-   * ClockTick is represented as a dedicated type of report.
-   * 
-   * @param suid: subscription UID of the report.
-   * @param topic: subject used for routing the message.
-   * @param frequency: clock frequency.
-   */
-  case class ClockTick(suid: Long,
-                       topic: String,
-                       frequency: FiniteDuration,
-                       timestamp: Long = System.currentTimeMillis) extends Report
-
-  /**
-   * Messages.
-   */
-  case class StartClock(frequency: FiniteDuration, report: Report)
-  case class StopClock(frequency: FiniteDuration)
-  
-  object StopAllClocks
-
-  object OK
-
-  val topic = "tick:subscription"
-
-  def subscribe: EventBus => ActorRef => Unit = subscribe(topic)
-
-  def formatTopicFromFrequency(frequency: FiniteDuration) = {
-    val nanoSecs = frequency.toNanos
-    s"tick:$nanoSecs"
-  }
-}
-
-/**
- * Used to inject the bus for different actors.
- */
-trait ClockChannel {
-  import ClockChannel.{ ClockTick, publish, subscribe }
-
-  // Null for compilation purpose
-  def subscribeOnBus: ActorRef => Unit = subscribe(LookupBus.eventBus)
-  def publishOnBus: ClockTick => Unit = publish(LookupBus.eventBus)
 }
