@@ -4,8 +4,7 @@
 
 # activator specific
 activator*
-project/project
-project/target
+project
 
 # sbt specific
 .history/
