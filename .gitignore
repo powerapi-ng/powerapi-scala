@@ -2,6 +2,10 @@
 *.log
 *~
 
+# activator specific
+activator*
+project
+
 # sbt specific
 .history/
 .lib/
