@@ -87,7 +87,7 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
       case Some(cancellable) => {
         if(acc > 1) {
           if(log.isDebugEnabled) log.debug(new StringContext("this frequency is still used, clock is still running, reference: ", "").s(frequency.toNanos))
-          sender ! OK
+          sender ! NOK
           context.become(running(acc - 1))
         }
         else {

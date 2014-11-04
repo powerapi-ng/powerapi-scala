@@ -92,11 +92,14 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
 
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
     Thread.sleep(250)
-    Await.result(receiver ? Get, timeout.duration) should (equal(25-1) or equal(25) or equal(25+1))
     Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
+    val test = Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
     receiver ! Reset
     Thread.sleep(100)
-    Await.result(receiver ? Get, timeout.duration) should equal(0)
+    Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should equal(0)
+    
+    receiver.stop()
+    clock.stop()
   }
 
   it should "handle only one timer and stop it if there is not a subscription which uses it" in {
@@ -108,13 +111,16 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
 
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(NOK)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
+    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(NOK)
     Thread.sleep(250)
-    Await.result(receiver ? Get, timeout.duration) should (equal(25-1) or equal(25) or equal(25+1))
     Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
+    Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
     receiver ! Reset
     Thread.sleep(100)
-    Await.result(receiver ? Get, timeout.duration) should equal(0)
+    Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should equal(0)
+
+    receiver.stop()
+    clock.stop()
   }
 
   "A Clock actor" should "handle ClockChild actors" in {
@@ -136,20 +142,26 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
 
     clock ! StartClock(frequency1, report)
     clock ! StartClock(frequency2, report)
+    clock ! StartClock(frequency2, report)
     clock ! StartClock(frequency3, report)
     clock ! StartClock(frequency3, report)
 
     Thread.sleep(250)
     clock ! StopClock(frequency1)
-    Thread.sleep(50)
     clock ! StopClock(frequency2)
-    Thread.sleep(100)
+    clock ! StartClock(frequency2, report)
+    Thread.sleep(150)
     clock ! StopAllClocks
     
     Thread.sleep(100)
 
-    Await.result(receiver1 ? Get, timeout.duration) should (equal(25-1) or equal(25) or equal(25+1))
-    Await.result(receiver2 ? Get, timeout.duration) should (equal(6-1) or equal(6) or equal(6+1))
-    Await.result(receiver3 ? Get, timeout.duration) should (equal(16-1) or equal(16) or equal(16+1))
+    Await.result(receiver1 ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
+    Await.result(receiver2 ? Get, timeout.duration).asInstanceOf[Int] should be (8 +- 5)
+    Await.result(receiver3 ? Get, timeout.duration).asInstanceOf[Int] should be (16 +- 5)
+
+    receiver1.stop()
+    receiver2.stop()
+    receiver3.stop()
+    clock.stop()
   }
 }
