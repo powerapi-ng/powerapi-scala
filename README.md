@@ -15,6 +15,7 @@ When submitting code, please make every effort to follow existing conventions an
 # Acknowledgments
 We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.4 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
 * [Akka](http://akka.io) (version 2.2.4 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
+* [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 
 # Licence
 This software is licensed under the *GNU Affero General Public License*, quoted below.
