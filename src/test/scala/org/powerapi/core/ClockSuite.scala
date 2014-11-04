@@ -8,16 +8,15 @@ import scala.concurrent.duration._
 import akka.actor.{ Actor, ActorSystem, Props }
 import akka.pattern.ask
 import akka.util.Timeout
-
 import akka.testkit._
 import org.scalatest._
+
+case class ClockReport(suid: Long, topic: String) extends Report
 
 object Get
 object Reset
 
-case class SimpleReport(suid: Long, topic: String) extends Report
-
-class Receiver(topic: String, bus: EventBus) extends Actor with ClockChannel {
+class ClockReceiver(topic: String, bus: EventBus) extends Actor with ClockChannel {
   import ClockChannel.ClockTick
 
   override def preStart() = {
@@ -33,10 +32,11 @@ class Receiver(topic: String, bus: EventBus) extends Actor with ClockChannel {
   }
 }
 
-class ClockSuite extends UnitTesting {
+class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
   import ClockChannel.{ formatTopicFromFrequency, StartClock, StopAllClocks, StopClock, OK, NOK }
   implicit val timeout = Timeout(50.milliseconds)
-  implicit val system = ActorSystem("ClockTest")
+
+  def this() = this(ActorSystem("ClockSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
@@ -63,9 +63,9 @@ class ClockSuite extends UnitTesting {
   "A ClockChild actor" should "produce Ticks at a given frequency, stop its own timer if needed and thus stop to publish Ticks" in {
     val frequency = 10.milliseconds
     val topic = formatTopicFromFrequency(frequency)
-    val receiver = TestActorRef(Props(classOf[Receiver], topic, ReportBus.eventBus))
+    val receiver = TestActorRef(Props(classOf[ClockReceiver], topic, ReportBus.eventBus))
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
-    val report = SimpleReport(1, "test")
+    val report = ClockReport(1, "test")
 
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
     Thread.sleep(250)
@@ -79,9 +79,9 @@ class ClockSuite extends UnitTesting {
   it should "handle only one timer and stop it if there is not a subscription which uses it" in {
     val frequency = 10.milliseconds
     val topic = formatTopicFromFrequency(frequency)
-    val receiver = TestActorRef(Props(classOf[Receiver], topic, ReportBus.eventBus))
+    val receiver = TestActorRef(Props(classOf[ClockReceiver], topic, ReportBus.eventBus))
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
-    val report = SimpleReport(1, "test")
+    val report = ClockReport(1, "test")
 
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(NOK)
@@ -104,12 +104,12 @@ class ClockSuite extends UnitTesting {
 
     val clockTimeout = Timeout(100.milliseconds)
 
-    val receiver1 = TestActorRef(Props(classOf[Receiver], topic1, ReportBus.eventBus))
-    val receiver2 = TestActorRef(Props(classOf[Receiver], topic2, ReportBus.eventBus))
-    val receiver3 = TestActorRef(Props(classOf[Receiver], topic3, ReportBus.eventBus))
+    val receiver1 = TestActorRef(Props(classOf[ClockReceiver], topic1, ReportBus.eventBus))
+    val receiver2 = TestActorRef(Props(classOf[ClockReceiver], topic2, ReportBus.eventBus))
+    val receiver3 = TestActorRef(Props(classOf[ClockReceiver], topic3, ReportBus.eventBus))
 
     val clock = TestActorRef(Props(classOf[Clock], clockTimeout))
-    val report = SimpleReport(1, "test")
+    val report = ClockReport(1, "test")
 
     clock ! StartClock(frequency1, report)
     clock ! StartClock(frequency2, report)
