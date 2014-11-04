@@ -34,7 +34,7 @@ class Receiver(topic: String, bus: EventBus) extends Actor with ClockChannel {
 }
 
 class ClockSuite extends UnitTesting {
-  import ClockChannel.{ formatTopicFromFrequency, StartClock, StopClock, OK, NOK }
+  import ClockChannel.{ formatTopicFromFrequency, StartClock, StopAllClocks, StopClock, OK, NOK }
   implicit val timeout = Timeout(50.milliseconds)
   implicit val system = ActorSystem("ClockTest")
 
@@ -85,12 +85,48 @@ class ClockSuite extends UnitTesting {
 
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(NOK)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(NOK)
+    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
     Thread.sleep(250)
     Await.result(receiver ? Get, timeout.duration) should (equal(25-1) or equal(25) or equal(25+1))
     Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
     receiver ! Reset
     Thread.sleep(100)
     Await.result(receiver ? Get, timeout.duration) should equal(0)
+  }
+
+  "A Clock actor" should "handle ClockChild actors" in {
+    val frequency1 = 10.milliseconds
+    val topic1 = formatTopicFromFrequency(frequency1)
+    val frequency2 = 50.milliseconds
+    val topic2 = formatTopicFromFrequency(frequency2)
+    val frequency3 = 25.milliseconds
+    val topic3 = formatTopicFromFrequency(frequency3)
+
+    val clockTimeout = Timeout(100.milliseconds)
+
+    val receiver1 = TestActorRef(Props(classOf[Receiver], topic1, ReportBus.eventBus))
+    val receiver2 = TestActorRef(Props(classOf[Receiver], topic2, ReportBus.eventBus))
+    val receiver3 = TestActorRef(Props(classOf[Receiver], topic3, ReportBus.eventBus))
+
+    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))
+    val report = SimpleReport(1, "test")
+
+    clock ! StartClock(frequency1, report)
+    clock ! StartClock(frequency2, report)
+    clock ! StartClock(frequency3, report)
+    clock ! StartClock(frequency3, report)
+
+    Thread.sleep(250)
+    clock ! StopClock(frequency1)
+    Thread.sleep(50)
+    clock ! StopClock(frequency2)
+    Thread.sleep(100)
+    clock ! StopAllClocks
+    
+    Thread.sleep(100)
+
+    Await.result(receiver1 ? Get, timeout.duration) should (equal(25-1) or equal(25) or equal(25+1))
+    Await.result(receiver2 ? Get, timeout.duration) should (equal(6-1) or equal(6) or equal(6+1))
+    Await.result(receiver3 ? Get, timeout.duration) should (equal(16-1) or equal(16) or equal(16+1))
   }
 }

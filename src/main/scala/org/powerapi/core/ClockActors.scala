@@ -65,7 +65,7 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
       case Some(cancellable) => {
         if(acc > 1) {
           if(log.isDebugEnabled) log.debug(new StringContext("this frequency is still used, clock is still running, reference: ", "").s(frequency.toNanos))
-          sender ! NOK
+          sender ! OK
           context.become(running(acc - 1))
         }
         else {
@@ -76,8 +76,8 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
           context.stop(self)
         }
       }
-      case _ => {
-        if(log.isErrorEnabled) log.error(new StringContext("the timer for the clock referenced ", "", " was not initialized.").s(frequency.toNanos))
+      case None => {
+        if(log.isErrorEnabled) log.error(new StringContext("the timer for the clock referenced ", "", " was not started.").s(frequency.toNanos))
         sender ! NOK
         context.stop(self)
       }
@@ -90,14 +90,14 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
 class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with ClockChannel {
-  import ClockChannel.{ OK, StartClock, StopClock, StopAllClocks }
+  import ClockChannel.{ OK, StartClock, StopAllClocks, StopClock }
 
   override def preStart() = {  
     subscribeOnBus(self)
   }
 
   def acquire = {
-    case msg: StartClock => context.become(running(Map.empty[Long, ActorRef]))
+    case msg: StartClock => start(Map.empty[Long, ActorRef], msg.frequency, msg.report)
   } 
 
   /**
@@ -119,18 +119,17 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
    */
   def start(buffer: Map[Long, ActorRef], frequency: FiniteDuration, report: Report) = {
     val nanoSecs = frequency.toNanos
-    val clock = buffer.getOrElse(nanoSecs, None)
+    val child = buffer.getOrElse(nanoSecs, {
+      context.actorOf(Props(classOf[ClockChild], frequency))
+    })
+    
+    val ack = Await.result(child.?(StartClock(frequency, report))(timeout), timeout.duration)
 
-    clock match {
-      case None => {
-        val props = Props(classOf[ClockChild], frequency)
-        val child = context.actorOf(props)
-        val ack = Await.result(child.?(StartClock(frequency, report))(timeout), timeout.duration)
-
-        if(ack == OK) {
-          context.become(running(buffer + (nanoSecs -> child)))
-        }
+    if(ack == OK) {
+      if(buffer.contains(nanoSecs)) {
+        context.become(running(buffer))
       }
+      else context.become(running(buffer + (nanoSecs -> child)))
     }
   }
 
@@ -152,6 +151,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
           context.become(running(buffer - nanoSecs))
         }
       }
+      case _ => if(log.isDebugEnabled) log.debug(s"clock does not exist, reference: $nanoSecs")
     }
   }
 
