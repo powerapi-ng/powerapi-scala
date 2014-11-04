@@ -23,7 +23,7 @@
 
 package org.powerapi.core
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.FiniteDuration
 
 import akka.actor.ActorRef
 

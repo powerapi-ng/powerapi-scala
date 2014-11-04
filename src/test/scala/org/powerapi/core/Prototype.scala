@@ -21,10 +21,10 @@
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 
-package org.powerapi
+package org.powerapi.test
 
 import akka.actor.ActorSystem
-import akka.testkit._
+import akka.testkit.{ ImplicitSender, TestKit }
 import org.scalatest.{ BeforeAndAfterAll, FlatSpecLike, Matchers }
 
 abstract class UnitTesting(_system: ActorSystem)

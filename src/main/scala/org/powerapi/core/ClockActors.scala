@@ -22,8 +22,7 @@
  */
 package org.powerapi.core
 
-import scala.collection._
-import scala.concurrent.duration._
+import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 import scala.concurrent.Await
 
 import akka.actor.{ Actor, ActorRef, Cancellable, Props }

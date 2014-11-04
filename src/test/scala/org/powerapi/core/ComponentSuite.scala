@@ -23,11 +23,10 @@
 
 package org.powerapi.core
 
-import org.powerapi.UnitTesting
+import org.powerapi.test.UnitTesting
 
 import akka.actor.ActorSystem
-import akka.testkit._
-import org.scalatest._
+import akka.testkit.{ TestActorRef, TestKit }
 
 object Expected
 object NonExpected

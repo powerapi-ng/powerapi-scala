@@ -23,16 +23,15 @@
 
 package org.powerapi.core
 
-import org.powerapi.UnitTesting
+import org.powerapi.test.UnitTesting
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.{ Duration, DurationInt }
 
 import akka.actor.{ Actor, ActorSystem, Props }
 import akka.pattern.ask
 import akka.util.Timeout
-import akka.testkit._
-import org.scalatest._
+import akka.testkit.{ TestActorRef, TestKit }
 
 case class ClockReport(suid: Long, topic: String) extends Report
 

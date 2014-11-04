@@ -23,8 +23,6 @@
 
 package org.powerapi.core
 
-import scala.concurrent.duration._
-
 import akka.actor.ActorRef
 import akka.event.LookupClassification
 
