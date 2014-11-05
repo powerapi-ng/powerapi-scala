@@ -72,6 +72,8 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
     val report = ClockReport(1, "test")
 
+    intercept[UnsupportedOperationException] { clock.receive(StopClock(Duration.Zero)) }
+
     Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockStarted(frequency))
     Thread.sleep(250)
     Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStopped(frequency))
@@ -115,6 +117,8 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
 
     val clock = TestActorRef(Props(classOf[Clock], clockTimeout))
     val report = ClockReport(1, "test")
+
+    intercept[UnsupportedOperationException] { clock.receive(StopClock(Duration.Zero)) }
 
     clock ! StartClock(frequency1, report)
     clock ! StartClock(frequency2, report)

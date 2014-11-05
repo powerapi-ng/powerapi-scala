@@ -31,15 +31,9 @@ import akka.event.LoggingReceive
  */
 trait Component extends Actor with ActorLogging {
   /**
-   * Receive wrapper.
+   * Default behavior when a received message is unknown.
    */
-  def acquire: Actor.Receive
-
   def default: Actor.Receive = {
     case unknown => throw new UnsupportedOperationException(s"unable to process message $unknown")
-  }
-
-  def receive = LoggingReceive {
-    acquire orElse default
   }
 }

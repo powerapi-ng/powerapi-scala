@@ -38,8 +38,9 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
   import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped, ClockTick }
   import ClockChannel.{ clockTickTopic, StartClock, StopAllClocks, StopClock, topic }
 
-  def acquire = {
+  def receive = {
     case StartClock(_, report) => start(report)(clockTickTopic(frequency))
+    case unknown => default(unknown)
   }
 
   /**
@@ -52,12 +53,13 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
    */
   def running(acc: Int)(topic: String)(timer: Cancellable): Actor.Receive = {
     case StartClock(_, _) => {
-      log.debug("clock is already started, reference: {}", frequency.toNanos)
+      log.debug(s"clock is already started, reference: ${frequency.toNanos}")
       sender ! ClockAlreadyStarted(frequency)
       context.become(running(acc + 1)(topic)(timer))
     }
     case StopClock(_) => stop(acc)(topic)(timer)
     case StopAllClocks => stop(1)(topic)(timer)
+    case unknown => default(unknown)
   }
 
   /**
@@ -71,7 +73,7 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
       sendTick(ClockTick(report.suid, topic, frequency))
     } (context.system.dispatcher)
 
-    log.debug("clock started, reference: {}", frequency.toNanos)
+    log.debug(s"clock started, reference: ${frequency.toNanos}")
     sender ! ClockStarted(frequency)
     context.become(running(1)(topic)(timer))
   }
@@ -85,13 +87,13 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
    */
   def stop(acc: Int)(topic: String)(timer: Cancellable) = {
     if(acc > 1) {
-      log.debug("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
+      log.debug(s"this frequency is still used, clock is still running, reference: ${frequency.toNanos}")
       sender ! ClockStillRunning(frequency)
       context.become(running(acc - 1)(topic)(timer))
     }
     else {
       timer.cancel
-      log.debug("clock stopped, reference: {}", frequency.toNanos)
+      log.debug(s"clock stopped, reference: ${frequency.toNanos}")
       sender ! ClockStopped(frequency)
       context.stop(self)
     }
@@ -109,8 +111,9 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
     receiveTickSubscription(self)
   }
 
-  def acquire = {
+  def receive = {
     case StartClock(frequency, report) => start(Map.empty[Long, ActorRef], frequency, report)
+    case unknown => default(unknown)
   } 
 
   /**
@@ -122,6 +125,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
     case StartClock(frequency, report) => start(buffer, frequency, report)
     case msg: StopClock => stop(buffer, msg)
     case StopAllClocks => stopAll(buffer)
+    case unknown => default(unknown)
   }
 
   /**
@@ -129,6 +133,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
    * 
    * @param buffer: Buffer which contains all references to the clock children.
    * @param frequency: Clock frequency.
+   * @param report: base message received.
    */
   def start(buffer: Map[Long, ActorRef], frequency: FiniteDuration, report: Report) = {
     val nanoSecs = frequency.toNanos
@@ -177,6 +182,6 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
       }
     })
 
-    context.become(acquire)
+    context.become(receive)
   }
 }

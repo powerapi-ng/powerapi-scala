@@ -33,8 +33,9 @@ object NonExpected
 object OK
 
 class TestComponent extends Component {
-  def acquire = {
+  def receive = {
     case Expected => sender ! OK
+    case unknown => default(unknown)
   }
 }
 
