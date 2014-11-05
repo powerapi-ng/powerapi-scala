@@ -46,21 +46,25 @@ object ClockChannel extends Channel {
                        timestamp: Long = System.currentTimeMillis) extends Report
 
   /**
-   * Messages.
+   * External messages.
    */
   case class StartClock(frequency: FiniteDuration, report: Report)
-  case class StopClock(frequency: FiniteDuration)
-  
+  case class StopClock(frequency: FiniteDuration)  
   object StopAllClocks
 
-  object OK
-  object NOK
+  /**
+   * Ack messages.
+   */
+  case class ClockStarted(frequency: FiniteDuration)
+  case class ClockAlreadyStarted(frequency: FiniteDuration)
+  case class ClockStillRunning(frequency: FiniteDuration)
+  case class ClockStopped(frequency: FiniteDuration)
 
   private val topic = "tick:subscription"
 
   def subscribe: EventBus => ActorRef => Unit = subscribe(topic)
 
-  def formatTopicFromFrequency(frequency: FiniteDuration) = {
+  def clockTickTopic(frequency: FiniteDuration) = {
     new StringContext("tick:", "").s(frequency.toNanos)
   }
 }
@@ -71,6 +75,6 @@ object ClockChannel extends Channel {
 trait ClockChannel {
   import ClockChannel.{ ClockTick, publish, subscribe }
 
-  def subscribeOnBus: ActorRef => Unit = subscribe(ReportBus.eventBus)
-  def publishOnBus: ClockTick => Unit = publish(ReportBus.eventBus)
+  def receiveTickSubscription: ActorRef => Unit = subscribe(ReportBus.eventBus)
+  def sendTick: ClockTick => Unit = publish(ReportBus.eventBus)
 }

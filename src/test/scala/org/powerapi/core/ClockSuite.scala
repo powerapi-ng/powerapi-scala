@@ -55,7 +55,8 @@ class ClockReceiver(topic: String, bus: EventBus) extends Actor with ClockChanne
 }
 
 class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
-  import ClockChannel.{ formatTopicFromFrequency, StartClock, StopAllClocks, StopClock, OK, NOK }
+  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped }
+  import ClockChannel.{ clockTickTopic, StartClock, StopAllClocks, StopClock }
   implicit val timeout = Timeout(50.milliseconds)
 
   def this() = this(ActorSystem("ClockSuite"))
@@ -64,71 +65,47 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  "ClockChannel.formatTopicFromFrequency" should "format correctly a duration to a topic" in {
-    val day = 1.days
-    val hour = 1.hours
-    val microsecond = 1.microseconds
-    val millisecond = 1.milliseconds
-    val minute = 1.minutes
-    val nanosecond = 1.nanoseconds
-    val second = 1.seconds
-
-    formatTopicFromFrequency(day) should equal("tick:" + day.toNanos.toString)
-    formatTopicFromFrequency(hour) should equal("tick:" + hour.toNanos.toString)
-    formatTopicFromFrequency(microsecond) should equal("tick:" + microsecond.toNanos.toString)
-    formatTopicFromFrequency(millisecond) should equal("tick:" + millisecond.toNanos.toString)
-    formatTopicFromFrequency(minute) should equal("tick:" + minute.toNanos.toString)
-    formatTopicFromFrequency(nanosecond) should equal("tick:" + nanosecond.toNanos.toString)
-    formatTopicFromFrequency(second) should equal("tick:" + second.toNanos.toString)
-  }
-
   "A ClockChild actor" should "produce Ticks at a given frequency, stop its own timer if needed and thus stop to publish Ticks" in {
     val frequency = 10.milliseconds
-    val topic = formatTopicFromFrequency(frequency)
+    val topic = clockTickTopic(frequency)
     val receiver = TestActorRef(Props(classOf[ClockReceiver], topic, ReportBus.eventBus))
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
     val report = ClockReport(1, "test")
 
-    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
+    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockStarted(frequency))
     Thread.sleep(250)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
+    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStopped(frequency))
     val test = Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
     receiver ! Reset
     Thread.sleep(100)
     Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should equal(0)
-    
-    receiver.stop()
-    clock.stop()
   }
 
-  it should "handle only one timer and stop it if there is not a subscription which uses it" in {
+  it should "handle only one timer and stop it if there is no subscription" in {
     val frequency = 10.milliseconds
-    val topic = formatTopicFromFrequency(frequency)
+    val topic = clockTickTopic(frequency)
     val receiver = TestActorRef(Props(classOf[ClockReceiver], topic, ReportBus.eventBus))
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
     val report = ClockReport(1, "test")
 
-    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(OK)
-    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(NOK)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(NOK)
+    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockStarted(frequency))
+    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockAlreadyStarted(frequency))
+    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStillRunning(frequency))
     Thread.sleep(250)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(OK)
+    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStopped(frequency))
     Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
     receiver ! Reset
     Thread.sleep(100)
     Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should equal(0)
-
-    receiver.stop()
-    clock.stop()
   }
 
   "A Clock actor" should "handle ClockChild actors" in {
     val frequency1 = 10.milliseconds
-    val topic1 = formatTopicFromFrequency(frequency1)
+    val topic1 = clockTickTopic(frequency1)
     val frequency2 = 50.milliseconds
-    val topic2 = formatTopicFromFrequency(frequency2)
+    val topic2 = clockTickTopic(frequency2)
     val frequency3 = 25.milliseconds
-    val topic3 = formatTopicFromFrequency(frequency3)
+    val topic3 = clockTickTopic(frequency3)
 
     val clockTimeout = Timeout(100.milliseconds)
 
@@ -157,10 +134,5 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
     Await.result(receiver1 ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
     Await.result(receiver2 ? Get, timeout.duration).asInstanceOf[Int] should be (8 +- 5)
     Await.result(receiver3 ? Get, timeout.duration).asInstanceOf[Int] should be (16 +- 5)
-
-    receiver1.stop()
-    receiver2.stop()
-    receiver3.stop()
-    clock.stop()
   }
 }

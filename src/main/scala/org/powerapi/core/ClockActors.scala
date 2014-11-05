@@ -35,73 +35,65 @@ import akka.util.Timeout
  * Allows to publish a message in the right topics for a given frequency.
  */
 class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel {
-  import ClockChannel.{ ClockTick, formatTopicFromFrequency, OK, NOK, StartClock, StopAllClocks, StopClock, topic }
-
-  var timer: Option[Cancellable] = None
-  val topicToPublish = formatTopicFromFrequency(frequency)
+  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped, ClockTick }
+  import ClockChannel.{ clockTickTopic, StartClock, StopAllClocks, StopClock, topic }
 
   def acquire = {
-    case msg: StartClock => start(msg.report)
+    case StartClock(_, report) => start(report)(clockTickTopic(frequency))
   }
 
   /**
-   * Running state, only one timer per ClockChild. An accumulator is used to know how many subscriptions are using this frequency.
+   * Running state, only one timer per ClockChild.
+   * An accumulator is used to know how many subscriptions are using this frequency.
    *
    * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
+   * @param topic: Topic where messages will be published at each tick.
+   * @param timer: Timer created for producing ticks.
    */
-  def running(acc: Int): Actor.Receive = {
-    case msg: StopClock => stop(acc)
-    case msg: StartClock => {
-      if(log.isDebugEnabled) log.debug(new StringContext("clock is already started, reference: ", "").s(frequency.toNanos))
-      sender ! NOK
-      context.become(running(acc + 1))
+  def running(acc: Int)(topic: String)(timer: Cancellable): Actor.Receive = {
+    case StartClock(_, _) => {
+      log.debug("clock is already started, reference: {}", frequency.toNanos)
+      sender ! ClockAlreadyStarted(frequency)
+      context.become(running(acc + 1)(topic)(timer))
     }
-    case StopAllClocks => stop(1)
+    case StopClock(_) => stop(acc)(topic)(timer)
+    case StopAllClocks => stop(1)(topic)(timer)
   }
 
   /**
-   * Starts the clock and the associated scheduler for publishing a Tick on the required topics at a given frequency.
+   * Start the clock and the associated scheduler for publishing a Tick on the required topics at a given frequency.
    * 
    * @param report: Base message sent on the bus, received by the parent.
+   * @param topic: Topic where messages will be published at each tick.
    */
-  def start(report: Report) = {
-    timer = Option(
-      context.system.scheduler.schedule(Duration.Zero, frequency) {
-        publishOnBus(ClockTick(report.suid, topicToPublish, frequency))
-      } (context.system.dispatcher)
-    )
+  def start(report: Report)(topic: String) = {
+    val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
+      sendTick(ClockTick(report.suid, topic, frequency))
+    } (context.system.dispatcher)
 
-    if(log.isDebugEnabled) log.debug(new StringContext("clock started, reference: ", "").s(frequency.toNanos))
-    sender ! OK
-    context.become(running(1))
+    log.debug("clock started, reference: {}", frequency.toNanos)
+    sender ! ClockStarted(frequency)
+    context.become(running(1)(topic)(timer))
   }
 
   /**
-   * Stops the clock and the scheduler.
+   * Stop the clock and the scheduler.
    *
    * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
+   * @param topic: Topic where messages will be published at each tick.
+   * @param timer: Timer created for producing ticks.
    */
-  def stop(acc: Int) = {
-    timer match {
-      case Some(cancellable) => {
-        if(acc > 1) {
-          if(log.isDebugEnabled) log.debug(new StringContext("this frequency is still used, clock is still running, reference: ", "").s(frequency.toNanos))
-          sender ! NOK
-          context.become(running(acc - 1))
-        }
-        else {
-          cancellable.cancel
-          timer = None
-          if(log.isDebugEnabled) log.debug(new StringContext("clock stopped, reference: ", "").s(frequency.toNanos))
-          sender ! OK
-          context.stop(self)
-        }
-      }
-      case None => {
-        if(log.isErrorEnabled) log.error(new StringContext("the timer for the clock referenced ", "", " was not started.").s(frequency.toNanos))
-        sender ! NOK
-        context.stop(self)
-      }
+  def stop(acc: Int)(topic: String)(timer: Cancellable) = {
+    if(acc > 1) {
+      log.debug("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
+      sender ! ClockStillRunning(frequency)
+      context.become(running(acc - 1)(topic)(timer))
+    }
+    else {
+      timer.cancel
+      log.debug("clock stopped, reference: {}", frequency.toNanos)
+      sender ! ClockStopped(frequency)
+      context.stop(self)
     }
   }
 }
@@ -111,14 +103,14 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
 class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with ClockChannel {
-  import ClockChannel.{ OK, StartClock, StopAllClocks, StopClock }
+  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStopped, StartClock, StopAllClocks, StopClock }
 
   override def preStart() = {  
-    subscribeOnBus(self)
+    receiveTickSubscription(self)
   }
 
   def acquire = {
-    case msg: StartClock => start(Map.empty[Long, ActorRef], msg.frequency, msg.report)
+    case StartClock(frequency, report) => start(Map.empty[Long, ActorRef], frequency, report)
   } 
 
   /**
@@ -127,13 +119,13 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
    * @param buffer: Buffer of all ClockChild started, referenced by their frequencies in nanoseconds.
    */
   def running(buffer: Map[Long, ActorRef]): Actor.Receive = {
-    case msg: StartClock => start(buffer, msg.frequency, msg.report)
+    case StartClock(frequency, report) => start(buffer, frequency, report)
     case msg: StopClock => stop(buffer, msg)
     case StopAllClocks => stopAll(buffer)
   }
 
   /**
-   * Starts a new clock at a given frequency whether is needed.
+   * Start a new clock at a given frequency whether is needed.
    * 
    * @param buffer: Buffer which contains all references to the clock children.
    * @param frequency: Clock frequency.
@@ -146,16 +138,13 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
     
     val ack = Await.result(child.?(StartClock(frequency, report))(timeout), timeout.duration)
 
-    if(ack == OK) {
-      if(buffer.contains(nanoSecs)) {
-        context.become(running(buffer))
-      }
-      else context.become(running(buffer + (nanoSecs -> child)))
+    if(ack == ClockStarted(frequency)) {
+      context.become(running(buffer + (nanoSecs -> child)))
     }
   }
 
   /**
-   * Stops a clock for a given frequency when is needed.
+   * Stop a clock for a given frequency when is needed.
    * 
    * @param buffer: Buffer which contains all references to the clock children.
    * @param msg: Message received for stopping a clock at a given frequency.
@@ -168,7 +157,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
       case ref: ActorRef => {
         val ack = Await.result(ref.?(msg)(timeout), timeout.duration)
 
-        if(ack == OK) {
+        if(ack == ClockStopped(msg.frequency)) {
           context.become(running(buffer - nanoSecs))
         }
       }
