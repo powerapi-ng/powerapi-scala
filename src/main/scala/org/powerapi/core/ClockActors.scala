@@ -26,6 +26,8 @@ import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 import scala.concurrent.Await
 
 import akka.actor.{ Actor, ActorRef, Cancellable, Props }
+import akka.actor.{ ActorInitializationException, ActorKilledException, OneForOneStrategy, SupervisorStrategy }
+import akka.actor.SupervisorStrategy.{ Directive, Restart, Resume, Stop}
 import akka.event.LoggingReceive
 import akka.pattern.ask
 import akka.util.Timeout
@@ -104,8 +106,15 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
-class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with ClockChannel {
+class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with Supervisor with ClockChannel {
   import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStopped, StartClock, StopAllClocks, StopClock }
+
+  /**
+   * ClockChild actors can only launch exception if the message received is not handled.
+   */
+  override def componentStrategy: PartialFunction[Throwable, Directive] = {
+    case _: UnsupportedOperationException => Resume 
+  }
 
   override def preStart() = {  
     receiveTickSubscription(self)
@@ -166,7 +175,6 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
           context.become(running(buffer - nanoSecs))
         }
       }
-      case _ => if(log.isDebugEnabled) log.debug(s"clock does not exist, reference: $nanoSecs")
     }
   }
 

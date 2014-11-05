@@ -23,7 +23,10 @@
 
 package org.powerapi.core
 
-import akka.actor.{ Actor, ActorLogging }
+import scala.concurrent.duration.DurationInt
+
+import akka.actor.{ Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy }
+import akka.actor.SupervisorStrategy.Directive
 import akka.event.LoggingReceive
 
 /**
@@ -36,4 +39,14 @@ trait Component extends Actor with ActorLogging {
   def default: Actor.Receive = {
     case unknown => throw new UnsupportedOperationException(s"unable to process message $unknown")
   }
+}
+
+/**
+ * Supervisor strategy.
+ */
+trait Supervisor extends Component {
+  def componentStrategy: PartialFunction[Throwable, Directive]
+
+  override def supervisorStrategy: SupervisorStrategy =
+    OneForOneStrategy(10, 1.minutes)(componentStrategy orElse SupervisorStrategy.defaultStrategy.decider)
 }
