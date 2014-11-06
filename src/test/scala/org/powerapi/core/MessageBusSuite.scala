@@ -21,15 +21,34 @@
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 
-package org.powerapi.test
+package org.powerapi.core
+
+import org.powerapi.test.UnitTest
 
 import akka.actor.ActorSystem
-import akka.testkit.{ ImplicitSender, TestKit }
-import org.scalatest.{ BeforeAndAfterAll, FlatSpecLike, Matchers }
+import akka.testkit.TestKit
 
-abstract class UnitTesting(_system: ActorSystem)
-  extends TestKit(_system)
-  with ImplicitSender
-  with FlatSpecLike
-  with Matchers
-  with BeforeAndAfterAll
+case class MessageReport(suid: Long, topic: String) extends Report
+
+class MessageBusSuite(_system: ActorSystem) extends UnitTest(_system) {
+  import MessageBus.eventBus
+
+  def this() = this(ActorSystem("MessageSuite"))
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
+
+  "The MessageBus" should "handle messages by topic" in {
+    val report = MessageReport(1, "topic1")
+    val report2 = MessageReport(1, "topic2")
+
+    eventBus.subscribe(testActor, "topic1")
+    eventBus.publish(report)
+    eventBus.publish(report2)
+    expectMsg(report)
+    eventBus.unsubscribe(testActor)
+    eventBus.publish(report)
+    expectNoMsg()
+  }
+}

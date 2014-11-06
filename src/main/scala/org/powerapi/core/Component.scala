@@ -45,8 +45,8 @@ trait Component extends Actor with ActorLogging {
  * Supervisor strategy.
  */
 trait Supervisor extends Component {
-  def componentStrategy: PartialFunction[Throwable, Directive]
+  def handleFailure: PartialFunction[Throwable, Directive]
 
   override def supervisorStrategy: SupervisorStrategy =
-    OneForOneStrategy(10, 1.minutes)(componentStrategy orElse SupervisorStrategy.defaultStrategy.decider)
+    OneForOneStrategy(10, 1.minutes)(handleFailure orElse SupervisorStrategy.defaultStrategy.decider)
 }

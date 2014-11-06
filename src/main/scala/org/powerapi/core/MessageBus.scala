@@ -27,21 +27,27 @@ import akka.actor.ActorRef
 import akka.event.LookupClassification
 
 /**
- * Reports are the base messages exchanged between PowerAPI components.
+ * Messages are the messages used to route the messages in the bus.
  */
-trait Report {
+trait Message {
   /**
-   * A report is associated with a subscription unique identifier (SUID), which is at the origin of the report flow.
-   */
-  def suid: Long
-  /**
-   * A report is associated with a topic which is used to route the messages on the bus.
+   * A message is associated with a topic which is used to route the messages on the bus.
    */
   def topic: String
 }
 
+/**
+ * Reports are the base messages exchanged between PowerAPI components.
+ */
+trait Report extends Message {
+  /**
+   * A report is associated with a subscription unique identifier (SUID), which is at the origin of the report flow.
+   */
+  def suid: Long
+}
+
 trait EventBus extends akka.event.EventBus {
-  type Event = Report
+  type Event = Message
   type Classifier = String
   type Subscriber = ActorRef
 }
@@ -49,7 +55,7 @@ trait EventBus extends akka.event.EventBus {
 /**
  * Common event bus used by PowerAPI components to communicate.
  */
-class ReportBus extends EventBus with LookupClassification {
+class MessageBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
   override protected def classify(event: Event): Classifier = event.topic
   
@@ -72,21 +78,25 @@ class ReportBus extends EventBus with LookupClassification {
 /**
  * Initializing the event bus.
  */
-object ReportBus {
-  val eventBus = new ReportBus
+object MessageBus {
+  val eventBus = new MessageBus
 }
 
 /**
  * Used to specify the channels used by the components.
  */
 class Channel {
-  type R <: Report
+  type M <: Message
 
-  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
+  def subscribe(bus: EventBus, topic: String)(subscriber: ActorRef) = {
     bus.subscribe(subscriber, topic)
   }
 
-  def publish(bus: EventBus)(report: R) = {
-    bus.publish(report)
+  def unsubscribe(bus: EventBus, topic: String)(subscriber: ActorRef) = {
+    bus.unsubscribe(subscriber, topic)
+  }
+
+  def publish(bus: EventBus, message: M) = {
+    bus.publish(message)
   }
 }

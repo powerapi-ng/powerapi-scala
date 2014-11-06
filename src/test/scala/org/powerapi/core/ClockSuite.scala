@@ -23,40 +23,51 @@
 
 package org.powerapi.core
 
-import org.powerapi.test.UnitTesting
+import org.powerapi.test.UnitTest
 
 import scala.concurrent.Await
-import scala.concurrent.duration.{ Duration, DurationInt }
+import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 
-import akka.actor.{ Actor, ActorSystem, Props }
+import akka.actor.{ Actor, ActorRef, ActorSystem, Props }
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.testkit.{ TestActorRef, TestKit }
 
-case class ClockReport(suid: Long, topic: String) extends Report
-
-object Get
-object Reset
-
-class ClockReceiver(topic: String, bus: EventBus) extends Actor with ClockChannel {
-  import ClockChannel.ClockTick
+class ClockChildListener(frequency: FiniteDuration) extends Actor {
+  import ClockChannel.{ ClockTick, subscribeClock }
 
   override def preStart() = {
-    bus.subscribe(self, topic)
+    subscribeClock(frequency)(self)
   }
 
   def receive = active(0)
 
   def active(acc: Int): Actor.Receive = {
-    case msg: ClockTick => context become active(acc + 1)
-    case Reset => context become active(0)
-    case Get => sender ! acc
+    case _: ClockTick => context become active(acc + 1)
+    case "reset" => context become active(0)
+    case "get" => sender ! acc
   }
 }
 
-class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
-  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped }
-  import ClockChannel.{ clockTickTopic, StartClock, StopAllClocks, StopClock }
+class ClockChannelSubscriber(frequency: FiniteDuration) extends Actor {
+  import ClockChannel.{ ClockTick, subscribeClock }
+
+  override def preStart() = {
+    subscribeClock(frequency)(self)
+  }
+
+  def receive = active(0)
+
+  def active(acc: Int): Actor.Receive = {
+    case _: ClockTick => context become active(acc + 1)
+    case "reset" => context become active(0)
+    case "get" => sender ! acc
+  }
+}
+
+class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
+  import ClockChannel.{ ClockAlreadyStarted, ClockStart, ClockStarted, ClockStillRunning, ClockStop }
+  import ClockChannel.{ ClockStopAll, ClockStopped, startClock, stopAllClock, stopClock, unsubscribeClock }
   implicit val timeout = Timeout(50.milliseconds)
 
   def this() = this(ActorSystem("ClockSuite"))
@@ -66,77 +77,140 @@ class ClockSuite(_system: ActorSystem) extends UnitTesting(_system) {
   }
 
   "A ClockChild actor" should "produce Ticks at a given frequency, stop its own timer if needed and thus stop to publish Ticks" in {
-    val frequency = 10.milliseconds
-    val topic = clockTickTopic(frequency)
-    val receiver = TestActorRef(Props(classOf[ClockReceiver], topic, ReportBus.eventBus))
+    import MessageBus.eventBus
+
+    val frequency = 25.milliseconds
+    val listener = TestActorRef(Props(classOf[ClockChildListener], frequency))
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
-    val report = ClockReport(1, "test")
 
-    intercept[UnsupportedOperationException] { clock.receive(StopClock(Duration.Zero)) }
+    intercept[UnsupportedOperationException] { clock.receive(ClockStop("test", Duration.Zero)) }
 
-    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockStarted(frequency))
+    clock ! ClockStart("test", Duration.Zero)
+    expectMsg(ClockStarted(frequency))
+    
     Thread.sleep(250)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStopped(frequency))
-    val test = Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
-    receiver ! Reset
+    clock ! ClockStop("test", Duration.Zero)
+    expectMsg(ClockStopped(frequency))
+    listener ! "get"
+    expectMsgClass(classOf[Int]) should be (10 +- 5)
+
+    listener ! "reset"
     Thread.sleep(100)
-    Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should equal(0)
+    listener ! "get"
+    expectMsgClass(classOf[Int]) should equal(0)
   }
 
   it should "handle only one timer and stop it if there is no subscription" in {
-    val frequency = 10.milliseconds
-    val topic = clockTickTopic(frequency)
-    val receiver = TestActorRef(Props(classOf[ClockReceiver], topic, ReportBus.eventBus))
+    val frequency = 25.milliseconds
+    val listener = TestActorRef(Props(classOf[ClockChildListener], frequency))
     val clock = TestActorRef(Props(classOf[ClockChild], frequency))
-    val report = ClockReport(1, "test")
 
-    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockStarted(frequency))
-    Await.result(clock ? StartClock(Duration.Zero, report), timeout.duration) should equal(ClockAlreadyStarted(frequency))
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStillRunning(frequency))
+    clock ! ClockStart("test", Duration.Zero)
+    expectMsg(ClockStarted(frequency))
+
+    clock ! ClockStart("test", Duration.Zero)
+    expectMsg(ClockAlreadyStarted(frequency))
+
+    clock ! ClockStop("test", Duration.Zero)
+    expectMsg(ClockStillRunning(frequency))
+
     Thread.sleep(250)
-    Await.result(clock ? StopClock(Duration.Zero), timeout.duration) should equal(ClockStopped(frequency))
-    Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
-    receiver ! Reset
+    clock ! ClockStop("test", Duration.Zero)
+    expectMsg(ClockStopped(frequency))
+    listener ! "get"
+    expectMsgClass(classOf[Int]) should be (10 +- 5)
+
+    listener ! "reset"
     Thread.sleep(100)
-    Await.result(receiver ? Get, timeout.duration).asInstanceOf[Int] should equal(0)
+    listener ! "get"
+    expectMsgClass(classOf[Int]) should equal(0)
   }
 
   "A Clock actor" should "handle ClockChild actors" in {
-    val frequency1 = 10.milliseconds
-    val topic1 = clockTickTopic(frequency1)
+    val frequency1 = 25.milliseconds
     val frequency2 = 50.milliseconds
-    val topic2 = clockTickTopic(frequency2)
-    val frequency3 = 25.milliseconds
-    val topic3 = clockTickTopic(frequency3)
+    val frequency3 = 100.milliseconds
 
-    val clockTimeout = Timeout(100.milliseconds)
-
-    val receiver1 = TestActorRef(Props(classOf[ClockReceiver], topic1, ReportBus.eventBus))
-    val receiver2 = TestActorRef(Props(classOf[ClockReceiver], topic2, ReportBus.eventBus))
-    val receiver3 = TestActorRef(Props(classOf[ClockReceiver], topic3, ReportBus.eventBus))
-
+    val clockTimeout = Timeout(1.seconds)
     val clock = TestActorRef(Props(classOf[Clock], clockTimeout))
-    val report = ClockReport(1, "test")
 
-    intercept[UnsupportedOperationException] { clock.receive(StopClock(Duration.Zero)) }
+    val nbSubscribers = 100
+    val subscribersF1 = scala.collection.mutable.ListBuffer[ActorRef]()
+    val subscribersF2 = scala.collection.mutable.ListBuffer[ActorRef]()
+    val subscribersF3 = scala.collection.mutable.ListBuffer[ActorRef]()
 
-    clock ! StartClock(frequency1, report)
-    clock ! StartClock(frequency2, report)
-    clock ! StartClock(frequency2, report)
-    clock ! StartClock(frequency3, report)
-    clock ! StartClock(frequency3, report)
+    intercept[UnsupportedOperationException] { clock.receive(ClockStop("test", Duration.Zero)) }
 
-    Thread.sleep(250)
-    clock ! StopClock(frequency1)
-    clock ! StopClock(frequency2)
-    clock ! StartClock(frequency2, report)
-    Thread.sleep(150)
-    clock ! StopAllClocks
+    for(i <- 0 until nbSubscribers) {
+      subscribersF1 += TestActorRef(Props(classOf[ClockChannelSubscriber], frequency1))
+      subscribersF2 += TestActorRef(Props(classOf[ClockChannelSubscriber], frequency2))
+      subscribersF3 += TestActorRef(Props(classOf[ClockChannelSubscriber], frequency3))
+    }
+
+    startClock(frequency1)
+    startClock(frequency2)
+    startClock(frequency2)
+    startClock(frequency3)
+    startClock(frequency3)
+
+    Thread.sleep(500)
+    stopClock(frequency1)
+    stopClock(frequency2)
+    startClock(frequency2)
+    Thread.sleep(300)
+    stopAllClock()
     
     Thread.sleep(100)
 
-    Await.result(receiver1 ? Get, timeout.duration).asInstanceOf[Int] should be (25 +- 5)
-    Await.result(receiver2 ? Get, timeout.duration).asInstanceOf[Int] should be (8 +- 5)
-    Await.result(receiver3 ? Get, timeout.duration).asInstanceOf[Int] should be (16 +- 5)
+    for(subscriber <- subscribersF1) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should be (20 +- 5)
+      subscriber ! "reset"
+    }
+    for(subscriber <- subscribersF2) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should be (16 +- 5)
+      subscriber ! "reset"
+    }
+    for(subscriber <- subscribersF3) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should be (8 +- 5)
+      subscriber ! "reset"
+    }
+
+    Thread.sleep(100)
+    for(subscriber <- subscribersF1) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should equal(0)
+    }
+    for(subscriber <- subscribersF2) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should equal(0)
+    }
+    for(subscriber <- subscribersF3) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should equal(0)
+    }
+
+    val testSubscriber = subscribersF1.head
+    unsubscribeClock(frequency1)(testSubscriber)
+    startClock(frequency1)
+    Thread.sleep(300)
+    stopClock(frequency1)
+
+    Thread.sleep(100)
+
+    testSubscriber ! "get"
+    expectMsgClass(classOf[Int]) should equal (0)
+
+    for(subscriber <- (subscribersF1 - testSubscriber)) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should be (16 +- 5)
+    }
+
+    for(subscriber <- subscribersF3) {
+      subscriber ! "get"
+      expectMsgClass(classOf[Int]) should equal (0)
+    }
   }
 }

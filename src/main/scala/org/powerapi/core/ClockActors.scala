@@ -26,8 +26,7 @@ import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 import scala.concurrent.Await
 
 import akka.actor.{ Actor, ActorRef, Cancellable, Props }
-import akka.actor.{ ActorInitializationException, ActorKilledException, OneForOneStrategy, SupervisorStrategy }
-import akka.actor.SupervisorStrategy.{ Directive, Restart, Resume, Stop}
+import akka.actor.SupervisorStrategy.{ Directive, Resume }
 import akka.event.LoggingReceive
 import akka.pattern.ask
 import akka.util.Timeout
@@ -36,62 +35,55 @@ import akka.util.Timeout
  * One child clock is created per frequency.
  * Allows to publish a message in the right topics for a given frequency.
  */
-class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel {
-  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped, ClockTick }
-  import ClockChannel.{ clockTickTopic, StartClock, StopAllClocks, StopClock, topic }
+class ClockChild(frequency: FiniteDuration) extends Component {
+  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped }
+  import ClockChannel.{ publishTick, ClockStart, ClockStopAll, ClockStop }
 
-  def receive = {
-    case StartClock(_, report) => start(report)(clockTickTopic(frequency))
-    case unknown => default(unknown)
-  }
+  def receive = LoggingReceive {
+    case _: ClockStart => start()
+  } orElse default
 
   /**
    * Running state, only one timer per ClockChild.
    * An accumulator is used to know how many subscriptions are using this frequency.
    *
    * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
-   * @param topic: Topic where messages will be published at each tick.
    * @param timer: Timer created for producing ticks.
    */
-  def running(acc: Int)(topic: String)(timer: Cancellable): Actor.Receive = {
-    case StartClock(_, _) => {
+  def running(acc: Int)(timer: Cancellable): Actor.Receive = LoggingReceive {
+    case _: ClockStart => {
       log.debug("clock is already started, reference: {}", frequency.toNanos)
       sender ! ClockAlreadyStarted(frequency)
-      context.become(running(acc + 1)(topic)(timer))
+      context.become(running(acc + 1)(timer))
     }
-    case StopClock(_) => stop(acc)(topic)(timer)
-    case StopAllClocks => stop(1)(topic)(timer)
-    case unknown => default(unknown)
-  }
+    case _: ClockStop => stop(acc)(timer)
+    case _: ClockStopAll => stop(1)(timer)
+  } orElse default
 
   /**
-   * Start the clock and the associated scheduler for publishing a Tick on the required topics at a given frequency.
-   * 
-   * @param report: Base message sent on the bus, received by the parent.
-   * @param topic: Topic where messages will be published at each tick.
+   * Start the clock and the associated scheduler for publishing a Tick on the required topic at a given frequency.
    */
-  def start(report: Report)(topic: String) = {
+  def start() = {
     val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
-      sendTick(ClockTick(report.suid, topic, frequency))
+      publishTick(frequency)
     } (context.system.dispatcher)
 
     log.debug("clock started, reference: {}", frequency.toNanos)
     sender ! ClockStarted(frequency)
-    context.become(running(1)(topic)(timer))
+    context.become(running(1)(timer))
   }
 
   /**
    * Stop the clock and the scheduler.
    *
    * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
-   * @param topic: Topic where messages will be published at each tick.
    * @param timer: Timer created for producing ticks.
    */
-  def stop(acc: Int)(topic: String)(timer: Cancellable) = {
+  def stop(acc: Int)(timer: Cancellable) = {
     if(acc > 1) {
       log.debug("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
       sender ! ClockStillRunning(frequency)
-      context.become(running(acc - 1)(topic)(timer))
+      context.become(running(acc - 1)(timer))
     }
     else {
       timer.cancel
@@ -106,64 +98,62 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
-class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with Supervisor with ClockChannel {
-  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStopped, StartClock, StopAllClocks, StopClock }
+class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with Supervisor {
+  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStopped, ClockStart }
+  import ClockChannel.{ ClockStopAll, ClockStop, subscribeTickSubscription }
+
+  override def preStart() = {  
+    subscribeTickSubscription(self)
+  }
 
   /**
    * ClockChild actors can only launch exception if the message received is not handled.
    */
-  override def componentStrategy: PartialFunction[Throwable, Directive] = {
+  def handleFailure: PartialFunction[Throwable, Directive] = {
     case _: UnsupportedOperationException => Resume 
   }
 
-  override def preStart() = {  
-    receiveTickSubscription(self)
-  }
-
-  def receive = {
-    case StartClock(frequency, report) => start(Map.empty[Long, ActorRef], frequency, report)
-    case unknown => default(unknown)
-  } 
+  def receive = LoggingReceive {
+    case msg: ClockStart => start(Map.empty[Long, ActorRef], msg)
+  } orElse default
 
   /**
    * Running state.
    *
    * @param buffer: Buffer of all ClockChild started, referenced by their frequencies in nanoseconds.
    */
-  def running(buffer: Map[Long, ActorRef]): Actor.Receive = {
-    case StartClock(frequency, report) => start(buffer, frequency, report)
-    case msg: StopClock => stop(buffer, msg)
-    case StopAllClocks => stopAll(buffer)
-    case unknown => default(unknown)
-  }
+  def running(buffer: Map[Long, ActorRef]): Actor.Receive = LoggingReceive {
+    case msg: ClockStart => start(buffer, msg)
+    case msg: ClockStop => stop(buffer, msg)
+    case msg: ClockStopAll => stopAll(buffer, msg)
+  } orElse default
 
   /**
    * Start a new clock at a given frequency whether is needed.
    * 
    * @param buffer: Buffer which contains all references to the clock children.
-   * @param frequency: Clock frequency.
-   * @param report: base message received.
+   * @param msg: Message received for starting a clock at a given frequency.
    */
-  def start(buffer: Map[Long, ActorRef], frequency: FiniteDuration, report: Report) = {
-    val nanoSecs = frequency.toNanos
+  def start(buffer: Map[Long, ActorRef], msg: ClockStart) = {
+    val nanoSecs = msg.frequency.toNanos
     val child = buffer.getOrElse(nanoSecs, {
-      context.actorOf(Props(classOf[ClockChild], frequency))
+      context.actorOf(Props(classOf[ClockChild], msg.frequency))
     })
     
-    val ack = Await.result(child.?(StartClock(frequency, report))(timeout), timeout.duration)
+    val ack = Await.result(child.?(msg)(timeout), timeout.duration)
 
-    if(ack == ClockStarted(frequency)) {
+    if(ack == ClockStarted(msg.frequency)) {
       context.become(running(buffer + (nanoSecs -> child)))
     }
   }
 
   /**
-   * Stop a clock for a given frequency when is needed.
+   * Stop a clock for a given frequency if it exists.
    * 
    * @param buffer: Buffer which contains all references to the clock children.
    * @param msg: Message received for stopping a clock at a given frequency.
    */
-  def stop(buffer: Map[Long, ActorRef], msg: StopClock) = {
+  def stop(buffer: Map[Long, ActorRef], msg: ClockStop) = {
     val nanoSecs = msg.frequency.toNanos
     val clock = buffer.getOrElse(nanoSecs, None)
 
@@ -175,6 +165,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
           context.become(running(buffer - nanoSecs))
         }
       }
+      case None => {}
     }
   }
 
@@ -182,11 +173,12 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
    * Stop all clocks for all frequencies.
    *
    * @param buffer: Buffer which contains all references to the clock children.
+   * @param msg: Message received for stopping all clocks.
    */
-  def stopAll(buffer: Map[Long, ActorRef]) = {
+  def stopAll(buffer: Map[Long, ActorRef], msg: ClockStopAll) = {
     buffer.foreach({
       case (_, ref) => {
-        Await.result(ref.?(StopAllClocks)(timeout), timeout.duration)
+        Await.result(ref.?(msg)(timeout), timeout.duration)
       }
     })
 

@@ -31,26 +31,51 @@ import akka.actor.ActorRef
  * Clock channel and messages.
  */
 object ClockChannel extends Channel {
-  type R = ClockTick
+  import MessageBus.eventBus
+
+  type M = ClockMessage
+
+  trait ClockMessage extends Message
 
   /**
-   * ClockTick is represented as a dedicated type of report.
+   * ClockTick is represented as a dedicated type of message.
    * 
-   * @param suid: subscription UID of the report.
    * @param topic: subject used for routing the message.
    * @param frequency: clock frequency.
    */
-  case class ClockTick(suid: Long,
-                       topic: String,
+  case class ClockTick(topic: String,
                        frequency: FiniteDuration,
-                       timestamp: Long = System.currentTimeMillis) extends Report
+                       timestamp: Long = System.currentTimeMillis) extends ClockMessage
 
   /**
-   * External messages.
+   * ClockTickSubscription is represented as a dedicated type of message.
+   * 
+   * @param topic: subject used for routing the message.
+   * @param frequency: clock frequency.
    */
-  case class StartClock(frequency: FiniteDuration, report: Report)
-  case class StopClock(frequency: FiniteDuration)  
-  object StopAllClocks
+  case class ClockTickSubscription(topic: String,
+                       frequency: FiniteDuration) extends ClockMessage
+
+  /**
+   * ClockStart is represented as a dedicated type of message.
+   *
+   * @param topic: subject used for routing the message.
+   * @param frequency: clock frequency.
+   */
+  case class ClockStart(topic: String, frequency: FiniteDuration) extends ClockMessage
+
+  /**
+   * ClockStop is represented as a dedicated type of message.
+   *
+   * @param topic: subject used for routing the message.
+   * @param frequency: clock frequency.
+   */
+  case class ClockStop(topic: String, frequency: FiniteDuration) extends ClockMessage
+
+  /**
+   * ClockStopAll is represented as a dedicated type of message.
+   */
+  case class ClockStopAll(topic: String) extends ClockMessage
 
   /**
    * Ack messages.
@@ -62,19 +87,42 @@ object ClockChannel extends Channel {
 
   private val topic = "tick:subscription"
 
-  def subscribe: EventBus => ActorRef => Unit = subscribe(topic)
-
-  def clockTickTopic(frequency: FiniteDuration) = {
-    new StringContext("tick:", "").s(frequency.toNanos)
+  /**
+   * Methods used by the subscription actors to interact with the clock actors by
+   * using the bus.
+   */
+  def subscribeClock(frequency: FiniteDuration): ActorRef => Unit = {
+    subscribe(eventBus, clockTickTopic(frequency)) _
   }
-}
 
-/**
- * Used to inject the bus for different actors.
- */
-trait ClockChannel {
-  import ClockChannel.{ ClockTick, publish, subscribe }
+  def unsubscribeClock(frequency: FiniteDuration): ActorRef => Unit = {
+    unsubscribe(eventBus, clockTickTopic(frequency)) _
+  }
 
-  def receiveTickSubscription: ActorRef => Unit = subscribe(ReportBus.eventBus)
-  def sendTick: ClockTick => Unit = publish(ReportBus.eventBus)
+  def startClock(frequency: FiniteDuration) {
+    publish(eventBus, ClockStart(topic, frequency))
+  }
+
+  def stopClock(frequency: FiniteDuration) {
+    publish(eventBus, ClockStop(topic, frequency))
+  }
+
+  def stopAllClock() = {
+    publish(eventBus, ClockStopAll(topic))
+  }
+
+  /**
+   * Methods used by the clock actors to interact with the event bus.
+   */
+  def subscribeTickSubscription: ActorRef => Unit = {
+    subscribe(eventBus, topic)
+  }
+
+  def publishTick(frequency: FiniteDuration) = {
+    publish(eventBus, ClockTick(clockTickTopic(frequency), frequency))
+  }
+
+  private def clockTickTopic(frequency: FiniteDuration) = {
+    s"tick:${frequency.toNanos}"
+  }
 }
