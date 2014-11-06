@@ -55,7 +55,7 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
    */
   def running(acc: Int)(topic: String)(timer: Cancellable): Actor.Receive = {
     case StartClock(_, _) => {
-      log.debug(s"clock is already started, reference: ${frequency.toNanos}")
+      log.debug("clock is already started, reference: {}", frequency.toNanos)
       sender ! ClockAlreadyStarted(frequency)
       context.become(running(acc + 1)(topic)(timer))
     }
@@ -75,7 +75,7 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
       sendTick(ClockTick(report.suid, topic, frequency))
     } (context.system.dispatcher)
 
-    log.debug(s"clock started, reference: ${frequency.toNanos}")
+    log.debug("clock started, reference: {}", frequency.toNanos)
     sender ! ClockStarted(frequency)
     context.become(running(1)(topic)(timer))
   }
@@ -89,13 +89,13 @@ class ClockChild(frequency: FiniteDuration) extends Component with ClockChannel 
    */
   def stop(acc: Int)(topic: String)(timer: Cancellable) = {
     if(acc > 1) {
-      log.debug(s"this frequency is still used, clock is still running, reference: ${frequency.toNanos}")
+      log.debug("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
       sender ! ClockStillRunning(frequency)
       context.become(running(acc - 1)(topic)(timer))
     }
     else {
       timer.cancel
-      log.debug(s"clock stopped, reference: ${frequency.toNanos}")
+      log.debug("clock stopped, reference: {}", frequency.toNanos)
       sender ! ClockStopped(frequency)
       context.stop(self)
     }
