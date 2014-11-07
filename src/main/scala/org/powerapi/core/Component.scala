@@ -25,8 +25,8 @@ package org.powerapi.core
 
 import scala.concurrent.duration.DurationInt
 
-import akka.actor.{ Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy }
-import akka.actor.SupervisorStrategy.Directive
+import akka.actor.{ Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator }
+import akka.actor.SupervisorStrategy.{ Directive, Resume }
 import akka.event.LoggingReceive
 
 /**
@@ -49,4 +49,18 @@ trait Supervisor extends Component {
 
   override def supervisorStrategy: SupervisorStrategy =
     OneForOneStrategy(10, 1.minutes)(handleFailure orElse SupervisorStrategy.defaultStrategy.decider)
+}
+
+/**
+ * This class is used for defining a default supervisor strategy for the Guardian Actor.
+ * The Guardian Actor is the main actor used when system.actorOf(...) is used.
+ */
+class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
+  def handleFailure: PartialFunction[Throwable, Directive] = {
+    case _: UnsupportedOperationException => Resume
+  }
+
+  def create(): SupervisorStrategy = {
+    OneForOneStrategy(10, 1.minutes)(handleFailure orElse SupervisorStrategy.defaultStrategy.decider)
+  }
 }

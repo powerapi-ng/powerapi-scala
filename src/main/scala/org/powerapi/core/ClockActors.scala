@@ -40,7 +40,7 @@ class ClockChild(frequency: FiniteDuration) extends Component {
   import ClockChannel.{ publishTick, ClockStart, ClockStopAll, ClockStop }
 
   def receive = LoggingReceive {
-    case _: ClockStart => start()
+    case ClockStart(_, freq) if frequency == freq => start()
   } orElse default
 
   /**
@@ -51,12 +51,12 @@ class ClockChild(frequency: FiniteDuration) extends Component {
    * @param timer: Timer created for producing ticks.
    */
   def running(acc: Int)(timer: Cancellable): Actor.Receive = LoggingReceive {
-    case _: ClockStart => {
+    case ClockStart(_, freq) if frequency == freq => {
       log.debug("clock is already started, reference: {}", frequency.toNanos)
       sender ! ClockAlreadyStarted(frequency)
       context.become(running(acc + 1)(timer))
     }
-    case _: ClockStop => stop(acc)(timer)
+    case ClockStop(_, freq) if frequency == freq => stop(acc)(timer)
     case _: ClockStopAll => stop(1)(timer)
   } orElse default
 

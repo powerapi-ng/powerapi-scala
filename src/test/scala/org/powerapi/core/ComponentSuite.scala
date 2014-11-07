@@ -29,7 +29,7 @@ import akka.actor.{ ActorRef, ActorSystem, Props, Terminated }
 import akka.actor.SupervisorStrategy.{ Directive, Escalate, Restart, Resume, Stop }
 import akka.event.LoggingReceive
 
-import akka.testkit.{ TestActorRef, TestKit }
+import akka.testkit.{ EventFilter, TestActorRef, TestKit }
 
 class TestComponent extends Component {
   def receive = LoggingReceive {
@@ -37,16 +37,12 @@ class TestComponent extends Component {
   } orElse default
 }
 
-class TestSupervisor extends Component with Supervisor {
-  def handleFailure: PartialFunction[Throwable, Directive] = {
-    case _: ArithmeticException => Resume
-    case _: NullPointerException => Restart
-    case _: IllegalArgumentException => Stop
-    case _: Exception => Escalate
-  }
+class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends Component with Supervisor {
+  def handleFailure: PartialFunction[Throwable, Directive] = f
 
   def receive = {
     case p: Props => sender ! context.actorOf(p)
+    case ex: Exception => throw ex
   }
 }
 
@@ -75,33 +71,80 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
   }
 
   it can "handle failures if needed" in {
-    val supervisor = TestActorRef[TestSupervisor]
+    def handleFailureOne: PartialFunction[Throwable, Directive] = {
+      case _: ArithmeticException => Resume
+      case _: NullPointerException => Restart
+      case _: IllegalArgumentException => Stop
+      case _: Exception => Escalate
+    }
+
+    val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))
     supervisor ! Props[TestChild]
     var child = expectMsgClass(classOf[ActorRef])
-    
+
     child ! 42
     child ! "state"
     expectMsg(42)
 
-    child ! new ArithmeticException("bad operation")
-    child ! "state"
-    expectMsg(42)
+    EventFilter.warning(occurrences = 1) intercept {
+      child ! new ArithmeticException("bad operation")
+      child ! "state"
+      expectMsg(42)
+    }
 
-    child ! new NullPointerException("null !")
-    child ! "state"
-    expectMsg(0)
+    EventFilter[NullPointerException](occurrences = 1) intercept {
+      child ! new NullPointerException("null !")
+      child ! "state"
+      expectMsg(0)
+    }
 
-    watch(child)
-    child ! new IllegalArgumentException("bad argument")
-    expectMsgPF() { case Terminated(child) => () }
+    EventFilter[IllegalArgumentException](occurrences = 1) intercept {      
+      watch(child)
+      child ! new IllegalArgumentException("bad argument")
+      expectMsgPF() { case Terminated(child) => () }
+    }
 
+    EventFilter[Exception]("crash", occurrences = 1) intercept {
+      supervisor ! Props[TestChild]
+      child = expectMsgClass(classOf[ActorRef])
+      watch(child)
+      child ! 42
+      child ! "state"
+      expectMsg(42)
+      child ! new Exception("crash")
+      expectMsgPF() { case t @ Terminated(child) if t.existenceConfirmed => () }
+    }
+  }
+
+  "A different failure strategy" can "be applied for different supervisors" in {
+    def handleFailureOne: PartialFunction[Throwable, Directive] = {
+      case _: ArithmeticException => Restart
+    }
+
+    val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))
     supervisor ! Props[TestChild]
-    child = expectMsgClass(classOf[ActorRef])
-    watch(child)
+    var child = expectMsgClass(classOf[ActorRef])
+
     child ! 42
     child ! "state"
     expectMsg(42)
-    child ! new Exception("crash")
-    expectMsgPF() { case t @ Terminated(child) if t.existenceConfirmed => () }
+    
+    EventFilter[ArithmeticException](occurrences = 1) intercept {
+      child ! new ArithmeticException("bad operation")
+      child ! "state"
+      expectMsg(0)
+    }
+  }
+
+  "Our default guardian strategy" should "be applied for the supervisor actor" in {
+    val supervisor = TestActorRef(Props(classOf[TestSupervisor], null))
+
+    EventFilter.warning(occurrences = 1) intercept {
+      supervisor ! new UnsupportedOperationException("umh, not supported")
+    }
+
+    EventFilter[Exception]("crash", occurrences = 1) intercept {
+      supervisor ! new Exception("crash")
+    }
   }
 }
