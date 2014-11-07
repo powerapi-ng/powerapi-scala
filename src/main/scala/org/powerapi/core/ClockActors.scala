@@ -89,7 +89,6 @@ class ClockChild(frequency: FiniteDuration) extends Component {
       timer.cancel
       log.debug("clock stopped, reference: {}", frequency.toNanos)
       sender ! ClockStopped(frequency)
-      context.stop(self)
     }
   }
 }
@@ -162,10 +161,11 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
         val ack = Await.result(ref.?(msg)(timeout), timeout.duration)
 
         if(ack == ClockStopped(msg.frequency)) {
+          context.stop(ref)
           context.become(running(buffer - nanoSecs))
         }
       }
-      case None => {}
+      case None => throw new UnsupportedOperationException("clock does not exist, reference: $nanoSecs")
     }
   }
 
@@ -178,7 +178,11 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
   def stopAll(buffer: Map[Long, ActorRef], msg: ClockStopAll) = {
     buffer.foreach({
       case (_, ref) => {
-        Await.result(ref.?(msg)(timeout), timeout.duration)
+        val ack = Await.result(ref.?(msg)(timeout), timeout.duration)
+
+        ack match {
+          case _: ClockStopped => context.stop(ref)
+        }
       }
     })
 

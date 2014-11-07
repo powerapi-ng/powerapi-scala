@@ -154,6 +154,7 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     val frequency1 = 25.milliseconds
     val frequency2 = 50.milliseconds
     val frequency3 = 100.milliseconds
+    val wrongFrequency = 200.milliseconds
 
     val clockTimeout = Timeout(1.seconds)
     val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(system)
@@ -174,6 +175,10 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     startClock(frequency2)
     startClock(frequency3)
     startClock(frequency3)
+
+    EventFilter.warning(occurrences = 1) intercept {
+      stopClock(wrongFrequency)
+    }
 
     Thread.sleep(500)
     stopClock(frequency1)
@@ -242,7 +247,7 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     for(i <- 50 to 100) {
       val frequency = FiniteDuration(i, MILLISECONDS)
       frequencies += frequency
-      subscribers += TestActorRef(Props(classOf[ClockMockSubscriber], frequency))
+      subscribers += TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(system)
     }
 
     for(frequency <- frequencies) {
