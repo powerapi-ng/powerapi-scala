@@ -165,7 +165,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
           context.become(running(buffer - nanoSecs))
         }
       }
-      case None => throw new UnsupportedOperationException("clock does not exist, reference: $nanoSecs")
+      case None => throw new UnsupportedOperationException(s"clock does not exist, reference: $nanoSecs")
     }
   }
 
