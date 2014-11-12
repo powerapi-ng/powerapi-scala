@@ -65,7 +65,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A ClockChild actor" should "produce Ticks at a given frequency, stop its own timer if needed and thus stop to publish Ticks" in {
-    val _system = ActorSystem("ClockSuiteTest", eventListener)
+    val _system = ActorSystem("ClockSuiteTest1", eventListener)
 
     val frequency = 50.milliseconds
     val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber1")
@@ -95,7 +95,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle only one timer and stop it if there is no subscription" in {
-    val _system = ActorSystem("ClockSuiteTest", eventListener)
+    val _system = ActorSystem("ClockSuiteTest2", eventListener)
 
     val frequency = 50.milliseconds
     val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber2")
@@ -132,7 +132,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "launch an exception when the messages received cannot be handled" in {
-    val _system = ActorSystem("ClockSuiteTest", eventListener)
+    val _system = ActorSystem("ClockSuiteTest3", eventListener)
 
     val frequency = 50.milliseconds
     val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber3")
@@ -168,7 +168,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Clock actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in {
-    val _system = ActorSystem("ClockSuiteTest")
+    val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
     val frequency2 = 100.milliseconds
@@ -257,7 +257,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in {
-    val _system = ActorSystem("ClockSuiteTest")
+    val _system = ActorSystem("ClockSuiteTest5")
 
     val clockTimeout = Timeout(1.seconds)
     val clock = _system.actorOf(Props(classOf[Clock], clockTimeout), "clock5")
@@ -301,7 +301,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "launch an exception when the messages received cannot be handled" in {
-    val _system = ActorSystem("ClockSuiteTest", eventListener)
+    val _system = ActorSystem("ClockSuiteTest6", eventListener)
 
     val clockTimeout = Timeout(1.seconds)
     val clock = _system.actorOf(Props(classOf[Clock], clockTimeout), "clock6")
