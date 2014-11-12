@@ -177,7 +177,6 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val frequency1 = 50.milliseconds
     val frequency2 = 100.milliseconds
     val frequency3 = 150.milliseconds
-    val wrongFrequency = 200.milliseconds
 
     val clock = _system.actorOf(Props(classOf[Clock]), "clock4")
 
