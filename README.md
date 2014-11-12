@@ -1,8 +1,8 @@
 # PowerAPI
-PowerAPI is a middleware toolkit for buidling *software-defined power meters*. Software-defined power meters are configurable software librairies that can estimate the power consumption of software components in real-time. PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including filesystem, network, web, graphical). As a middleware toolkit, PowerAPI offers the capability of assemblying power meters *«à la carte»* to accomodate user requirements.
+PowerAPI is a middleware toolkit for building software-defined power meters. Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time. PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including file system, network, web, graphical). As a middleware toolkit, PowerAPI offers the capability of assembling power meters *«à la carte»* to accommodate user requirements.
 
 # About
-PowerAPI is an open-source project developed by the [Spirals research group](https://team.inria.fr/spirals) (University of Lille 1 and Inria). Interested in collaborating with us? Send an email to contact@powerapi.org.
+PowerAPI is an open-source project developed by the [Spirals research group](https://team.inria.fr/spirals) (University of Lille 1 and Inria).
 
 # Mailing list
 You can follow the latest news and asks questions by subscribing to our [mailing list](https://sympa.inria.fr/sympa/info/powerapi).
@@ -14,11 +14,11 @@ When submitting code, please make every effort to follow existing conventions an
 
 # Acknowledgments
 We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.4 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
-* [Akka](http://akka.io) (version 2.3.6 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
+* [Akka](http://akka.io) (version 2.2.4 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
 * [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 
 # Licence
-This software is licensed under the *GNU Affero General Public License*, quoted below. Alternative licenses can be delivered upon [request](mailto:contact@powerapi.org).
+This software is licensed under the *GNU Affero General Public License*, quoted below.
 
 Copyright (C) 2011-2014 Inria, University of Lille 1.
 
