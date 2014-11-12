@@ -30,7 +30,7 @@ import akka.testkit.TestKit
 
 case class MessageReport(suid: Long, topic: String) extends Report
 
-class MessageBusSuite(_system: ActorSystem) extends UnitTest(_system) {
+class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
   import MessageBus.eventBus
 
   def this() = this(ActorSystem("MessageSuite"))

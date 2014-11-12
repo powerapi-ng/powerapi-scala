@@ -56,7 +56,7 @@ class TestChild extends Component {
   }
 }
 
-class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
+class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
   def this() = this(ActorSystem("ComponentSuite"))
 
   override def afterAll() = {
@@ -64,7 +64,7 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
   }
 
   "A component" should "have a default behavior and a processing one" in {
-    val component = TestActorRef[TestComponent]
+    val component = TestActorRef(Props(classOf[TestComponent]))(system)
     component ! "msg"
     expectMsg("ok")
     intercept[UnsupportedOperationException] { component.receive(new Exception("oups")) }
@@ -78,7 +78,7 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
       case _: Exception => Escalate
     }
 
-    val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))
+    val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))(system)
     supervisor ! Props[TestChild]
     var child = expectMsgClass(classOf[ActorRef])
 
@@ -86,25 +86,25 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
     child ! "state"
     expectMsg(42)
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = child.path.toString).intercept({
       child ! new ArithmeticException("bad operation")
       child ! "state"
       expectMsg(42)
-    }
+    })(system)
 
-    EventFilter[NullPointerException](occurrences = 1) intercept {
+    EventFilter[NullPointerException](occurrences = 1, source = child.path.toString).intercept({
       child ! new NullPointerException("null !")
       child ! "state"
       expectMsg(0)
-    }
+    })(system)
 
-    EventFilter[IllegalArgumentException](occurrences = 1) intercept {      
+    EventFilter[IllegalArgumentException](occurrences = 1, source = child.path.toString).intercept({      
       watch(child)
       child ! new IllegalArgumentException("bad argument")
       expectMsgPF() { case Terminated(child) => () }
-    }
+    })(system)
 
-    EventFilter[Exception]("crash", occurrences = 1) intercept {
+    EventFilter[Exception]("crash", occurrences = 1, source = supervisor.path.toString).intercept({
       supervisor ! Props[TestChild]
       child = expectMsgClass(classOf[ActorRef])
       watch(child)
@@ -113,7 +113,7 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
       expectMsg(42)
       child ! new Exception("crash")
       expectMsgPF() { case t @ Terminated(child) if t.existenceConfirmed => () }
-    }
+    })(system)
   }
 
   "A different failure strategy" can "be applied for different supervisors" in {
@@ -121,7 +121,7 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
       case _: ArithmeticException => Restart
     }
 
-    val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))
+    val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))(system)
     supervisor ! Props[TestChild]
     var child = expectMsgClass(classOf[ActorRef])
 
@@ -129,22 +129,22 @@ class ComponentSuite(_system: ActorSystem) extends UnitTest(_system) {
     child ! "state"
     expectMsg(42)
     
-    EventFilter[ArithmeticException](occurrences = 1) intercept {
+    EventFilter[ArithmeticException](occurrences = 1, source = child.path.toString).intercept({
       child ! new ArithmeticException("bad operation")
       child ! "state"
       expectMsg(0)
-    }
+    })(system)
   }
 
   "Our default guardian strategy" should "be applied for the supervisor actor" in {
-    val supervisor = TestActorRef(Props(classOf[TestSupervisor], null))
+    val supervisor = TestActorRef(Props(classOf[TestSupervisor], null))(system)
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = supervisor.path.toString).intercept({
       supervisor ! new UnsupportedOperationException("umh, not supported")
-    }
+    })(system)
 
-    EventFilter[Exception]("crash", occurrences = 1) intercept {
+    EventFilter[Exception]("crash", occurrences = 1, source = supervisor.path.toString).intercept({
       supervisor ! new Exception("crash")
-    }
+    })(system)
   }
 }

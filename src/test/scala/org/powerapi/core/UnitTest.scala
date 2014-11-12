@@ -27,8 +27,8 @@ import akka.actor.ActorSystem
 import akka.testkit.{ ImplicitSender, TestKit }
 import org.scalatest.{ BeforeAndAfterAll, FlatSpecLike, Matchers }
 
-abstract class UnitTest(_system: ActorSystem)
-  extends TestKit(_system)
+abstract class UnitTest(system: ActorSystem)
+  extends TestKit(system)
   with ImplicitSender
   with FlatSpecLike
   with Matchers

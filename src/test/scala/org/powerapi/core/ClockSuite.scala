@@ -29,7 +29,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration, MILLISECONDS }
 
 import akka.actor.{ Actor, ActorRef, ActorSystem, Props }
-import akka.pattern.ask
+import akka.pattern.{ ask, gracefulStop }
 import akka.util.Timeout
 import akka.testkit.{ EventFilter, TestActorRef, TestKit }
 
@@ -51,7 +51,7 @@ class ClockMockSubscriber(frequency: FiniteDuration) extends Actor {
   }
 }
 
-class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
+class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   import ClockChannel.{ ClockAlreadyStarted, ClockStart, ClockStarted, ClockStillRunning, ClockStop }
   import ClockChannel.{ ClockStopAll, ClockStopped, startClock, stopAllClock, stopClock, unsubscribeClock }
   implicit val timeout = Timeout(50.milliseconds)
@@ -59,15 +59,15 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
   def this() = this(ActorSystem("ClockSuite"))
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(_system)
+    TestKit.shutdownActorSystem(system)
   }
 
   "A ClockChild actor" should "produce Ticks at a given frequency, stop its own timer if needed and thus stop to publish Ticks" in {
-    implicit val system = ActorSystem("ClockSuite")
-    val frequency = 25.milliseconds
+    val _system = ActorSystem("ClockSuiteTest")
 
-    val subscriber = TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(system)
-    val clock = TestActorRef(Props(classOf[ClockChild], frequency))(system)
+    val frequency = 25.milliseconds
+    val subscriber = TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(_system)
+    val clock = TestActorRef(Props(classOf[ClockChild], frequency))(_system)
 
     clock ! ClockStart("test", frequency)
     expectMsg(ClockStarted(frequency))
@@ -83,15 +83,17 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     subscriber ! "get"
     expectMsgClass(classOf[Int]) should equal(0)
 
-    TestKit.shutdownActorSystem(system)
+    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
+    TestKit.shutdownActorSystem(_system)
   }
 
   it should "handle only one timer and stop it if there is no subscription" in {
-    implicit val system = ActorSystem("ClockSuite")
+    val _system = ActorSystem("ClockSuiteTest")
 
     val frequency = 25.milliseconds
-    val subscriber = TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(system)
-    val clock = TestActorRef(Props(classOf[ClockChild], frequency))(system).asInstanceOf[TestActorRef[ClockChild]]
+    val subscriber = TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(_system)
+    val clock = TestActorRef(Props(classOf[ClockChild], frequency))(_system).asInstanceOf[TestActorRef[ClockChild]]
 
     clock ! ClockStart("test", frequency)
     expectMsg(ClockStarted(frequency))
@@ -113,43 +115,47 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     subscriber ! "get"
     expectMsgClass(classOf[Int]) should equal(0)
 
-    TestKit.shutdownActorSystem(system)
+    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
+    TestKit.shutdownActorSystem(_system)
   }
 
   it should "launch an exception when the messages received cannot handled" in {
-    implicit val system = ActorSystem("ClockSuite")
+    val _system = ActorSystem("ClockSuiteTest")
 
     val frequency = 25.milliseconds
-    val subscriber = TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(system)
-    val clock = TestActorRef(Props(classOf[ClockChild], frequency))(system).asInstanceOf[TestActorRef[ClockChild]]
+    val subscriber = TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(_system)
+    val clock = TestActorRef(Props(classOf[ClockChild], frequency))(_system).asInstanceOf[TestActorRef[ClockChild]]
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStop("test", frequency)
-    }
+    })(_system)
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", Duration.Zero)
-    }
+    })(_system)
 
     clock ! ClockStart("test", frequency)
     expectMsg(ClockStarted(frequency))
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", Duration.Zero)
-    }
+    })(_system)
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStop("test", Duration.Zero)
-    }
+    })(_system)
 
     clock ! ClockStop("test", frequency)
     expectMsg(ClockStopped(frequency))
 
-    TestKit.shutdownActorSystem(system)
+    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
+    TestKit.shutdownActorSystem(_system)
   }
 
   "A Clock actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in {
-    implicit val system = ActorSystem("ClockSuite")
+    val _system = ActorSystem("ClockSuiteTest")
 
     val frequency1 = 25.milliseconds
     val frequency2 = 50.milliseconds
@@ -157,7 +163,7 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     val wrongFrequency = 200.milliseconds
 
     val clockTimeout = Timeout(1.seconds)
-    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(system)
+    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(_system)
 
     val nbSubscribers = 100
     val subscribersF1 = scala.collection.mutable.ListBuffer[TestActorRef[ClockMockSubscriber]]()
@@ -165,9 +171,9 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     val subscribersF3 = scala.collection.mutable.ListBuffer[TestActorRef[ClockMockSubscriber]]()
 
     for(i <- 0 until nbSubscribers) {
-      subscribersF1 += TestActorRef(Props(classOf[ClockMockSubscriber], frequency1))(system)
-      subscribersF2 += TestActorRef(Props(classOf[ClockMockSubscriber], frequency2))(system)
-      subscribersF3 += TestActorRef(Props(classOf[ClockMockSubscriber], frequency3))(system)
+      subscribersF1 += TestActorRef(Props(classOf[ClockMockSubscriber], frequency1))(_system)
+      subscribersF2 += TestActorRef(Props(classOf[ClockMockSubscriber], frequency2))(_system)
+      subscribersF3 += TestActorRef(Props(classOf[ClockMockSubscriber], frequency3))(_system)
     }
 
     startClock(frequency1)
@@ -176,9 +182,9 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     startClock(frequency3)
     startClock(frequency3)
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       stopClock(wrongFrequency)
-    }
+    })(_system)
 
     Thread.sleep(500)
     stopClock(frequency1)
@@ -194,11 +200,13 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
       expectMsgClass(classOf[Int]) should be (20 +- 5)
       subscriber ! "reset"
     }
+
     for(subscriber <- subscribersF2) {
       subscriber ! "get"
       expectMsgClass(classOf[Int]) should be (16 +- 5)
       subscriber ! "reset"
     }
+
     for(subscriber <- subscribersF3) {
       subscriber ! "get"
       expectMsgClass(classOf[Int]) should be (8 +- 5)
@@ -215,30 +223,35 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
 
     testSubscriber ! "get"
     expectMsgClass(classOf[Int]) should equal (0)
+    Await.result(gracefulStop(testSubscriber, timeout.duration), timeout.duration)
 
     for(subscriber <- (subscribersF1 - testSubscriber)) {
       subscriber ! "get"
       expectMsgClass(classOf[Int]) should be (16 +- 5)
+      Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     }
 
     for(subscriber <- subscribersF2) {
       subscriber ! "get"
       expectMsgClass(classOf[Int]) should equal (0)
+      Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     }
 
     for(subscriber <- subscribersF3) {
       subscriber ! "get"
       expectMsgClass(classOf[Int]) should equal (0)
+      Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     }
 
-    TestKit.shutdownActorSystem(system)
+    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    TestKit.shutdownActorSystem(_system)
   }
 
   it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in {
-    implicit val system = ActorSystem("ClockSuite")
+    val _system = ActorSystem("ClockSuiteTest")
 
     val clockTimeout = Timeout(1.seconds)
-    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(system)
+    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(_system)
 
     val sleepingTime = 500
     val frequencies = scala.collection.mutable.ArrayBuffer[FiniteDuration]()
@@ -247,7 +260,7 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
     for(i <- 50 to 100) {
       val frequency = FiniteDuration(i, MILLISECONDS)
       frequencies += frequency
-      subscribers += TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(system)
+      subscribers += TestActorRef(Props(classOf[ClockMockSubscriber], frequency))(_system)
     }
 
     for(frequency <- frequencies) {
@@ -269,20 +282,27 @@ class ClockSuite(_system: ActorSystem) extends UnitTest(_system) {
       expectMsgClass(classOf[Int]) should be >= minNbExpectedMsg
     }
 
-    TestKit.shutdownActorSystem(system)
+    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+
+    for(subscriber <- subscribers) {
+      Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
+    }
+    
+    TestKit.shutdownActorSystem(_system)
   }
 
   it should "launch an exception when the messages received cannot handled" in {
-    implicit val system = ActorSystem("ClockSuite")
+    val _system = ActorSystem("ClockSuiteTest")
 
     val clockTimeout = Timeout(1.seconds)
-    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(system)
+    val clock = TestActorRef(Props(classOf[Clock], clockTimeout))(_system)
     val frequency = 25.milliseconds
 
-    EventFilter.warning(occurrences = 1) intercept {
+    EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       stopClock(frequency)
-    }
+    })(_system)
 
-    TestKit.shutdownActorSystem(system)
+    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    TestKit.shutdownActorSystem(_system)
   }
 }
