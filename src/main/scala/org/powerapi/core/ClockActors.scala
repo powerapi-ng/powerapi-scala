@@ -25,7 +25,7 @@ package org.powerapi.core
 import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 import scala.concurrent.Await
 
-import akka.actor.{ Actor, ActorRef, Cancellable, Props }
+import akka.actor.{ Actor, ActorRef, Cancellable, PoisonPill, Props }
 import akka.actor.SupervisorStrategy.{ Directive, Resume }
 import akka.event.LoggingReceive
 import akka.pattern.ask
@@ -37,7 +37,6 @@ import akka.util.Timeout
  * A clock child actor is called by its frequency in nanoseconds for lookups.
  */
 class ClockChild(frequency: FiniteDuration) extends Component {
-  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStillRunning, ClockStopped }
   import ClockChannel.{ publishTick, ClockStart, ClockStopAll, ClockStop }
 
   def receive = LoggingReceive {
@@ -53,12 +52,11 @@ class ClockChild(frequency: FiniteDuration) extends Component {
    */
   def running(acc: Int, timer: Cancellable): Actor.Receive = LoggingReceive {
     case ClockStart(_, freq) if frequency == freq => {
-      log.debug("clock is already started, reference: {}", frequency.toNanos)
-      sender ! ClockAlreadyStarted(frequency)
+      log.info("clock is already started, reference: {}", frequency.toNanos)
       context.become(running(acc + 1, timer))
     }
     case ClockStop(_, freq) if frequency == freq => stop(acc, timer)
-    case _: ClockStopAll => stop(1, timer, false)
+    case _: ClockStopAll => stop(1, timer)
   } orElse default
 
   /**
@@ -69,8 +67,7 @@ class ClockChild(frequency: FiniteDuration) extends Component {
       publishTick(frequency)
     } (context.system.dispatcher)
 
-    log.debug("clock started, reference: {}", frequency.toNanos)
-    sender ! ClockStarted(frequency)
+    log.info("clock started, reference: {}", frequency.toNanos)
     context.become(running(1, timer))
   }
 
@@ -81,16 +78,15 @@ class ClockChild(frequency: FiniteDuration) extends Component {
    * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
    * @param timer: Timer created for producing ticks.
    */
-  def stop(acc: Int, timer: Cancellable, ack: Boolean = true) = {
+  def stop(acc: Int, timer: Cancellable) = {
     if(acc > 1) {
-      log.debug("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
-      sender ! ClockStillRunning(frequency)
+      log.info("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
       context.become(running(acc - 1, timer))
     }
     else {
       timer.cancel
-      log.debug("clock stopped, reference: {}", frequency.toNanos)
-      if(ack) sender ! ClockStopped(frequency)
+      log.info("clock will be stopped, reference: {}", frequency.toNanos)
+      self ! PoisonPill
     }
   }
 }
@@ -100,8 +96,7 @@ class ClockChild(frequency: FiniteDuration) extends Component {
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
 class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with Supervisor {
-  import ClockChannel.{ ClockAlreadyStarted, ClockStarted, ClockStopped, ClockStart }
-  import ClockChannel.{ ClockStopAll, ClockStop, subscribeTickSubscription }
+  import ClockChannel.{ ClockStart, ClockStopAll, ClockStop, subscribeTickSubscription }
 
   override def preStart() = {  
     subscribeTickSubscription(self)
@@ -136,11 +131,11 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
     val nanoSecs = msg.frequency.toNanos
 
     val child = context.child(s"$nanoSecs") match {
-      case Some(actorRef) => actorRef 
+      case Some(actorRef) => actorRef
       case None => context.actorOf(Props(classOf[ClockChild], msg.frequency), s"$nanoSecs")
     }
 
-    Await.result(child.?(msg)(timeout), timeout.duration)
+    child ! msg
     context.become(running)
   }
 
@@ -151,17 +146,7 @@ class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with
    */
   def stop(msg: ClockStop) = {
     val nanoSecs = msg.frequency.toNanos
-
-    context.child(s"$nanoSecs") match {
-      case Some(child) => {
-        val ack = Await.result(child.?(msg)(timeout), timeout.duration)
-
-        if(ack == ClockStopped(msg.frequency)) {
-          context.stop(child)
-        }
-      } 
-      case None => throw new UnsupportedOperationException(s"clock does not exist, reference: $nanoSecs")
-    }
+    context.actorSelection(s"$nanoSecs") ! msg
   }
 
   /**

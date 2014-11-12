@@ -31,6 +31,8 @@ import akka.event.LoggingReceive
 
 import akka.testkit.{ EventFilter, TestActorRef, TestKit }
 
+import com.typesafe.config.ConfigFactory
+
 class TestComponent extends Component {
   def receive = LoggingReceive {
     case "msg" => sender ! "ok"
@@ -57,7 +59,8 @@ class TestChild extends Component {
 }
 
 class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
-  def this() = this(ActorSystem("ComponentSuite"))
+
+  def this() = this(ActorSystem("ComponentSuite", ConfigFactory.parseResources("test.conf")))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)

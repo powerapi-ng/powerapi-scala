@@ -77,14 +77,9 @@ object ClockChannel extends Channel {
    */
   case class ClockStopAll(topic: String) extends ClockMessage
 
-  /**
-   * Ack messages.
+  /** 
+   * Topic for communicating with the Clock.
    */
-  case class ClockStarted(frequency: FiniteDuration)
-  case class ClockAlreadyStarted(frequency: FiniteDuration)
-  case class ClockStillRunning(frequency: FiniteDuration)
-  case class ClockStopped(frequency: FiniteDuration)
-
   private val topic = "tick:subscription"
 
   /**
