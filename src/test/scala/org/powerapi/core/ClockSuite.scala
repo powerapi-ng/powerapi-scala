@@ -68,8 +68,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("ClockSuiteTest", eventListener)
 
     val frequency = 50.milliseconds
-    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency))
-    val clock = _system.actorOf(Props(classOf[ClockChild], frequency))
+    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber1")
+    val clock = _system.actorOf(Props(classOf[ClockChild], frequency), "clock1")
 
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", frequency)
@@ -98,8 +98,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("ClockSuiteTest", eventListener)
 
     val frequency = 50.milliseconds
-    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency))
-    val clock = _system.actorOf(Props(classOf[ClockChild], frequency))
+    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber2")
+    val clock = _system.actorOf(Props(classOf[ClockChild], frequency), "clock2")
 
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", frequency)
@@ -131,12 +131,12 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
   }
 
-  it should "launch an exception when the messages received cannot handled" in {
+  it should "launch an exception when the messages received cannot be handled" in {
     val _system = ActorSystem("ClockSuiteTest", eventListener)
 
     val frequency = 50.milliseconds
-    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency))
-    val clock = _system.actorOf(Props(classOf[ClockChild], frequency))
+    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber3")
+    val clock = _system.actorOf(Props(classOf[ClockChild], frequency), "clock3")
 
     EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStop("test", frequency)
@@ -176,7 +176,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val wrongFrequency = 200.milliseconds
 
     val clockTimeout = Timeout(1.seconds)
-    val clock = _system.actorOf(Props(classOf[Clock], clockTimeout))
+    val clock = _system.actorOf(Props(classOf[Clock], clockTimeout), "clock4")
 
     val nbSubscribers = 100
     val subscribersF1 = scala.collection.mutable.ListBuffer[ActorRef]()
@@ -184,9 +184,9 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val subscribersF3 = scala.collection.mutable.ListBuffer[ActorRef]()
 
     for(i <- 0 until nbSubscribers) {
-      subscribersF1 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency1))
-      subscribersF2 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency2))
-      subscribersF3 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency3))
+      subscribersF1 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency1), s"subscriberF1-$i")
+      subscribersF2 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency2), s"subscriberF2-$i")
+      subscribersF3 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency3), s"subscriberF3-$i")
     }
 
     startClock(frequency1)
@@ -260,7 +260,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("ClockSuiteTest")
 
     val clockTimeout = Timeout(1.seconds)
-    val clock = _system.actorOf(Props(classOf[Clock], clockTimeout))
+    val clock = _system.actorOf(Props(classOf[Clock], clockTimeout), "clock5")
 
     val sleepingTime = 500
     val frequencies = scala.collection.mutable.ArrayBuffer[FiniteDuration]()
@@ -269,7 +269,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 50 to 100) {
       val frequency = FiniteDuration(i, MILLISECONDS)
       frequencies += frequency
-      subscribers += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency))
+      subscribers += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), s"subscriberF$i")
     }
 
     for(frequency <- frequencies) {
@@ -304,7 +304,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("ClockSuiteTest", eventListener)
 
     val clockTimeout = Timeout(1.seconds)
-    val clock = _system.actorOf(Props(classOf[Clock], clockTimeout))
+    val clock = _system.actorOf(Props(classOf[Clock], clockTimeout), "clock6")
     val frequency = 50.milliseconds
 
     EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({

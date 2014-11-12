@@ -61,6 +61,6 @@ class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
   }
 
   def create(): SupervisorStrategy = {
-    OneForOneStrategy(10, 1.minutes)(handleFailure orElse SupervisorStrategy.defaultStrategy.decider)
+    OneForOneStrategy(10, 1.seconds)(handleFailure orElse SupervisorStrategy.defaultStrategy.decider)
   }
 }
