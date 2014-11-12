@@ -95,7 +95,7 @@ class ClockChild(frequency: FiniteDuration) extends Component {
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
-class Clock(timeout: Timeout = Timeout(100.milliseconds)) extends Component with Supervisor {
+class Clock extends Component with Supervisor {
   import ClockChannel.{ ClockStart, ClockStopAll, ClockStop, subscribeTickSubscription }
 
   override def preStart() = {  
