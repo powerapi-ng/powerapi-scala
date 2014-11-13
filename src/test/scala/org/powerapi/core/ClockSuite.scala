@@ -267,7 +267,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val frequencies = scala.collection.mutable.ArrayBuffer[FiniteDuration]()
     val subscribers = scala.collection.mutable.ArrayBuffer[ActorRef]()
 
-    for(i <- 50 to 100) {
+    for(i <- 10 until 50) {
       val frequency = FiniteDuration(i, MILLISECONDS)
       frequencies += frequency
       subscribers += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), s"subscriberF$i")
