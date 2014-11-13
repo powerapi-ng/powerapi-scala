@@ -23,35 +23,21 @@
 
 package org.powerapi.core
 
-import org.powerapi.test.UnitTest
-
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-
-import org.scalatest.Ignore
-
-case class MessageReport(suid: String, topic: String) extends Report
-
-@Ignore
-class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
-  import MessageBus.eventBus
-
-  def this() = this(ActorSystem("MessageSuite"))
-
-  override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
-  }
-
-  "The MessageBus" should "handle messages by topic" in {
-    val report = MessageReport("1", "topic1")
-    val report2 = MessageReport("1", "topic2")
-
-    eventBus.subscribe(testActor, "topic1")
-    eventBus.publish(report)
-    eventBus.publish(report2)
-    expectMsg(report)
-    eventBus.unsubscribe(testActor)
-    eventBus.publish(report)
-    expectNoMsg()
-  }
-}
+/**
+ * Targets are system elements that can be monitored by PowerAPI
+ */
+trait Target
+/**
+ * Monitoring target for a specific Process IDentifier.
+ * @param pid: process identifier
+ */
+case class Process(pid: Long) extends Target
+/**
+ * Monitoring target for a specific application.
+ * @param name: name of the application.
+ */
+case class Application(name: String) extends Target
+/**
+ * Monitoring target for the whole system.
+ */
+object ALL extends Target

@@ -35,6 +35,8 @@ import akka.testkit.{ EventFilter, TestKit }
 
 import com.typesafe.config.ConfigFactory
 
+import org.scalatest.Ignore
+
 class ClockMockSubscriber(frequency: FiniteDuration) extends Actor {
   import ClockChannel.{ ClockTick, subscribeClock }
 
@@ -51,6 +53,7 @@ class ClockMockSubscriber(frequency: FiniteDuration) extends Actor {
   }
 }
 
+@Ignore
 class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   import ClockChannel.{ ClockStart, ClockStop, ClockStopAll }
   import ClockChannel.{ startClock, stopAllClock, stopClock, unsubscribeClock }

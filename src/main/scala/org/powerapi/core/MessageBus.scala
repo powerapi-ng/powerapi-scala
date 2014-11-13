@@ -43,7 +43,7 @@ trait Report extends Message {
   /**
    * A report is associated with a subscription unique identifier (SUID), which is at the origin of the report flow.
    */
-  def suid: Long
+  def suid: String
 }
 
 trait EventBus extends akka.event.EventBus {
