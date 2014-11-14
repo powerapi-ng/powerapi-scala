@@ -252,27 +252,30 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val targets = List(ALL)
     val subscriptions = scala.collection.mutable.ListBuffer[Subscription]()
 
+    // To be sure at least one susbcription actor is started.
+    val subscription = new Subscription
+    startSubscription(subscription.suid, frequency.milliseconds, targets)
+    within(10.seconds) {
+      awaitCond {
+        _system.actorSelection(s"/user/subsup5/${subscription.suid}") ! Identify(None)
+        expectMsgClass(classOf[ActorIdentity]) match {
+          case ActorIdentity(_, Some(_)) => true
+          case _ => false
+        }
+      }
+    }
+
     for(frequency <- 50 to 100) {
       val subscription = new Subscription
       subscriptions += subscription
       startSubscription(subscription.suid, frequency.milliseconds, targets)
-
-      within(10.seconds) {
-        awaitCond {
-          _system.actorSelection(s"/user/subsup5/${subscription.suid}") ! Identify(None)
-          expectMsgClass(classOf[ActorIdentity]) match {
-            case ActorIdentity(_, Some(_)) => true
-            case _ => false
-          }
-        }
-      }
     }
 
     Thread.sleep(250)
     stopAllSubscription()
 
     for(subscription <- subscriptions) {
-      within(10.seconds) {
+      within(20.seconds) {
         awaitAssert {
           intercept[ActorNotFound] {
             Await.result(_system.actorSelection(s"/user/subsup5/${subscription.suid}").resolveOne(), timeout.duration)
