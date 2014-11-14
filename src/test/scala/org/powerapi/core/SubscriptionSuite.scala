@@ -5,9 +5,9 @@ import org.powerapi.test.UnitTest
 import scala.concurrent.Await
 import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 
-import akka.actor.{ Actor, ActorNotFound, ActorRef, ActorSystem, Props }
+import akka.actor.{ Actor, ActorIdentity, ActorNotFound, ActorRef, ActorSystem, Identify, Props }
 import akka.pattern.gracefulStop
-import akka.testkit.{ EventFilter, TestKit }
+import akka.testkit.{ EventFilter, TestKit, TestProbe }
 import akka.util.Timeout
 
 import com.typesafe.config.ConfigFactory
@@ -106,6 +106,8 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], suid, frequency, targets ++ List(ALL)), "subchild2")
     val processMock = _system.actorOf(Props(classOf[ProcessMockSubscriber]))
     val allMock = _system.actorOf(Props(classOf[AllMockSubscriber]))
+    val watcher = TestProbe()(_system)
+    watcher.watch(subsChild)
 
     EventFilter.info(occurrences = 1, source = subsChild.path.toString).intercept({
       subsChild ! SubscriptionStart("test", suid, frequency, targets ++ List(ALL))
@@ -117,6 +119,20 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
       subsChild ! SubscriptionStop("test", suid)
     })(_system)
 
+    within(10.seconds) {
+      awaitAssert {
+        watcher.expectTerminated(subsChild)
+      }
+    }
+
+    within(10.seconds) {
+      awaitAssert {
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(s"/user/clock2/${frequency.toNanos}").resolveOne(), timeout.duration)
+        }
+      }
+    }
+
     processMock ! "get"
     expectMsgClass(classOf[Int]) should be >= (targets.size * 10)
     allMock ! "get"
@@ -126,6 +142,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     Await.result(gracefulStop(subsChild, timeout.duration), timeout.duration)
     Await.result(gracefulStop(processMock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(allMock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
     _system.shutdown()
   }
 
@@ -144,10 +161,26 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], suid, frequency, targets.toList), "subchild3")
     val processMock = _system.actorOf(Props(classOf[ProcessMockSubscriber]))
     val allMock = _system.actorOf(Props(classOf[AllMockSubscriber]))
+    val watcher = TestProbe()(_system)
+    watcher.watch(subsChild)
 
     subsChild ! SubscriptionStart("test", suid, frequency, targets.toList)
     Thread.sleep(250)
     subsChild ! SubscriptionStop("test", suid)
+
+    within(10.seconds) {
+      awaitAssert {
+        watcher.expectTerminated(subsChild)
+      }
+    }
+
+    within(10.seconds) {
+      awaitAssert {
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(s"/user/clock3/${frequency.toNanos}").resolveOne(), timeout.duration)
+        }
+      }
+    }
 
     processMock ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
@@ -159,6 +192,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     Await.result(gracefulStop(subsChild, timeout.duration), timeout.duration)
     Await.result(gracefulStop(processMock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(allMock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
     _system.shutdown()
   }
 
@@ -181,6 +215,22 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     Thread.sleep(250)
     subscription.cancel
 
+    within(10.seconds) {
+      awaitAssert {
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(s"/user/subsup4/${subscription.suid}").resolveOne(), timeout.duration)
+        }
+      }
+    }
+
+    within(10.seconds) {
+      awaitAssert {
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(s"/user/clock4/${frequency.toNanos}").resolveOne(), timeout.duration)
+        }
+      }
+    }
+
     for(i <- 0 until 100) {
       subscribers(i) ! "get"
       // We assume a service quality of 90% (regarding the number of processed messages).
@@ -200,14 +250,36 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val allMock = _system.actorOf(Props(classOf[AllMockSubscriber]))
 
     val targets = List(ALL)
+    val subscriptions = scala.collection.mutable.ListBuffer[Subscription]()
 
     for(frequency <- 50 to 100) {
       val subscription = new Subscription
+      subscriptions += subscription
       startSubscription(subscription.suid, frequency.milliseconds, targets)
+
+      within(10.seconds) {
+        awaitCond {
+          _system.actorSelection(s"/user/subsup5/${subscription.suid}") ! Identify(None)
+          expectMsgClass(classOf[ActorIdentity]) match {
+            case ActorIdentity(_, Some(_)) => true
+            case _ => false
+          }
+        }
+      }
     }
 
-    Thread.sleep(1000)
+    Thread.sleep(250)
     stopAllSubscription()
+
+    for(subscription <- subscriptions) {
+      within(10.seconds) {
+        awaitAssert {
+          intercept[ActorNotFound] {
+            Await.result(_system.actorSelection(s"/user/subsup5/${subscription.suid}").resolveOne(), timeout.duration)
+          }
+        }
+      }
+    }
 
     allMock ! "get"
     expectMsgClass(classOf[Int]) should not equal(0)
