@@ -206,7 +206,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
       startSubscription(subscription.suid, frequency.milliseconds, targets)
     }
 
-    Thread.sleep(250)
+    Thread.sleep(1000)
     stopAllSubscription()
 
     allMock ! "get"
