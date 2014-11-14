@@ -93,10 +93,15 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
  * It is responsible to handle a pool of child actors which represent all monitorings.
  */
 class SubscriptionSupervisor extends Component with Supervisor {
-  import SubscriptionChannel.{ subscribeHandlingSubscription, SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
+  import SubscriptionChannel.{ lastStopAllMessage, subscribeHandlingSubscription }
+  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
 
   override def preStart() = {
     subscribeHandlingSubscription(self)
+  }
+
+  override def postStop() = {
+    context.actorSelection("*") ! lastStopAllMessage()
   }
 
   /**

@@ -150,4 +150,8 @@ object SubscriptionChannel extends Channel {
   def publishAll(suid: String) = {
     publish(eventBus, SubscriptionAll(topicAll, suid))
   }
+
+  def lastStopAllMessage() = {
+    SubscriptionStopAll(topic)
+  }
 }
