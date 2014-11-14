@@ -64,7 +64,7 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
    */
   def start() = {
     val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
-      publishTick(eventBus)(frequency)
+      publishTick(frequency)(eventBus)
     } (context.system.dispatcher)
 
     log.info("clock started, reference: {}", frequency.toNanos)

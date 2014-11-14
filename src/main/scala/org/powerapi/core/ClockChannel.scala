@@ -87,35 +87,35 @@ object ClockChannel extends Channel {
    * Methods used by the subscription actors to interact with the clock actors by
    * using the bus.
    */
-  def subscribeClock(eventBus: MessageBus)(frequency: FiniteDuration): ActorRef => Unit = {
-    subscribe(eventBus, clockTickTopic(frequency)) _
+  def subscribeClock(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
+    subscribe(clockTickTopic(frequency)) _
   }
 
-  def unsubscribeClock(eventBus: MessageBus)(frequency: FiniteDuration): ActorRef => Unit = {
-    unsubscribe(eventBus, clockTickTopic(frequency)) _
+  def unsubscribeClock(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
+    unsubscribe(clockTickTopic(frequency)) _
   }
 
-  def startClock(eventBus: MessageBus)(frequency: FiniteDuration) {
-    publish(eventBus, ClockStart(topic, frequency))
+  def startClock(frequency: FiniteDuration): MessageBus => Unit = {
+    publish(ClockStart(topic, frequency)) _
   }
 
-  def stopClock(eventBus: MessageBus)(frequency: FiniteDuration) {
-    publish(eventBus, ClockStop(topic, frequency))
+  def stopClock(frequency: FiniteDuration): MessageBus => Unit ={
+    publish(ClockStop(topic, frequency)) _
   }
 
-  def stopAllClock(eventBus: MessageBus) = {
-    publish(eventBus, ClockStopAll(topic))
+  def stopAllClock: MessageBus => Unit = {
+    publish(ClockStopAll(topic)) _
   }
 
   /**
    * Methods used by the clock actors to interact with the event bus.
    */
-  def subscribeTickSubscription(eventBus: MessageBus): ActorRef => Unit = {
-    subscribe(eventBus, topic)
+  def subscribeTickSubscription: MessageBus => ActorRef => Unit = {
+    subscribe(topic) _
   }
 
-  def publishTick(eventBus: MessageBus)(frequency: FiniteDuration) = {
-    publish(eventBus, ClockTick(clockTickTopic(frequency), frequency))
+  def publishTick(frequency: FiniteDuration): MessageBus => Unit = {
+    publish(ClockTick(clockTickTopic(frequency), frequency)) _
   }
 
   private def clockTickTopic(frequency: FiniteDuration) = {

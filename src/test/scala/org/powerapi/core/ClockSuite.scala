@@ -39,7 +39,7 @@ class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) exten
   import ClockChannel.{ ClockTick, subscribeClock }
 
   override def preStart() = {
-    subscribeClock(eventBus)(frequency)(self)
+    subscribeClock(frequency)(eventBus)(self)
   }
 
   def receive = active(0)
@@ -100,7 +100,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
-      stopClock(eventBus)(frequency)
+      stopClock(frequency)(eventBus)
     })(_system)
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
@@ -195,16 +195,16 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
       subscribersF3 += _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency3), s"subscriberF3-$i")
     }
 
-    startClock(eventBus)(frequency1)
-    startClock(eventBus)(frequency2)
-    startClock(eventBus)(frequency2)
-    startClock(eventBus)(frequency3)
-    startClock(eventBus)(frequency3)
+    startClock(frequency1)(eventBus)
+    startClock(frequency2)(eventBus)
+    startClock(frequency2)(eventBus)
+    startClock(frequency3)(eventBus)
+    startClock(frequency3)(eventBus)
 
     Thread.sleep(800)
-    stopClock(eventBus)(frequency1)
-    stopClock(eventBus)(frequency2)
-    startClock(eventBus)(frequency2)
+    stopClock(frequency1)(eventBus)
+    stopClock(frequency2)(eventBus)
+    startClock(frequency2)(eventBus)
     Thread.sleep(300)
     stopAllClock(eventBus)
     
@@ -229,10 +229,10 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val testSubscriber = subscribersF1.head
-    unsubscribeClock(eventBus)(frequency1)(testSubscriber)
-    startClock(eventBus)(frequency1)
+    unsubscribeClock(frequency1)(eventBus)(testSubscriber)
+    startClock(frequency1)(eventBus)
     Thread.sleep(600)
-    stopClock(eventBus)(frequency1)
+    stopClock(frequency1)(eventBus)
 
     Thread.sleep(100)
 
@@ -278,13 +278,13 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     for(frequency <- frequencies) {
-      startClock(eventBus)(frequency)
+      startClock(frequency)(eventBus)
     }
 
     Thread.sleep(sleepingTime)
 
     for(frequency <- frequencies) {
-      stopClock(eventBus)(frequency)
+      stopClock(frequency)(eventBus)
     }
 
     for(i <- 0 until frequencies.size) {
