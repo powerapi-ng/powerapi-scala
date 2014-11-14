@@ -119,19 +119,15 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
       subsChild ! SubscriptionStop("test", suid)
     })(_system)
 
-    within(10.seconds) {
-      awaitAssert {
-        watcher.expectTerminated(subsChild)
-      }
-    }
+    awaitAssert({
+      watcher.expectTerminated(subsChild)
+    }, 20.seconds)
 
-    within(10.seconds) {
-      awaitAssert {
-        intercept[ActorNotFound] {
-          Await.result(_system.actorSelection(s"/user/clock2/${frequency.toNanos}").resolveOne(), timeout.duration)
-        }
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock2/${frequency.toNanos}").resolveOne(), timeout.duration)
       }
-    }
+    }, 20.seconds)
 
     processMock ! "get"
     expectMsgClass(classOf[Int]) should be >= (targets.size * 10)
@@ -168,19 +164,15 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     Thread.sleep(250)
     subsChild ! SubscriptionStop("test", suid)
 
-    within(10.seconds) {
-      awaitAssert {
-        watcher.expectTerminated(subsChild)
-      }
-    }
+    awaitAssert({
+      watcher.expectTerminated(subsChild)
+    }, 20.seconds)
 
-    within(10.seconds) {
-      awaitAssert {
-        intercept[ActorNotFound] {
-          Await.result(_system.actorSelection(s"/user/clock3/${frequency.toNanos}").resolveOne(), timeout.duration)
-        }
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock3/${frequency.toNanos}").resolveOne(), timeout.duration)
       }
-    }
+    }, 20.seconds)
 
     processMock ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
@@ -215,21 +207,17 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     Thread.sleep(250)
     subscription.cancel
 
-    within(10.seconds) {
-      awaitAssert {
-        intercept[ActorNotFound] {
-          Await.result(_system.actorSelection(s"/user/subsup4/${subscription.suid}").resolveOne(), timeout.duration)
-        }
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/subsup4/${subscription.suid}").resolveOne(), timeout.duration)
       }
-    }
+    }, 20.seconds)
 
-    within(10.seconds) {
-      awaitAssert {
-        intercept[ActorNotFound] {
-          Await.result(_system.actorSelection(s"/user/clock4/${frequency.toNanos}").resolveOne(), timeout.duration)
-        }
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock4/${frequency.toNanos}").resolveOne(), timeout.duration)
       }
-    }
+    }, 20.seconds)
 
     for(i <- 0 until 100) {
       subscribers(i) ! "get"
@@ -252,36 +240,31 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val targets = List(ALL)
     val subscriptions = scala.collection.mutable.ListBuffer[Subscription]()
 
-    // To be sure at least one susbcription actor is started.
-    val subscription = new Subscription
-    startSubscription(subscription.suid, 50.milliseconds, targets)
-    within(10.seconds) {
-      awaitCond {
-        _system.actorSelection(s"/user/subsup5/${subscription.suid}") ! Identify(None)
-        expectMsgClass(classOf[ActorIdentity]) match {
-          case ActorIdentity(_, Some(_)) => true
-          case _ => false
-        }
-      }
-    }
-
-    for(frequency <- 51 to 100) {
+    for(frequency <- 50 to 100) {
       val subscription = new Subscription
       subscriptions += subscription
       startSubscription(subscription.suid, frequency.milliseconds, targets)
     }
 
     Thread.sleep(250)
+    // To be sure at least one susbcription actor is started.
+    val subscription = subscriptions(0)
+    awaitCond({
+      _system.actorSelection(s"/user/subsup5/${subscription.suid}") ! Identify(None)
+      expectMsgClass(classOf[ActorIdentity]) match {
+        case ActorIdentity(_, Some(_)) => true
+        case _ => false
+      }
+    }, 20.seconds)
+
     stopAllSubscription()
 
     for(subscription <- subscriptions) {
-      within(20.seconds) {
-        awaitAssert {
-          intercept[ActorNotFound] {
-            Await.result(_system.actorSelection(s"/user/subsup5/${subscription.suid}").resolveOne(), timeout.duration)
-          }
+      awaitAssert({
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(s"/user/subsup5/${subscription.suid}").resolveOne(), timeout.duration)
         }
-      }
+      }, 20.seconds)
     }
 
     allMock ! "get"
