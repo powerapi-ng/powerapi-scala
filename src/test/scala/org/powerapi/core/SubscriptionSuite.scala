@@ -254,7 +254,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
 
     // To be sure at least one susbcription actor is started.
     val subscription = new Subscription
-    startSubscription(subscription.suid, frequency.milliseconds, targets)
+    startSubscription(subscription.suid, 50.milliseconds, targets)
     within(10.seconds) {
       awaitCond {
         _system.actorSelection(s"/user/subsup5/${subscription.suid}") ! Identify(None)
@@ -265,7 +265,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
       }
     }
 
-    for(frequency <- 50 to 100) {
+    for(frequency <- 51 to 100) {
       val subscription = new Subscription
       subscriptions += subscription
       startSubscription(subscription.suid, frequency.milliseconds, targets)
