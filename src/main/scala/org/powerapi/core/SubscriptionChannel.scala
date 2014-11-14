@@ -35,30 +35,33 @@ object SubscriptionChannel extends Channel {
 
   type M = SubscriptionMessage
 
-  trait SubscriptionMessage extends Report
+  trait SubscriptionMessage extends Message
 
   /**
    * SubscriptionProcess is represented as a dedicated type of message.
+   *
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
    * @param process: monitoring target.
    */
   case class SubscriptionProcess(topic: String,
                                  suid: String,
-                                 process: Process) extends SubscriptionMessage
+                                 process: Process) extends SubscriptionMessage with Report
 
   /**
    * SubscriptionApp is represented as a dedicated type of message.
+   *
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
    * @param app: monitoring target.
    */
   case class SubscriptionApp(topic: String,
                              suid: String,
-                             app: Application) extends SubscriptionMessage
+                             app: Application) extends SubscriptionMessage with Report
 
   /**
    * SubscriptionAll is represented as a dedicated type of message.
+   *
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
    */
@@ -68,6 +71,7 @@ object SubscriptionChannel extends Channel {
 
   /**
    * SubscriptionStart is represented as a dedicated type of message.
+   *
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
    * @param frequency: clock frequency.
@@ -80,10 +84,18 @@ object SubscriptionChannel extends Channel {
 
   /**
    * SubscriptionStop is represented as a dedicated type of message.
+   *
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
    */
   case class SubscriptionStop(topic: String, suid: String) extends SubscriptionMessage
+
+  /**
+   * SubscriptionStopAll is represented as a dedicated type of message.
+   *
+   * @param topic: subject used for routing the message.
+   */
+  case class SubscriptionStopAll(topic: String) extends SubscriptionMessage
 
   /**
    * Topic for communicating with the Subscription.
@@ -114,6 +126,10 @@ object SubscriptionChannel extends Channel {
 
   def stopSubscription(suid: String) = {
     publish(eventBus, SubscriptionStop(topic, suid))
+  }
+
+  def stopAllSubscription() = {
+    publish(eventBus, SubscriptionStopAll(topic))
   }
 
   /**

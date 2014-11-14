@@ -26,7 +26,8 @@ import java.util.UUID
 
 import scala.concurrent.duration.FiniteDuration
 
-import akka.actor.{ Actor, PoisonPill }
+import akka.actor.{ Actor, PoisonPill, Props }
+import akka.actor.SupervisorStrategy.{ Directive, Resume }
 import akka.event.LoggingReceive
 
 /**
@@ -36,7 +37,8 @@ import akka.event.LoggingReceive
  */
 class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[Target]) extends Component {
   import ClockChannel.{ ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock }
-  import SubscriptionChannel.{ publishProcess, publishApp, publishAll, SubscriptionStart, SubscriptionStop }
+  import SubscriptionChannel.{ publishProcess, publishApp, publishAll }
+  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
 
   def receive = LoggingReceive {
     case SubscriptionStart(_, id, freq, targs) if(suid == id && frequency == freq && targets == targs) => start()
@@ -48,6 +50,7 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
   def running: Actor.Receive = LoggingReceive {
     case _: ClockTick => produceMessages()
     case SubscriptionStop(_, id) if suid == id => stop()
+    case _: SubscriptionStopAll => stop()
   } orElse default
 
   /**
@@ -82,5 +85,80 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
     unsubscribeClock(frequency)(self)
     log.info("subscription is stopped, suid: {}", suid)
     self ! PoisonPill
+  }
+}
+
+/**
+ * This actor listens the bus on a given topic and reacts on the received messages.
+ * It is responsible to handle a pool of child actors which represent all monitorings.
+ */
+class SubscriptionSupervisor extends Component with Supervisor {
+  import SubscriptionChannel.{ subscribeHandlingSubscription, SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
+
+  override def preStart() = {
+    subscribeHandlingSubscription(self)
+  }
+
+  /**
+   * SubscriptionChild actors can only launch exception if the message received is not handled.
+   */
+  def handleFailure: PartialFunction[Throwable, Directive] = {
+    case _: UnsupportedOperationException => Resume 
+  }
+
+  def receive = LoggingReceive {
+    case msg: SubscriptionStart => start(msg)
+  } orElse default
+
+  /**
+   * Running state.
+   */
+  def running: Actor.Receive = LoggingReceive {
+    case msg: SubscriptionStart => start(msg)
+    case msg: SubscriptionStop => stop(msg)
+    case msg: SubscriptionStopAll => stopAll(msg)
+  } orElse default
+
+  /**
+   * Start a new subscription.
+   *
+   * @param msg: Message received for starting a subscription.
+   */
+  def start(msg: SubscriptionStart) = {
+    val child = context.actorOf(Props(classOf[SubscriptionChild], msg.suid, msg.frequency, msg.targets), msg.suid)
+    child ! msg
+    context.become(running)
+  }
+
+  /**
+   * Stop a given subscription.
+   *
+   * @param msg: Message received for stopping a given subscription.
+   */
+  def stop(msg: SubscriptionStop) = {
+    context.actorSelection(msg.suid) ! msg
+  }
+
+  /**
+   * Stop all subscriptions.
+   *
+   * @param msg: Message received for stopping all subscriptions.
+   */
+  def stopAll(msg: SubscriptionStopAll) = {
+    context.actorSelection("*") ! msg
+    context.become(receive)
+  }
+}
+
+/**
+ * This class is an interface for interacting directly with a SubscriptionChild actor.
+ */
+class Subscription {
+  import SubscriptionChannel.stopSubscription
+
+  val suid = UUID.randomUUID().toString
+
+  def cancel() = {
+    stopSubscription(suid)
   }
 }
