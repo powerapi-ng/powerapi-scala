@@ -31,7 +31,6 @@ import akka.testkit.TestKit
 case class MessageReport(suid: Long, topic: String) extends Report
 
 class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
-  import MessageBus.eventBus
 
   def this() = this(ActorSystem("MessageSuite"))
 
@@ -40,6 +39,7 @@ class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "The MessageBus" should "handle messages by topic" in {
+    val eventBus = new MessageBus
     val report = MessageReport(1, "topic1")
     val report2 = MessageReport(1, "topic2")
 

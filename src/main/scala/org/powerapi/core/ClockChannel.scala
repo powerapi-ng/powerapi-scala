@@ -31,7 +31,6 @@ import akka.actor.ActorRef
  * Clock channel and messages.
  */
 object ClockChannel extends Channel {
-  import MessageBus.eventBus
 
   type M = ClockMessage
 
@@ -54,7 +53,7 @@ object ClockChannel extends Channel {
    * @param frequency: clock frequency.
    */
   case class ClockTickSubscription(topic: String,
-                       frequency: FiniteDuration) extends ClockMessage
+                                   frequency: FiniteDuration) extends ClockMessage
 
   /**
    * ClockStart is represented as a dedicated type of message.
@@ -74,6 +73,8 @@ object ClockChannel extends Channel {
 
   /**
    * ClockStopAll is represented as a dedicated type of message.
+   *
+  * @param topic: subject used for routing the message.
    */
   case class ClockStopAll(topic: String) extends ClockMessage
 
@@ -86,34 +87,34 @@ object ClockChannel extends Channel {
    * Methods used by the subscription actors to interact with the clock actors by
    * using the bus.
    */
-  def subscribeClock(frequency: FiniteDuration): ActorRef => Unit = {
+  def subscribeClock(eventBus: MessageBus)(frequency: FiniteDuration): ActorRef => Unit = {
     subscribe(eventBus, clockTickTopic(frequency)) _
   }
 
-  def unsubscribeClock(frequency: FiniteDuration): ActorRef => Unit = {
+  def unsubscribeClock(eventBus: MessageBus)(frequency: FiniteDuration): ActorRef => Unit = {
     unsubscribe(eventBus, clockTickTopic(frequency)) _
   }
 
-  def startClock(frequency: FiniteDuration) {
+  def startClock(eventBus: MessageBus)(frequency: FiniteDuration) {
     publish(eventBus, ClockStart(topic, frequency))
   }
 
-  def stopClock(frequency: FiniteDuration) {
+  def stopClock(eventBus: MessageBus)(frequency: FiniteDuration) {
     publish(eventBus, ClockStop(topic, frequency))
   }
 
-  def stopAllClock() = {
+  def stopAllClock(eventBus: MessageBus) = {
     publish(eventBus, ClockStopAll(topic))
   }
 
   /**
    * Methods used by the clock actors to interact with the event bus.
    */
-  def subscribeTickSubscription: ActorRef => Unit = {
+  def subscribeTickSubscription(eventBus: MessageBus): ActorRef => Unit = {
     subscribe(eventBus, topic)
   }
 
-  def publishTick(frequency: FiniteDuration) = {
+  def publishTick(eventBus: MessageBus)(frequency: FiniteDuration) = {
     publish(eventBus, ClockTick(clockTickTopic(frequency), frequency))
   }
 

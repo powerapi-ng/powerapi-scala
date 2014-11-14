@@ -76,13 +76,6 @@ class MessageBus extends EventBus with LookupClassification {
 }
 
 /**
- * Initializing the event bus.
- */
-object MessageBus {
-  val eventBus = new MessageBus
-}
-
-/**
  * Used to specify the channels used by the components.
  */
 class Channel {
