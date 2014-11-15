@@ -36,7 +36,7 @@ import akka.util.Timeout
  * Allows to publish a message in the right topics for a given frequency.
  * A clock child actor is called by its frequency in nanoseconds for lookups.
  */
-class ClockChild(frequency: FiniteDuration) extends Component {
+class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Component {
   import ClockChannel.{ publishTick, ClockStart, ClockStopAll, ClockStop }
 
   def receive = LoggingReceive {
@@ -64,7 +64,7 @@ class ClockChild(frequency: FiniteDuration) extends Component {
    */
   def start() = {
     val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
-      publishTick(frequency)
+      publishTick(frequency)(eventBus)
     } (context.system.dispatcher)
 
     log.info("clock started, reference: {}", frequency.toNanos)
@@ -95,11 +95,11 @@ class ClockChild(frequency: FiniteDuration) extends Component {
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
-class Clock extends Component with Supervisor {
+class Clock(eventBus: MessageBus) extends Component with Supervisor {
   import ClockChannel.{ ClockStart, ClockStopAll, ClockStop, subscribeTickSubscription }
 
   override def preStart() = {  
-    subscribeTickSubscription(self)
+    subscribeTickSubscription(eventBus)(self)
   }
 
   /**
@@ -132,7 +132,7 @@ class Clock extends Component with Supervisor {
 
     val child = context.child(s"$nanoSecs") match {
       case Some(actorRef) => actorRef
-      case None => context.actorOf(Props(classOf[ClockChild], msg.frequency), s"$nanoSecs")
+      case None => context.actorOf(Props(classOf[ClockChild], eventBus, msg.frequency), s"$nanoSecs")
     }
 
     child ! msg

@@ -35,11 +35,11 @@ import akka.testkit.{ EventFilter, TestKit }
 
 import com.typesafe.config.ConfigFactory
 
-class ClockMockSubscriber(frequency: FiniteDuration) extends Actor {
+class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) extends Actor {
   import ClockChannel.{ ClockTick, subscribeClock }
 
   override def preStart() = {
-    subscribeClock(frequency)(self)
+    subscribeClock(frequency)(eventBus)(self)
   }
 
   def receive = active(0)
@@ -64,12 +64,16 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  "The Clock actors" should "launch an exception when the messages received cannot be handled" in {
+  trait Bus {
+    val eventBus = new MessageBus
+  }
+
+  "The Clock actors" should "launch an exception when the messages received cannot be handled" in new Bus {
     val _system = ActorSystem("ClockSuiteTest1", eventListener)
 
     val frequency = 50.milliseconds
-    val clock = _system.actorOf(Props(classOf[Clock]), "clock1")
-    val clockchild = _system.actorOf(Props(classOf[ClockChild], frequency), "clockchild1")
+    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock1")
+    val clockchild = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clockchild1")
 
     EventFilter.warning(occurrences = 1, source = clockchild.path.toString).intercept({
       clockchild ! ClockStop("test", frequency)
@@ -96,7 +100,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
-      stopClock(frequency)
+      stopClock(frequency)(eventBus)
     })(_system)
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
@@ -104,12 +108,12 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
   }
 
-  "A ClockChild actor" should "produce Ticks at a given frequency, stop its own timer if needed and thus stop to publish Ticks" in {
+  "A ClockChild actor" should "produce Ticks, stop its own timer if needed and thus stop to publish Ticks" in new Bus {
     val _system = ActorSystem("ClockSuiteTest2", eventListener)
 
     val frequency = 50.milliseconds
-    val clock = _system.actorOf(Props(classOf[ClockChild], frequency), "clockchild2")
-    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber2")
+    val clock = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clockchild2")
+    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency), "subscriber2")
 
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", frequency)
@@ -134,12 +138,12 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
   }
 
-  it should "handle only one timer and stop it if there is no subscription" in {
+  it should "handle only one timer and stop it if there is no subscription" in new Bus {
     val _system = ActorSystem("ClockSuiteTest3", eventListener)
 
     val frequency = 50.milliseconds
-    val clock = _system.actorOf(Props(classOf[ClockChild], frequency), "clockchild3")
-    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), "subscriber3")
+    val clock = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clockchild3")
+    val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency), "subscriber3")
 
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", frequency)
@@ -171,14 +175,14 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
   }
 
-  "A ClockActor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in {
+  "A ClockActor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
     val frequency2 = 100.milliseconds
     val frequency3 = 150.milliseconds
 
-    val clock = _system.actorOf(Props(classOf[Clock]), "clock4")
+    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock4")
 
     val nbSubscribers = 100
     val subscribersF1 = scala.collection.mutable.ListBuffer[ActorRef]()
@@ -186,23 +190,23 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val subscribersF3 = scala.collection.mutable.ListBuffer[ActorRef]()
 
     for(i <- 0 until nbSubscribers) {
-      subscribersF1 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency1), s"subscriberF1-$i")
-      subscribersF2 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency2), s"subscriberF2-$i")
-      subscribersF3 += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency3), s"subscriberF3-$i")
+      subscribersF1 += _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency1), s"subscriberF1-$i")
+      subscribersF2 += _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency2), s"subscriberF2-$i")
+      subscribersF3 += _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency3), s"subscriberF3-$i")
     }
 
-    startClock(frequency1)
-    startClock(frequency2)
-    startClock(frequency2)
-    startClock(frequency3)
-    startClock(frequency3)
+    startClock(frequency1)(eventBus)
+    startClock(frequency2)(eventBus)
+    startClock(frequency2)(eventBus)
+    startClock(frequency3)(eventBus)
+    startClock(frequency3)(eventBus)
 
     Thread.sleep(800)
-    stopClock(frequency1)
-    stopClock(frequency2)
-    startClock(frequency2)
+    stopClock(frequency1)(eventBus)
+    stopClock(frequency2)(eventBus)
+    startClock(frequency2)(eventBus)
     Thread.sleep(300)
-    stopAllClock()
+    stopAllClock(eventBus)
     
     Thread.sleep(200)
 
@@ -225,10 +229,10 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val testSubscriber = subscribersF1.head
-    unsubscribeClock(frequency1)(testSubscriber)
-    startClock(frequency1)
+    unsubscribeClock(frequency1)(eventBus)(testSubscriber)
+    startClock(frequency1)(eventBus)
     Thread.sleep(600)
-    stopClock(frequency1)
+    stopClock(frequency1)(eventBus)
 
     Thread.sleep(100)
 
@@ -258,10 +262,10 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
   }
 
-  it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in {
+  it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest5")
 
-    val clock = _system.actorOf(Props(classOf[Clock]), "clock5")
+    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock5")
 
     val sleepingTime = 500
     val frequencies = scala.collection.mutable.ArrayBuffer[FiniteDuration]()
@@ -270,17 +274,17 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 10 until 50) {
       val frequency = FiniteDuration(i, MILLISECONDS)
       frequencies += frequency
-      subscribers += _system.actorOf(Props(classOf[ClockMockSubscriber], frequency), s"subscriberF$i")
+      subscribers += _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency), s"subscriberF$i")
     }
 
     for(frequency <- frequencies) {
-      startClock(frequency)
+      startClock(frequency)(eventBus)
     }
 
     Thread.sleep(sleepingTime)
 
     for(frequency <- frequencies) {
-      stopClock(frequency)
+      stopClock(frequency)(eventBus)
     }
 
     for(i <- 0 until frequencies.size) {
