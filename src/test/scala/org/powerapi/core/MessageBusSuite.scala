@@ -28,13 +28,9 @@ import org.powerapi.test.UnitTest
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 
-import org.scalatest.Ignore
-
 case class MessageReport(suid: String, topic: String) extends Report
 
-@Ignore
 class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
-  import MessageBus.eventBus
 
   def this() = this(ActorSystem("MessageSuite"))
 
@@ -43,6 +39,7 @@ class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "The MessageBus" should "handle messages by topic" in {
+    val eventBus = new MessageBus
     val report = MessageReport("1", "topic1")
     val report2 = MessageReport("1", "topic2")
 

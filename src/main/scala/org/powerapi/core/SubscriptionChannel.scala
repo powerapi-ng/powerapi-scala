@@ -31,8 +31,7 @@ import akka.actor.ActorRef
  * Subscription channel and messages.
  */
 object SubscriptionChannel extends Channel {
-  import MessageBus.eventBus
-
+  
   type M = SubscriptionMessage
 
   trait SubscriptionMessage extends Message
@@ -112,43 +111,43 @@ object SubscriptionChannel extends Channel {
    * Methods used by the sensor actors to interact with the subscription actors by
    * using the bus.
    */
-  def subscribeProcess: ActorRef => Unit = {
-    subscribe(eventBus, topicProcess)
+  def subscribeProcess: MessageBus => ActorRef => Unit = {
+    subscribe(topicProcess) _
   }
 
-  def subscribeAll: ActorRef => Unit = {
-    subscribe(eventBus, topicAll)
+  def subscribeAll: MessageBus => ActorRef => Unit = {
+    subscribe(topicAll) _
   }
 
-  def startSubscription(suid: String, frequency: FiniteDuration, targets: List[Target]) = {
-    publish(eventBus, SubscriptionStart(topic, suid, frequency, targets))
+  def startSubscription(suid: String, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
+    publish(SubscriptionStart(topic, suid, frequency, targets)) _
   }
 
-  def stopSubscription(suid: String) = {
-    publish(eventBus, SubscriptionStop(topic, suid))
+  def stopSubscription(suid: String): MessageBus => Unit = {
+    publish(SubscriptionStop(topic, suid)) _
   }
 
-  def stopAllSubscription() = {
-    publish(eventBus, SubscriptionStopAll(topic))
+  def stopAllSubscription(): MessageBus => Unit = {
+    publish(SubscriptionStopAll(topic)) _
   }
 
   /**
    * Methods used by the subscription actors to interact with the event bus.
    */
-  def subscribeHandlingSubscription: ActorRef => Unit = {
-    subscribe(eventBus, topic)
+  def subscribeHandlingSubscription: MessageBus => ActorRef => Unit = {
+    subscribe(topic) _
   }
 
-  def publishProcess(suid: String, pid: Process) = {
-    publish(eventBus, SubscriptionProcess(topicProcess, suid, pid))
+  def publishProcess(suid: String, pid: Process): MessageBus => Unit = {
+    publish(SubscriptionProcess(topicProcess, suid, pid)) _
   }
 
-  def publishApp(suid: String, app: Application) = {
-    publish(eventBus, SubscriptionApp(topicProcess, suid, app))
+  def publishApp(suid: String, app: Application): MessageBus => Unit = {
+    publish(SubscriptionApp(topicProcess, suid, app)) _
   }
 
-  def publishAll(suid: String) = {
-    publish(eventBus, SubscriptionAll(topicAll, suid))
+  def publishAll(suid: String): MessageBus => Unit = {
+    publish(SubscriptionAll(topicAll, suid)) _
   }
 
   def lastStopAllMessage() = {

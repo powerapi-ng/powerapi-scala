@@ -35,7 +35,10 @@ import akka.event.LoggingReceive
  * Allows to publish messages in the right topics depending of the targets.
  * A subscription child is called by its suid for lookups.
  */
-class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[Target]) extends Component {
+class SubscriptionChild(eventBus: MessageBus,
+                        suid: String,
+                        frequency: FiniteDuration,
+                        targets: List[Target]) extends Component {
   import ClockChannel.{ ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock }
   import SubscriptionChannel.{ publishProcess, publishApp, publishAll }
   import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
@@ -57,8 +60,8 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
    * Start the clock, subscribe on the associated topic for receiving tick messages.
    */
   def start() = {
-    startClock(frequency)
-    subscribeClock(frequency)(self)
+    startClock(frequency)(eventBus)
+    subscribeClock(frequency)(eventBus)(self)
     log.info("subscription is started, suid: {}", suid)
     context.become(running)
   }
@@ -69,9 +72,9 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
   def produceMessages() = {
     targets.foreach(target => {
       target match {
-        case process: Process => publishProcess(suid, process)
-        case app: Application => publishApp(suid, app)
-        case ALL => publishAll(suid)
+        case process: Process => publishProcess(suid, process)(eventBus)
+        case app: Application => publishApp(suid, app)(eventBus)
+        case ALL => publishAll(suid)(eventBus)
       }
     })
   }
@@ -81,8 +84,8 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
    * stop to listen ticks and kill the subscription actor.
    */
   def stop() = {
-    stopClock(frequency)
-    unsubscribeClock(frequency)(self)
+    stopClock(frequency)(eventBus)
+    unsubscribeClock(frequency)(eventBus)(self)
     log.info("subscription is stopped, suid: {}", suid)
     self ! PoisonPill
   }
@@ -92,12 +95,12 @@ class SubscriptionChild(suid: String, frequency: FiniteDuration, targets: List[T
  * This actor listens the bus on a given topic and reacts on the received messages.
  * It is responsible to handle a pool of child actors which represent all monitorings.
  */
-class SubscriptionSupervisor extends Component with Supervisor {
+class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Supervisor {
   import SubscriptionChannel.{ lastStopAllMessage, subscribeHandlingSubscription }
   import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
 
   override def preStart() = {
-    subscribeHandlingSubscription(self)
+    subscribeHandlingSubscription(eventBus)(self)
   }
 
   override def postStop() = {
@@ -130,7 +133,7 @@ class SubscriptionSupervisor extends Component with Supervisor {
    * @param msg: Message received for starting a subscription.
    */
   def start(msg: SubscriptionStart) = {
-    val child = context.actorOf(Props(classOf[SubscriptionChild], msg.suid, msg.frequency, msg.targets), msg.suid)
+    val child = context.actorOf(Props(classOf[SubscriptionChild], eventBus, msg.suid, msg.frequency, msg.targets), msg.suid)
     child ! msg
     context.become(running)
   }
@@ -158,12 +161,12 @@ class SubscriptionSupervisor extends Component with Supervisor {
 /**
  * This class is an interface for interacting directly with a SubscriptionChild actor.
  */
-class Subscription {
+class Subscription(eventBus: MessageBus) {
   import SubscriptionChannel.stopSubscription
 
   val suid = UUID.randomUUID().toString
 
   def cancel() = {
-    stopSubscription(suid)
+    stopSubscription(suid)(eventBus)
   }
 }

@@ -33,8 +33,6 @@ import akka.testkit.{ EventFilter, TestActorRef, TestKit }
 
 import com.typesafe.config.ConfigFactory
 
-import org.scalatest.Ignore
-
 class TestComponent extends Component {
   def receive = LoggingReceive {
     case "msg" => sender ! "ok"
@@ -60,7 +58,6 @@ class TestChild extends Component {
   }
 }
 
-@Ignore
 class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
 
   def this() = this(ActorSystem("ComponentSuite", ConfigFactory.parseResources("test.conf")))

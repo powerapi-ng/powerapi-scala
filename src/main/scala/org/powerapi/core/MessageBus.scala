@@ -76,27 +76,20 @@ class MessageBus extends EventBus with LookupClassification {
 }
 
 /**
- * Initializing the event bus.
- */
-object MessageBus {
-  val eventBus = new MessageBus
-}
-
-/**
  * Used to specify the channels used by the components.
  */
 class Channel {
   type M <: Message
 
-  def subscribe(bus: EventBus, topic: String)(subscriber: ActorRef) = {
+  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
     bus.subscribe(subscriber, topic)
   }
 
-  def unsubscribe(bus: EventBus, topic: String)(subscriber: ActorRef) = {
+  def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
     bus.unsubscribe(subscriber, topic)
   }
 
-  def publish(bus: EventBus, message: M) = {
+  def publish(message: M)(bus: EventBus) = {
     bus.publish(message)
   }
 }
