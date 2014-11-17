@@ -55,26 +55,23 @@ class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
   val config = new ConfigurationMock
 
   "A ConfigurationMock class" should "read a value from a configuration file" in {
-    config.existingKey._1 match {
-      case Some(value) => value should equal("item")
-      case None => {}
+    config.existingKey match {
+      case ConfigValue(value) => value should equal("item")
+      case _ => fail()
     }
-    config.existingKey._2 should equal(None)
   }
 
   it should "return the exception if the value asked does not exist" in {
-    config.wrongKey._1 should equal(None)
-    config.wrongKey._2 match {
-      case Some(ex) => ex shouldBe a [ConfigException]
-      case None => {}
+    config.wrongKey match {
+      case ConfigError(ex) => ex shouldBe a [ConfigException]
+      case _ => fail()
     }
   }
 
   it can "read complex values" in {
-    config.map._1 match {
-      case Some(map) => map should contain theSameElementsAs Map("item1" -> "value1", "item2" -> "value2")
-      case None => {}
+    config.map match {
+      case ConfigValue(map: Map[_, _]) => map should contain theSameElementsAs Map("item1" -> "value1", "item2" -> "value2")
+      case _ => fail()
     }
-    config.map._2 should equal(None)
   }
 }

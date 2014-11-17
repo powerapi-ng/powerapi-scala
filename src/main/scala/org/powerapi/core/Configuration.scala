@@ -25,6 +25,17 @@ package org.powerapi.core
 import com.typesafe.config.{ Config, ConfigException, ConfigFactory }
 
 /**
+ * Base trait for configuration result.
+ */
+trait ConfigResult
+
+/**
+ * Subtypes to specify the different types of result.
+ */
+case class ConfigValue[T](value: T) extends ConfigResult
+case class ConfigError(ex: ConfigException) extends ConfigResult
+
+/**
  * Base trait for dealing with configuration files.
  */
 trait Configuration {
@@ -35,13 +46,13 @@ trait Configuration {
    *
    * @param request: requet for getting information.
    */
-  def load[T](request: Config => T): (Option[T], Option[ConfigException]) = {
+  def load[T](request: Config => T): ConfigResult = {
     try {
-      (Some(request(conf)), None)
+      ConfigValue(request(conf))
     }
     catch {
       case ce: ConfigException => {
-        (None, Some(ce))
+        ConfigError(ce)
       }
     } 
   }
