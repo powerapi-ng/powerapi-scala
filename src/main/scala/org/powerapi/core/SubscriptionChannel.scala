@@ -37,36 +37,15 @@ object SubscriptionChannel extends Channel {
   trait SubscriptionMessage extends Message
 
   /**
-   * SubscriptionProcess is represented as a dedicated type of message.
+   * SubscriptionTarget is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
-   * @param process: monitoring target.
+   * @param target: monitoring target.
    */
-  case class SubscriptionProcess(topic: String,
-                                 suid: String,
-                                 process: Process) extends SubscriptionMessage with Report
-
-  /**
-   * SubscriptionApp is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
-   * @param app: monitoring target.
-   */
-  case class SubscriptionApp(topic: String,
-                             suid: String,
-                             app: Application) extends SubscriptionMessage with Report
-
-  /**
-   * SubscriptionAll is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
-   */
-  case class SubscriptionAll(topic: String,
-                             suid: String) extends SubscriptionMessage
-
+  case class SubscriptionTarget(topic: String,
+                                suid: String,
+                                target: Target) extends SubscriptionMessage with Report
 
   /**
    * SubscriptionStart is represented as a dedicated type of message.
@@ -102,21 +81,16 @@ object SubscriptionChannel extends Channel {
   private val topic = "subscription:handling"
 
   /**
-   * Topics for communicating with the Sensor.
+   * Topic for communicating with the Sensor.
    */
-  private val topicProcess = "subscription:PID"
-  private val topicAll = "subscription:ALL" 
+  private val topicToPublish = "subscription:target"
 
   /**
    * Methods used by the sensor actors to interact with the subscription actors by
    * using the bus.
    */
-  def subscribeProcess: MessageBus => ActorRef => Unit = {
-    subscribe(topicProcess) _
-  }
-
-  def subscribeAll: MessageBus => ActorRef => Unit = {
-    subscribe(topicAll) _
+  def subscribeTarget: MessageBus => ActorRef => Unit = {
+    subscribe(topicToPublish) _
   }
 
   def startSubscription(suid: String, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
@@ -138,16 +112,8 @@ object SubscriptionChannel extends Channel {
     subscribe(topic) _
   }
 
-  def publishProcess(suid: String, pid: Process): MessageBus => Unit = {
-    publish(SubscriptionProcess(topicProcess, suid, pid)) _
-  }
-
-  def publishApp(suid: String, app: Application): MessageBus => Unit = {
-    publish(SubscriptionApp(topicProcess, suid, app)) _
-  }
-
-  def publishAll(suid: String): MessageBus => Unit = {
-    publish(SubscriptionAll(topicAll, suid)) _
+  def publishTarget(suid: String, target: Target): MessageBus => Unit = {
+    publish(SubscriptionTarget(topicToPublish, suid, target)) _
   }
 
   def lastStopAllMessage() = {

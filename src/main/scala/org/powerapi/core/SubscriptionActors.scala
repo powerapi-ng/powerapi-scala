@@ -40,7 +40,7 @@ class SubscriptionChild(eventBus: MessageBus,
                         frequency: FiniteDuration,
                         targets: List[Target]) extends Component {
   import ClockChannel.{ ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock }
-  import SubscriptionChannel.{ publishProcess, publishApp, publishAll }
+  import SubscriptionChannel.publishTarget
   import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
 
   def receive = LoggingReceive {
@@ -70,13 +70,7 @@ class SubscriptionChild(eventBus: MessageBus,
    * Handle ticks for publishing the targets in the right topics.
    */
   def produceMessages() = {
-    targets.foreach(target => {
-      target match {
-        case process: Process => publishProcess(suid, process)(eventBus)
-        case app: Application => publishApp(suid, app)(eventBus)
-        case ALL => publishAll(suid)(eventBus)
-      }
-    })
+    targets.foreach(target => publishTarget(suid, target)(eventBus))
   }
 
   /**
