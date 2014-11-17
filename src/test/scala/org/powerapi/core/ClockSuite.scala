@@ -134,7 +134,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= (10 - (10 * 0.1))
+    expectMsgClass(classOf[Int]) should be >= (10 - (10 * 0.1).toInt)
     
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
@@ -173,7 +173,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= (10 - (10 * 0.1))
+    expectMsgClass(classOf[Int]) should be >= (10 - (10 * 0.1).toInt)
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
