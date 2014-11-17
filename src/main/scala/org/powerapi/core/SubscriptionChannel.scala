@@ -86,8 +86,7 @@ object SubscriptionChannel extends Channel {
   private val topicToPublish = "subscription:target"
 
   /**
-   * Methods used by the sensor actors to interact with the subscription actors by
-   * using the bus.
+   * Methods used to interact with the subscription actors by using the bus.
    */
   def subscribeTarget: MessageBus => ActorRef => Unit = {
     subscribe(topicToPublish) _

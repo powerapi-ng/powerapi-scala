@@ -156,11 +156,11 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
  * This class is an interface for interacting directly with a SubscriptionChild actor.
  */
 class Subscription(eventBus: MessageBus) {
-  import SubscriptionChannel.stopSubscription
-
   val suid = UUID.randomUUID().toString
 
   def cancel() = {
+    import SubscriptionChannel.stopSubscription
+    
     stopSubscription(suid)(eventBus)
   }
 }
