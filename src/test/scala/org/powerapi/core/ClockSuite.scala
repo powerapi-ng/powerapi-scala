@@ -72,7 +72,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("ClockSuiteTest1", eventListener)
 
     val frequency = 50.milliseconds
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock1")
+    val clock = _system.actorOf(Props(classOf[ClockSupervisor], eventBus), "clock1")
     val clockchild = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clockchild1")
 
     EventFilter.warning(occurrences = 1, source = clockchild.path.toString).intercept({
@@ -180,14 +180,14 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
   }
 
-  "A Clock actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
+  "A ClockSupervisor actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
     val frequency2 = 100.milliseconds
     val frequency3 = 150.milliseconds
 
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock4")
+    val clock = _system.actorOf(Props(classOf[ClockSupervisor], eventBus), "clock4")
 
     val nbSubscribers = 100
     val subscribersF1 = scala.collection.mutable.ListBuffer[ActorRef]()
@@ -292,7 +292,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest5")
 
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock5")
+    val clock = _system.actorOf(Props(classOf[ClockSupervisor], eventBus), "clock5")
 
     val sleepingTime = 500
     val frequencies = scala.collection.mutable.ArrayBuffer[FiniteDuration]()
