@@ -26,12 +26,12 @@ package org.powerapi.core
 import org.powerapi.test.UnitTest
 
 import scala.concurrent.Await
-import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration, MILLISECONDS }
+import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 
-import akka.actor.{ Actor, ActorRef, ActorSystem, Props }
-import akka.pattern.{ ask, gracefulStop }
+import akka.actor.{ Actor, ActorNotFound, ActorRef, ActorSystem, Props }
+import akka.pattern.gracefulStop
 import akka.util.Timeout
-import akka.testkit.{ EventFilter, TestKit }
+import akka.testkit.{ EventFilter, TestKit, TestProbe }
 
 import com.typesafe.config.ConfigFactory
 
@@ -83,6 +83,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
       clockchild ! ClockStart("test", Duration.Zero)
     })(_system)
 
+    // Not an exception, just an assertion (switching in the running state).
     EventFilter.info(occurrences = 1, source = clockchild.path.toString).intercept({
       clockchild ! ClockStart("test", frequency)
     })(_system)
@@ -111,27 +112,29 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   "A ClockChild actor" should "produce Ticks, stop its own timer if needed and thus stop to publish Ticks" in new Bus {
     val _system = ActorSystem("ClockSuiteTest2", eventListener)
 
-    val frequency = 50.milliseconds
+    val frequency = 25.milliseconds
     val clock = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clockchild2")
     val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency), "subscriber2")
+    val watcher = TestProbe()(_system)
+    watcher.watch(clock)
 
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", frequency)
     })(_system)
     
-    Thread.sleep(500)
+    Thread.sleep(250)
     
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStop("test", frequency)
     })(_system)
 
-    subscriber ! "get"
-    expectMsgClass(classOf[Int]) should be >= (10 - 5)
+    awaitAssert({
+      watcher.expectTerminated(clock)
+    }, 20.seconds)
 
-    subscriber ! "reset"
-    Thread.sleep(250)
     subscriber ! "get"
-    expectMsgClass(classOf[Int]) should equal(0)
+    // We assume a service quality of 90% (regarding the number of processed messages).
+    expectMsgClass(classOf[Int]) should be >= (10 - (10 * 0.1))
     
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
@@ -141,9 +144,11 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   it should "handle only one timer and stop it if there is no subscription" in new Bus {
     val _system = ActorSystem("ClockSuiteTest3", eventListener)
 
-    val frequency = 50.milliseconds
+    val frequency = 25.milliseconds
     val clock = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clockchild3")
     val subscriber = _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency), "subscriber3")
+    val watcher = TestProbe()(_system)
+    watcher.watch(clock)
 
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStart("test", frequency)
@@ -157,25 +162,25 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
       clock ! ClockStop("test", frequency)
     })(_system)
 
-    Thread.sleep(500)
-    EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
-      clock ! ClockStop("test", frequency)
-    })(_system)
-
-    subscriber ! "get"
-    expectMsgClass(classOf[Int]) should be >= (10 - 5)
-
-    subscriber ! "reset"
     Thread.sleep(250)
+    EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
+      clock ! ClockStop("test", frequency)
+    })(_system)
+
+    awaitAssert({
+      watcher.expectTerminated(clock)
+    }, 20.seconds)
+
     subscriber ! "get"
-    expectMsgClass(classOf[Int]) should equal(0)
+    // We assume a service quality of 90% (regarding the number of processed messages).
+    expectMsgClass(classOf[Int]) should be >= (10 - (10 * 0.1))
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     _system.shutdown()
   }
 
-  "A ClockActor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
+  "A Clock actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
@@ -207,34 +212,55 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     startClock(frequency2)(eventBus)
     Thread.sleep(300)
     stopAllClock(eventBus)
-    
-    Thread.sleep(200)
+
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock4/${frequency1.toNanos}").resolveOne(), timeout.duration)
+      }
+    }, 20.seconds)
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock4/${frequency2.toNanos}").resolveOne(), timeout.duration)
+      }
+    }, 20.seconds)
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock4/${frequency3.toNanos}").resolveOne(), timeout.duration)
+      }
+    }, 20.seconds)
 
     for(subscriber <- subscribersF1) {
       subscriber ! "get"
-      expectMsgClass(classOf[Int]) should be >= (16 - 5)
+      // We assume a service quality of 90% (regarding the number of processed messages).
+      expectMsgClass(classOf[Int]) should be >= (16 - (16 * 0.10).toInt)
       subscriber ! "reset"
     }
 
     for(subscriber <- subscribersF2) {
       subscriber ! "get"
-      expectMsgClass(classOf[Int]) should be >= (11 - 5)
+      // We assume a service quality of 90% (regarding the number of processed messages).
+      expectMsgClass(classOf[Int]) should be >= (11 - (11 * 0.10).toInt)
       subscriber ! "reset"
     }
 
     for(subscriber <- subscribersF3) {
       subscriber ! "get"
-      expectMsgClass(classOf[Int]) should be >= (7 - 5)
+      // We assume a service quality of 90% (regarding the number of processed messages).
+      expectMsgClass(classOf[Int]) should be >= (7 - (7 * 0.10).toInt)
       subscriber ! "reset"
     }
 
     val testSubscriber = subscribersF1.head
     unsubscribeClock(frequency1)(eventBus)(testSubscriber)
     startClock(frequency1)(eventBus)
-    Thread.sleep(600)
+    Thread.sleep(250)
     stopClock(frequency1)(eventBus)
 
-    Thread.sleep(100)
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(_system.actorSelection(s"/user/clock4/${frequency1.toNanos}").resolveOne(), timeout.duration)
+      }
+    }, 20.seconds)
 
     testSubscriber ! "get"
     expectMsgClass(classOf[Int]) should equal (0)
@@ -242,7 +268,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
 
     for(subscriber <- (subscribersF1 - testSubscriber)) {
       subscriber ! "get"
-      expectMsgClass(classOf[Int]) should be >= (12 - 5)
+      // We assume a service quality of 90% (regarding the number of processed messages).
+      expectMsgClass(classOf[Int]) should be >= (5 - (5 * 0.10).toInt)
       Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     }
 
@@ -272,7 +299,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val subscribers = scala.collection.mutable.ArrayBuffer[ActorRef]()
 
     for(i <- 10 until 50) {
-      val frequency = FiniteDuration(i, MILLISECONDS)
+      val frequency = i.milliseconds
       frequencies += frequency
       subscribers += _system.actorOf(Props(classOf[ClockMockSubscriber], eventBus, frequency), s"subscriberF$i")
     }
@@ -285,15 +312,6 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
 
     for(frequency <- frequencies) {
       stopClock(frequency)(eventBus)
-    }
-
-    for(i <- 0 until frequencies.size) {
-      val frequency = frequencies(i)
-      val subscriber = subscribers(i)
-      val minNbExpectedMsg = (sleepingTime / frequency.toMillis).toInt
-      
-      subscriber ! "get"
-      expectMsgClass(classOf[Int]) should be >= (minNbExpectedMsg - 5)
     }
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)

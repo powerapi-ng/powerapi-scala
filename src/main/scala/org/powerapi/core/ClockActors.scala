@@ -96,10 +96,14 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
 class Clock(eventBus: MessageBus) extends Component with Supervisor {
-  import ClockChannel.{ ClockStart, ClockStopAll, ClockStop, subscribeTickSubscription }
+  import ClockChannel.{ ClockStart, ClockStopAll, ClockStop, lastStopAllMessage, subscribeTickSubscription }
 
   override def preStart() = {  
     subscribeTickSubscription(eventBus)(self)
+  }
+
+  override def postStop() = {
+    context.actorSelection("*") ! lastStopAllMessage()
   }
 
   /**

@@ -118,6 +118,10 @@ object ClockChannel extends Channel {
     publish(ClockTick(clockTickTopic(frequency), frequency)) _
   }
 
+  def lastStopAllMessage() = {
+    ClockStopAll(topic)
+  }
+
   private def clockTickTopic(frequency: FiniteDuration) = {
     s"tick:${frequency.toNanos}"
   }
