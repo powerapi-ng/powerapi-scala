@@ -84,8 +84,8 @@ object ClockChannel extends Channel {
   private val topic = "tick:subscription"
 
   /**
-   * Methods used by the subscription actors to interact with the clock actors by
-   * using the bus.
+   * External methods used by the Monitor actors to subscribe/unsubscribe,
+   * start/stop a clock which runs at a frequency.
    */
   def subscribeClock(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
     subscribe(clockTickTopic(frequency)) _
@@ -103,25 +103,32 @@ object ClockChannel extends Channel {
     publish(ClockStop(topic, frequency)) _
   }
 
-  def stopAllClock: MessageBus => Unit = {
-    publish(ClockStopAll(topic)) _
-  }
-
   /**
-   * Methods used by the clock actors to interact with the event bus.
+   * Internal methods used by the Clocks actor for interacting with the bus.
    */
   def subscribeTickSubscription: MessageBus => ActorRef => Unit = {
     subscribe(topic) _
   }
 
+  lazy val stopAllClock = ClockStopAll(topic)
+
+  /**
+   * Internal methods used by the ClockChild actors for interacting with the bus.
+   */
   def publishTick(frequency: FiniteDuration): MessageBus => Unit = {
     publish(ClockTick(clockTickTopic(frequency), frequency)) _
   }
 
-  def lastStopAllMessage() = {
-    ClockStopAll(topic)
+  /**
+   * Use to format the ClockChild name.
+   */
+  def formatClockChildName(frequency: FiniteDuration) = {
+    s"clock-${frequency.toNanos}"
   }
 
+  /**
+   * Use to format a freqyency to an associated topic.
+   */
   private def clockTickTopic(frequency: FiniteDuration) = {
     s"tick:${frequency.toNanos}"
   }

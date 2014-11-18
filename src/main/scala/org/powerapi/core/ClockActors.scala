@@ -34,7 +34,6 @@ import akka.util.Timeout
 /**
  * One child clock is created per frequency.
  * Allows to publish a message in the right topics for a given frequency.
- * A clock child actor is called by its frequency in nanoseconds for lookups.
  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Component {
   import ClockChannel.{ publishTick, ClockStart, ClockStopAll, ClockStop }
@@ -45,9 +44,9 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
 
   /**
    * Running state, only one timer per ClockChild.
-   * An accumulator is used to know how many subscriptions are using this frequency.
+   * An accumulator is used to know how many monitors are using this frequency.
    *
-   * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
+   * @param acc: Accumulator used to know the number of monitors which run at this frequency.
    * @param timer: Timer created for producing ticks.
    */
   def running(acc: Int, timer: Cancellable): Actor.Receive = LoggingReceive {
@@ -73,9 +72,8 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
 
   /**
    * Stop the clock and the scheduler.
-   * Send an ack to the sender if needed.
    *
-   * @param acc: Accumulator used to know the number of subscriptions which run at this frequency.
+   * @param acc: Accumulator used to know the number of monitors which run at this frequency.
    * @param timer: Timer created for producing ticks.
    */
   def stop(acc: Int, timer: Cancellable) = {
@@ -95,15 +93,16 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
-class ClockSupervisor(eventBus: MessageBus) extends Component with Supervisor {
-  import ClockChannel.{ ClockStart, ClockStopAll, ClockStop, lastStopAllMessage, subscribeTickSubscription }
+class Clocks(eventBus: MessageBus) extends Component with Supervisor {
+  import ClockChannel.{ ClockStart, ClockStopAll, ClockStop }
+  import ClockChannel.{ formatClockChildName, stopAllClock, subscribeTickSubscription }
 
   override def preStart() = {  
     subscribeTickSubscription(eventBus)(self)
   }
 
   override def postStop() = {
-    context.actorSelection("*") ! lastStopAllMessage()
+    context.actorSelection("*") ! stopAllClock
   }
 
   /**
@@ -132,11 +131,11 @@ class ClockSupervisor(eventBus: MessageBus) extends Component with Supervisor {
    * @param msg: Message received for starting a clock at a given frequency.
    */
   def start(msg: ClockStart) = {
-    val nanoSecs = msg.frequency.toNanos
+    val name = formatClockChildName(msg.frequency)
 
-    val child = context.child(s"$nanoSecs") match {
+    val child = context.child(name) match {
       case Some(actorRef) => actorRef
-      case None => context.actorOf(Props(classOf[ClockChild], eventBus, msg.frequency), s"$nanoSecs")
+      case None => context.actorOf(Props(classOf[ClockChild], eventBus, msg.frequency), name)
     }
 
     child ! msg
@@ -149,8 +148,8 @@ class ClockSupervisor(eventBus: MessageBus) extends Component with Supervisor {
    * @param msg: Message received for stopping a clock at a given frequency.
    */
   def stop(msg: ClockStop) = {
-    val nanoSecs = msg.frequency.toNanos
-    context.actorSelection(s"$nanoSecs") ! msg
+    val name = formatClockChildName(msg.frequency)
+    context.actorSelection(name) ! msg
   }
 
   /**
