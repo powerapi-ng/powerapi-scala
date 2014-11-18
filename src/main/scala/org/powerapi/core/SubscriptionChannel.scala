@@ -119,4 +119,11 @@ object SubscriptionChannel extends Channel {
   def lastStopAllMessage() = {
     SubscriptionStopAll(topic)
   }
+
+  /**
+   * Use to format the subscription child name.
+   */
+  def formatSubscriptionChildName(suid: UUID) = {
+    s"subscription-$suid"
+  }
 }

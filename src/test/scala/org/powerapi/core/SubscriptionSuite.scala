@@ -31,7 +31,9 @@ class SubscriptionMockSubscriber(eventBus: MessageBus) extends Actor {
 }
 
 class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
-  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, startSubscription, stopAllSubscription, stopSubscription }
+  import SubscriptionChannel.{ formatSubscriptionChildName, startSubscription, stopAllSubscription, stopSubscription }
+  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop}
+
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("SubscriptionSuite"))
@@ -192,7 +194,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
 
     awaitAssert({
       intercept[ActorNotFound] {
-        Await.result(_system.actorSelection(s"/user/subsup4/${subscription.suid}").resolveOne(), timeout.duration)
+        Await.result(_system.actorSelection(formatSubscriptionChildName(subscription.suid)).resolveOne(), timeout.duration)
       }
     }, 20.seconds)
 

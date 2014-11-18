@@ -33,7 +33,6 @@ import akka.event.LoggingReceive
 /**
  * One child represents one monitoring.
  * Allows to publish messages in the right topics depending of the targets.
- * A subscription child is called by its suid for lookups.
  */
 class SubscriptionChild(eventBus: MessageBus,
                         suid: UUID,
@@ -90,7 +89,7 @@ class SubscriptionChild(eventBus: MessageBus,
  * It is responsible to handle a pool of child actors which represent all monitorings.
  */
 class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Supervisor {
-  import SubscriptionChannel.{ lastStopAllMessage, subscribeHandlingSubscription }
+  import SubscriptionChannel.{ formatSubscriptionChildName, lastStopAllMessage, subscribeHandlingSubscription }
   import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
 
   override def preStart() = {
@@ -127,7 +126,8 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
    * @param msg: Message received for starting a subscription.
    */
   def start(msg: SubscriptionStart) = {
-    val child = context.actorOf(Props(classOf[SubscriptionChild], eventBus, msg.suid, msg.frequency, msg.targets), msg.suid.toString)
+    val name = formatSubscriptionChildName(msg.suid)
+    val child = context.actorOf(Props(classOf[SubscriptionChild], eventBus, msg.suid, msg.frequency, msg.targets), name)
     child ! msg
     context.become(running)
   }
@@ -138,7 +138,8 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
    * @param msg: Message received for stopping a given subscription.
    */
   def stop(msg: SubscriptionStop) = {
-    context.actorSelection(msg.suid.toString) ! msg
+    val name = formatSubscriptionChildName(msg.suid)
+    context.actorSelection(name) ! msg
   }
 
   /**
