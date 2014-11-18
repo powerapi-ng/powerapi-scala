@@ -25,10 +25,12 @@ package org.powerapi.core
 
 import org.powerapi.test.UnitTest
 
+import java.util.UUID
+
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 
-case class MessageReport(suid: String, topic: String) extends Report
+case class MessageReport(suid: UUID, topic: String) extends Report
 
 class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -40,8 +42,9 @@ class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The MessageBus" should "handle messages by topic" in {
     val eventBus = new MessageBus
-    val report = MessageReport("1", "topic1")
-    val report2 = MessageReport("1", "topic2")
+    val suid = UUID.randomUUID()
+    val report = MessageReport(suid, "topic1")
+    val report2 = MessageReport(suid, "topic2")
 
     eventBus.subscribe(testActor, "topic1")
     eventBus.publish(report)

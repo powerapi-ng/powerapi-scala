@@ -2,6 +2,8 @@ package org.powerapi.core
 
 import org.powerapi.test.UnitTest
 
+import java.util.UUID
+
 import scala.concurrent.Await
 import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
 
@@ -47,7 +49,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
   "The Subscription actors" should "launch an exception when the messages received cannot be handled" in new Bus {
     val _system = ActorSystem("SubscriptionSuiteTest1", eventListener)
 
-    val suid = "1"
+    val suid = UUID.randomUUID()
     val frequency = 50.milliseconds
     val targets = List(Process(1))
     val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], eventBus, suid, frequency, targets), "subchild1")
@@ -71,7 +73,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStop("test", "2")
+      subsChild ! SubscriptionStop("test", UUID.randomUUID())
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = subsSupervisor.path.toString).intercept({
@@ -88,7 +90,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock2")
 
     val frequency = 25.milliseconds
-    val suid = "1"
+    val suid = UUID.randomUUID()
     val targets = List(Process(1), Application("java"), ALL)
     
     val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], eventBus, suid, frequency, targets), "subchild2")
@@ -131,7 +133,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("SubscriptionSuiteTest3")
 
     val frequency = 25.milliseconds
-    val suid = "1"
+    val suid = UUID.randomUUID()
     val targets = scala.collection.mutable.ListBuffer[Target]()
 
     for(i <- 1 to 100) {

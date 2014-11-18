@@ -23,6 +23,7 @@
 
 package org.powerapi.core
 
+import java.util.UUID
 import scala.concurrent.duration.FiniteDuration
 
 import akka.actor.ActorRef
@@ -44,7 +45,7 @@ object SubscriptionChannel extends Channel {
    * @param target: monitoring target.
    */
   case class SubscriptionTarget(topic: String,
-                                suid: String,
+                                suid: UUID,
                                 target: Target) extends SubscriptionMessage with Report
 
   /**
@@ -56,7 +57,7 @@ object SubscriptionChannel extends Channel {
    * @param targets: monitoring targets.
    */
   case class SubscriptionStart(topic: String,
-                               suid: String,
+                               suid: UUID,
                                frequency: FiniteDuration,
                                targets: List[Target]) extends SubscriptionMessage
 
@@ -66,7 +67,7 @@ object SubscriptionChannel extends Channel {
    * @param topic: subject used for routing the message.
    * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
    */
-  case class SubscriptionStop(topic: String, suid: String) extends SubscriptionMessage
+  case class SubscriptionStop(topic: String, suid: UUID) extends SubscriptionMessage
 
   /**
    * SubscriptionStopAll is represented as a dedicated type of message.
@@ -92,11 +93,11 @@ object SubscriptionChannel extends Channel {
     subscribe(topicToPublish) _
   }
 
-  def startSubscription(suid: String, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
+  def startSubscription(suid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
     publish(SubscriptionStart(topic, suid, frequency, targets)) _
   }
 
-  def stopSubscription(suid: String): MessageBus => Unit = {
+  def stopSubscription(suid: UUID): MessageBus => Unit = {
     publish(SubscriptionStop(topic, suid)) _
   }
 
@@ -111,7 +112,7 @@ object SubscriptionChannel extends Channel {
     subscribe(topic) _
   }
 
-  def publishTarget(suid: String, target: Target): MessageBus => Unit = {
+  def publishTarget(suid: UUID, target: Target): MessageBus => Unit = {
     publish(SubscriptionTarget(topicToPublish, suid, target)) _
   }
 

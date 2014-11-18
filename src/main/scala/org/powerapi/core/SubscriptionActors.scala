@@ -36,7 +36,7 @@ import akka.event.LoggingReceive
  * A subscription child is called by its suid for lookups.
  */
 class SubscriptionChild(eventBus: MessageBus,
-                        suid: String,
+                        suid: UUID,
                         frequency: FiniteDuration,
                         targets: List[Target]) extends Component {
   import ClockChannel.{ ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock }
@@ -127,7 +127,7 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
    * @param msg: Message received for starting a subscription.
    */
   def start(msg: SubscriptionStart) = {
-    val child = context.actorOf(Props(classOf[SubscriptionChild], eventBus, msg.suid, msg.frequency, msg.targets), msg.suid)
+    val child = context.actorOf(Props(classOf[SubscriptionChild], eventBus, msg.suid, msg.frequency, msg.targets), msg.suid.toString)
     child ! msg
     context.become(running)
   }
@@ -138,7 +138,7 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
    * @param msg: Message received for stopping a given subscription.
    */
   def stop(msg: SubscriptionStop) = {
-    context.actorSelection(msg.suid) ! msg
+    context.actorSelection(msg.suid.toString) ! msg
   }
 
   /**
@@ -156,7 +156,7 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
  * This class is an interface for interacting directly with a SubscriptionChild actor.
  */
 class Subscription(eventBus: MessageBus) {
-  val suid = UUID.randomUUID().toString
+  val suid = UUID.randomUUID()
 
   def cancel() = {
     import SubscriptionChannel.stopSubscription

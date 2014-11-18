@@ -23,6 +23,8 @@
 
 package org.powerapi.core
 
+import java.util.UUID
+
 import akka.actor.ActorRef
 import akka.event.LookupClassification
 
@@ -43,7 +45,7 @@ trait Report extends Message {
   /**
    * A report is associated with a subscription unique identifier (SUID), which is at the origin of the report flow.
    */
-  def suid: String
+  def suid: UUID
 }
 
 trait EventBus extends akka.event.EventBus {
