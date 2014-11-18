@@ -27,13 +27,13 @@ import com.typesafe.config.{ Config, ConfigException, ConfigFactory }
 /**
  * Base trait for configuration result.
  */
-trait ConfigResult
+trait ConfigResult[T]
 
 /**
  * Subtypes to specify the different types of result.
  */
-case class ConfigValue[T](value: T) extends ConfigResult
-case class ConfigError(ex: ConfigException) extends ConfigResult
+case class ConfigValue[T](value: T) extends ConfigResult[T]
+case class ConfigError(exception: Throwable) extends ConfigResult[Throwable]
 
 /**
  * Base trait for dealing with configuration files.
@@ -46,7 +46,7 @@ trait Configuration {
    *
    * @param request: requet for getting information.
    */
-  def load[T](request: Config => T): ConfigResult = {
+  def load[T](request: Config => T): ConfigResult[_] = {
     try {
       ConfigValue(request(conf))
     }
