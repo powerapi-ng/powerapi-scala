@@ -31,7 +31,8 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 }
 
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
-  import MonitorChannel.{ formatMonitorName, startMonitor, stopMonitor }
+  import ClockChannel.{ formatClockChildName }
+  import MonitorChannel.{ formatMonitorChildName, startMonitor, stopMonitor }
   import MonitorChannel.{ MonitorStart, MonitorStop}
 
   implicit val timeout = Timeout(1.seconds)
@@ -51,27 +52,27 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   "The Monitor actors" should "launch an exception when the messages received cannot be handled" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest1", eventListener)
 
-    val suid = UUID.randomUUID()
+    val muid = UUID.randomUUID()
     val frequency = 50.milliseconds
     val targets = List(Process(1))
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, suid, frequency, targets), "monitor1")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor1")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStop("test", suid)
+      monitor ! MonitorStop("test", muid)
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", suid, Duration.Zero, targets)
+      monitor ! MonitorStart("test", muid, Duration.Zero, targets)
     })(_system)
 
     // Not an exception, just an assessment (switching in the running state).
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", suid, frequency, targets)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", suid, frequency, targets)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
@@ -79,7 +80,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitors.path.toString).intercept({
-      stopMonitor(suid)(eventBus)
+      stopMonitor(muid)(eventBus)
     })(_system)
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -90,25 +91,25 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A MonitorChild actor" should "start to listen ticks for its frequency and produce messages" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest2", eventListener)
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock2")
+    val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks2")
 
     val frequency = 25.milliseconds
-    val suid = UUID.randomUUID()
+    val muid = UUID.randomUUID()
     val targets = List(Process(1), Application("java"), All)
     
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, suid, frequency, targets), "monitor2")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor2")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", suid, frequency, targets)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
 
     Thread.sleep(250)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStop("test", suid)
+      monitor ! MonitorStop("test", muid)
     })(_system)
 
     awaitAssert({
@@ -117,7 +118,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     awaitAssert({
       intercept[ActorNotFound] {
-        Await.result(_system.actorSelection(s"/user/clock2/${frequency.toNanos}").resolveOne(), timeout.duration)
+        Await.result(_system.actorSelection(formatClockChildName(frequency)).resolveOne(), timeout.duration)
       }
     }, 20.seconds)
 
@@ -125,7 +126,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     // We assume a service quality of 90% (regarding the number of processed messages).
     expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
 
-    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -137,22 +138,22 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("MonitorSuiteTest3")
 
     val frequency = 25.milliseconds
-    val suid = UUID.randomUUID()
+    val muid = UUID.randomUUID()
     val targets = scala.collection.mutable.ListBuffer[Target]()
 
     for(i <- 1 to 100) {
       targets += Process(i)
     }
 
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock3")
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, suid, frequency, targets.toList), "monitor3")
+    val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks3")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets.toList), "monitor3")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
 
-    monitor ! MonitorStart("test", suid, frequency, targets.toList)
+    monitor ! MonitorStart("test", muid, frequency, targets.toList)
     Thread.sleep(250)
-    monitor ! MonitorStop("test", suid)
+    monitor ! MonitorStop("test", muid)
 
     awaitAssert({
       watcher.expectTerminated(monitor)
@@ -160,7 +161,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     awaitAssert({
       intercept[ActorNotFound] {
-        Await.result(_system.actorSelection(s"/user/clock3/${frequency.toNanos}").resolveOne(), timeout.duration)
+        Await.result(_system.actorSelection(formatClockChildName(frequency)).resolveOne(), timeout.duration)
       }
     }, 20.seconds)
 
@@ -168,7 +169,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     // We assume a service quality of 90% (regarding the number of processed messages).
     expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
 
-    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -178,7 +179,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A Monitors actor" should "handle its MonitorChild actors and subscribers have to receive messages" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest4")
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock4")
+    val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks4")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors4")
 
     val monitor = new Monitor(eventBus)
@@ -191,19 +192,19 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       subscribers += _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     }
 
-    startMonitor(monitor.suid, frequency, targets)(eventBus)
+    startMonitor(monitor.muid, frequency, targets)(eventBus)
     Thread.sleep(250)
     monitor.cancel
 
     awaitAssert({
       intercept[ActorNotFound] {
-        Await.result(_system.actorSelection(formatMonitorName(monitor.suid)).resolveOne(), timeout.duration)
+        Await.result(_system.actorSelection(formatMonitorChildName(monitor.muid)).resolveOne(), timeout.duration)
       }
     }, 20.seconds)
 
     awaitAssert({
       intercept[ActorNotFound] {
-        Await.result(_system.actorSelection(s"/user/clock4/${frequency.toNanos}").resolveOne(), timeout.duration)
+        Await.result(_system.actorSelection(formatClockChildName(frequency)).resolveOne(), timeout.duration)
       }
     }, 20.seconds)
 
@@ -214,7 +215,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       Await.result(gracefulStop(subscribers(i), timeout.duration), timeout.duration)
     }
     
-    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)  
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
@@ -222,21 +223,19 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "handle a large number of monitors" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest5")
-    val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock5")
+    val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")
 
     val targets = List(All)
-    val subscriptions = scala.collection.mutable.ListBuffer[Monitor]()
 
     for(frequency <- 50 to 100) {
-      val subscription = new Monitor(eventBus)
-      subscriptions += subscription
-      startMonitor(subscription.suid, frequency.milliseconds, targets)(eventBus)
+      val monitor = new Monitor(eventBus)
+      startMonitor(monitor.muid, frequency.milliseconds, targets)(eventBus)
     }
 
     Thread.sleep(1000)
 
-    Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)

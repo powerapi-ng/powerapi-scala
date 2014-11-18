@@ -30,7 +30,7 @@ import java.util.UUID
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 
-case class MessageReport(suid: UUID, topic: String) extends Report
+case class MessageReport(muid: UUID, topic: String) extends Report
 
 class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -42,9 +42,9 @@ class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The MessageBus" should "handle messages by topic" in {
     val eventBus = new MessageBus
-    val suid = UUID.randomUUID()
-    val report = MessageReport(suid, "topic1")
-    val report2 = MessageReport(suid, "topic2")
+    val muid = UUID.randomUUID()
+    val report = MessageReport(muid, "topic1")
+    val report2 = MessageReport(muid, "topic2")
 
     eventBus.subscribe(testActor, "topic1")
     eventBus.publish(report)

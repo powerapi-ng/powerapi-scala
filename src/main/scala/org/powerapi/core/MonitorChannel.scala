@@ -41,23 +41,23 @@ object MonitorChannel extends Channel {
    * MonitorTarget is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
-   * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
    */
   case class MonitorTarget(topic: String,
-                           suid: UUID,
+                           muid: UUID,
                            target: Target) extends MonitorMessage with Report
 
   /**
    * MonitorStart is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
-   * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param frequency: clock frequency.
    * @param targets: monitor targets.
    */
   case class MonitorStart(topic: String,
-                          suid: UUID,
+                          muid: UUID,
                           frequency: FiniteDuration,
                           targets: List[Target]) extends MonitorMessage
 
@@ -65,9 +65,9 @@ object MonitorChannel extends Channel {
    * MonitorStop is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
-   * @param suid: subscription unique identifier (SUID), which is at the origin of the report flow.
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    */
-  case class MonitorStop(topic: String, suid: UUID) extends MonitorMessage
+  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage
 
   /**
    * MonitorStopAll is represented as a dedicated type of message.
@@ -86,42 +86,44 @@ object MonitorChannel extends Channel {
    */
   private val topicToPublish = "monitor:target"
 
-  
+  /**
+   * External methods used by the Sensor actors for interacting with the bus.
+   */
   def subscribeTarget: MessageBus => ActorRef => Unit = {
     subscribe(topicToPublish) _
   }
 
   /**
-   * Methods used by the API for interacting with the Monitors actor.
+   * External Methods used by the API (or a Monitor object) for interacting with the bus.
    */
-  def startMonitor(suid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
-    publish(MonitorStart(topic, suid, frequency, targets)) _
+  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
+    publish(MonitorStart(topic, muid, frequency, targets)) _
   }
 
-  def stopMonitor(suid: UUID): MessageBus => Unit = {
-    publish(MonitorStop(topic, suid)) _
+  def stopMonitor(muid: UUID): MessageBus => Unit = {
+    publish(MonitorStop(topic, muid)) _
   }
 
   /**
-   * Helper for creating the last message for stopping all the Monitor actors.
-   */
-  lazy val stopAllMonitor = MonitorStopAll(topic)
-
-  /**
-   * Internal methods used by the Monitor children for interacting with the bus.
+   * Internal methods used by the Monitors actor for interacting with the bus.
    */
   def subscribeHandlingMonitor: MessageBus => ActorRef => Unit = {
     subscribe(topic) _
   }
 
-  def publishTarget(suid: UUID, target: Target): MessageBus => Unit = {
-    publish(MonitorTarget(topicToPublish, suid, target)) _
+  lazy val stopAllMonitor = MonitorStopAll(topic)
+
+  /**
+   * Internal methods used by the MonitorChild actors for interacting with the bus.
+   */
+  def publishTarget(muid: UUID, target: Target): MessageBus => Unit = {
+    publish(MonitorTarget(topicToPublish, muid, target)) _
   }
 
   /**
-   * Use to format the subscription child name.
+   * Use to format the MonitorChild name.
    */
-  def formatMonitorName(suid: UUID) = {
-    s"monitor-$suid"
+  def formatMonitorChildName(muid: UUID) = {
+    s"monitor-$muid"
   }
 }

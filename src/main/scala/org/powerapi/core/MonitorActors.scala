@@ -35,7 +35,7 @@ import akka.event.LoggingReceive
  * Allows to publish messages in the right topics depending of the targets.
  */
 class MonitorChild(eventBus: MessageBus,
-                   suid: UUID,
+                   muid: UUID,
                    frequency: FiniteDuration,
                    targets: List[Target]) extends Component {
 
@@ -43,7 +43,7 @@ class MonitorChild(eventBus: MessageBus,
   import MonitorChannel.{ MonitorStart, MonitorStop, MonitorStopAll, publishTarget }
 
   def receive = LoggingReceive {
-    case MonitorStart(_, id, freq, targs) if(suid == id && frequency == freq && targets == targs) => start()
+    case MonitorStart(_, id, freq, targs) if(muid == id && frequency == freq && targets == targs) => start()
   } orElse default
 
   /**
@@ -51,7 +51,7 @@ class MonitorChild(eventBus: MessageBus,
    */
   def running: Actor.Receive = LoggingReceive {
     case _: ClockTick => produceMessages()
-    case MonitorStop(_, id) if suid == id => stop()
+    case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
 
@@ -61,7 +61,7 @@ class MonitorChild(eventBus: MessageBus,
   def start() = {
     startClock(frequency)(eventBus)
     subscribeClock(frequency)(eventBus)(self)
-    log.info("monitor is started, suid: {}", suid)
+    log.info("monitor is started, muid: {}", muid)
     context.become(running)
   }
 
@@ -69,7 +69,7 @@ class MonitorChild(eventBus: MessageBus,
    * Handle ticks for publishing the targets in the right topics.
    */
   def produceMessages() = {
-    targets.foreach(target => publishTarget(suid, target)(eventBus))
+    targets.foreach(target => publishTarget(muid, target)(eventBus))
   }
 
   /**
@@ -79,7 +79,7 @@ class MonitorChild(eventBus: MessageBus,
   def stop() = {
     stopClock(frequency)(eventBus)
     unsubscribeClock(frequency)(eventBus)(self)
-    log.info("monitor is stopped, suid: {}", suid)
+    log.info("monitor is stopped, muid: {}", muid)
     self ! PoisonPill
   }
 }
@@ -89,7 +89,7 @@ class MonitorChild(eventBus: MessageBus,
  * It is responsible to handle a pool of child actors which represent all monitors.
  */
 class Monitors(eventBus: MessageBus) extends Component with Supervisor {
-  import MonitorChannel.{ formatMonitorName, stopAllMonitor, subscribeHandlingMonitor }
+  import MonitorChannel.{ formatMonitorChildName, stopAllMonitor, subscribeHandlingMonitor }
   import MonitorChannel.{ MonitorStart, MonitorStop, MonitorStopAll }
 
   override def preStart() = {
@@ -126,8 +126,8 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
    * @param msg: Message received for starting a monitor.
    */
   def start(msg: MonitorStart) = {
-    val name = formatMonitorName(msg.suid)
-    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.suid, msg.frequency, msg.targets), name)
+    val name = formatMonitorChildName(msg.muid)
+    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets), name)
     child ! msg
     context.become(running)
   }
@@ -138,7 +138,7 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
    * @param msg: Message received for stopping a given monitor.
    */
   def stop(msg: MonitorStop) = {
-    val name = formatMonitorName(msg.suid)
+    val name = formatMonitorChildName(msg.muid)
     context.actorSelection(name) ! msg
   }
 
@@ -157,11 +157,11 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
  * This class is an interface for interacting directly with a MonitorChild actor.
  */
 class Monitor(eventBus: MessageBus) {
-  val suid = UUID.randomUUID()
+  val muid = UUID.randomUUID()
 
   def cancel() = {
     import MonitorChannel.stopMonitor
     
-    stopMonitor(suid)(eventBus)
+    stopMonitor(muid)(eventBus)
   }
 }
