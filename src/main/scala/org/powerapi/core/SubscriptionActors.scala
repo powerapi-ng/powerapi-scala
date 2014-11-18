@@ -89,7 +89,7 @@ class SubscriptionChild(eventBus: MessageBus,
  * It is responsible to handle a pool of child actors which represent all monitorings.
  */
 class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Supervisor {
-  import SubscriptionChannel.{ formatSubscriptionChildName, lastStopAllMessage, subscribeHandlingSubscription }
+  import SubscriptionChannel.{ formatSubscriptionChildName, stopAllSubscriptions, subscribeHandlingSubscription }
   import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
 
   override def preStart() = {
@@ -97,7 +97,7 @@ class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Superv
   }
 
   override def postStop() = {
-    context.actorSelection("*") ! lastStopAllMessage()
+    context.actorSelection("*") ! stopAllSubscriptions
   }
 
   /**

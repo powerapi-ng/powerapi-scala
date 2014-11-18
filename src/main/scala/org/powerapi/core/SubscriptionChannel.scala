@@ -116,9 +116,7 @@ object SubscriptionChannel extends Channel {
     publish(SubscriptionTarget(topicToPublish, suid, target)) _
   }
 
-  def lastStopAllMessage() = {
-    SubscriptionStopAll(topic)
-  }
+  lazy val stopAllSubscriptions = SubscriptionStopAll(topic)
 
   /**
    * Use to format the subscription child name.

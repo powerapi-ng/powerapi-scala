@@ -93,7 +93,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
 
     val frequency = 25.milliseconds
     val suid = UUID.randomUUID()
-    val targets = List(Process(1), Application("java"), ALL)
+    val targets = List(Process(1), Application("java"), All)
     
     val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], eventBus, suid, frequency, targets), "subchild2")
     val subscriber = _system.actorOf(Props(classOf[SubscriptionMockSubscriber], eventBus))
@@ -221,7 +221,7 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock5")
     val subsSupervisor = _system.actorOf(Props(classOf[SubscriptionSupervisor], eventBus), "subsup5")
 
-    val targets = List(ALL)
+    val targets = List(All)
     val subscriptions = scala.collection.mutable.ListBuffer[Subscription]()
 
     for(frequency <- 50 to 100) {
