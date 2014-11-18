@@ -31,19 +31,19 @@ import akka.actor.SupervisorStrategy.{ Directive, Resume }
 import akka.event.LoggingReceive
 
 /**
- * One child represents one monitoring.
+ * One child represents one monitor.
  * Allows to publish messages in the right topics depending of the targets.
  */
-class SubscriptionChild(eventBus: MessageBus,
-                        suid: UUID,
-                        frequency: FiniteDuration,
-                        targets: List[Target]) extends Component {
+class MonitorChild(eventBus: MessageBus,
+                   suid: UUID,
+                   frequency: FiniteDuration,
+                   targets: List[Target]) extends Component {
+
   import ClockChannel.{ ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock }
-  import SubscriptionChannel.publishTarget
-  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
+  import MonitorChannel.{ MonitorStart, MonitorStop, MonitorStopAll, publishTarget }
 
   def receive = LoggingReceive {
-    case SubscriptionStart(_, id, freq, targs) if(suid == id && frequency == freq && targets == targs) => start()
+    case MonitorStart(_, id, freq, targs) if(suid == id && frequency == freq && targets == targs) => start()
   } orElse default
 
   /**
@@ -51,8 +51,8 @@ class SubscriptionChild(eventBus: MessageBus,
    */
   def running: Actor.Receive = LoggingReceive {
     case _: ClockTick => produceMessages()
-    case SubscriptionStop(_, id) if suid == id => stop()
-    case _: SubscriptionStopAll => stop()
+    case MonitorStop(_, id) if suid == id => stop()
+    case _: MonitorStopAll => stop()
   } orElse default
 
   /**
@@ -61,7 +61,7 @@ class SubscriptionChild(eventBus: MessageBus,
   def start() = {
     startClock(frequency)(eventBus)
     subscribeClock(frequency)(eventBus)(self)
-    log.info("subscription is started, suid: {}", suid)
+    log.info("monitor is started, suid: {}", suid)
     context.become(running)
   }
 
@@ -74,94 +74,94 @@ class SubscriptionChild(eventBus: MessageBus,
 
   /**
    * Publish a request for stopping the clock which is responsible to produce the ticks at this frequency,
-   * stop to listen ticks and kill the subscription actor.
+   * stop to listen ticks and kill the monitor actor.
    */
   def stop() = {
     stopClock(frequency)(eventBus)
     unsubscribeClock(frequency)(eventBus)(self)
-    log.info("subscription is stopped, suid: {}", suid)
+    log.info("monitor is stopped, suid: {}", suid)
     self ! PoisonPill
   }
 }
 
 /**
  * This actor listens the bus on a given topic and reacts on the received messages.
- * It is responsible to handle a pool of child actors which represent all monitorings.
+ * It is responsible to handle a pool of child actors which represent all monitors.
  */
-class SubscriptionSupervisor(eventBus: MessageBus) extends Component with Supervisor {
-  import SubscriptionChannel.{ formatSubscriptionChildName, stopAllSubscriptions, subscribeHandlingSubscription }
-  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop, SubscriptionStopAll }
+class Monitors(eventBus: MessageBus) extends Component with Supervisor {
+  import MonitorChannel.{ formatMonitorName, stopAllMonitor, subscribeHandlingMonitor }
+  import MonitorChannel.{ MonitorStart, MonitorStop, MonitorStopAll }
 
   override def preStart() = {
-    subscribeHandlingSubscription(eventBus)(self)
+    subscribeHandlingMonitor(eventBus)(self)
   }
 
   override def postStop() = {
-    context.actorSelection("*") ! stopAllSubscriptions
+    context.actorSelection("*") ! stopAllMonitor
   }
 
   /**
-   * SubscriptionChild actors can only launch exception if the message received is not handled.
+   * MonitorChild actors can only launch exception if the message received is not handled.
    */
   def handleFailure: PartialFunction[Throwable, Directive] = {
     case _: UnsupportedOperationException => Resume 
   }
 
   def receive = LoggingReceive {
-    case msg: SubscriptionStart => start(msg)
+    case msg: MonitorStart => start(msg)
   } orElse default
 
   /**
    * Running state.
    */
   def running: Actor.Receive = LoggingReceive {
-    case msg: SubscriptionStart => start(msg)
-    case msg: SubscriptionStop => stop(msg)
-    case msg: SubscriptionStopAll => stopAll(msg)
+    case msg: MonitorStart => start(msg)
+    case msg: MonitorStop => stop(msg)
+    case msg: MonitorStopAll => stopAll(msg)
   } orElse default
 
   /**
-   * Start a new subscription.
+   * Start a new monitor.
    *
-   * @param msg: Message received for starting a subscription.
+   * @param msg: Message received for starting a monitor.
    */
-  def start(msg: SubscriptionStart) = {
-    val name = formatSubscriptionChildName(msg.suid)
-    val child = context.actorOf(Props(classOf[SubscriptionChild], eventBus, msg.suid, msg.frequency, msg.targets), name)
+  def start(msg: MonitorStart) = {
+    val name = formatMonitorName(msg.suid)
+    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.suid, msg.frequency, msg.targets), name)
     child ! msg
     context.become(running)
   }
 
   /**
-   * Stop a given subscription.
+   * Stop a given monitor.
    *
-   * @param msg: Message received for stopping a given subscription.
+   * @param msg: Message received for stopping a given monitor.
    */
-  def stop(msg: SubscriptionStop) = {
-    val name = formatSubscriptionChildName(msg.suid)
+  def stop(msg: MonitorStop) = {
+    val name = formatMonitorName(msg.suid)
     context.actorSelection(name) ! msg
   }
 
   /**
-   * Stop all subscriptions.
+   * Stop all monitor actors.
    *
-   * @param msg: Message received for stopping all subscriptions.
+   * @param msg: Message received for stopping all monitor actors.
    */
-  def stopAll(msg: SubscriptionStopAll) = {
+  def stopAll(msg: MonitorStopAll) = {
     context.actorSelection("*") ! msg
     context.become(receive)
   }
 }
 
 /**
- * This class is an interface for interacting directly with a SubscriptionChild actor.
+ * This class is an interface for interacting directly with a MonitorChild actor.
  */
-class Subscription(eventBus: MessageBus) {
+class Monitor(eventBus: MessageBus) {
   val suid = UUID.randomUUID()
 
   def cancel() = {
-    import SubscriptionChannel.stopSubscription
+    import MonitorChannel.stopMonitor
     
-    stopSubscription(suid)(eventBus)
+    stopMonitor(suid)(eventBus)
   }
 }

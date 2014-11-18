@@ -14,8 +14,8 @@ import akka.util.Timeout
 
 import com.typesafe.config.ConfigFactory
 
-class SubscriptionMockSubscriber(eventBus: MessageBus) extends Actor {
-  import SubscriptionChannel.{ subscribeTarget, SubscriptionTarget }
+class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
+  import MonitorChannel.{ subscribeTarget, MonitorTarget }
 
   override def preStart() = {
     subscribeTarget(eventBus)(self)
@@ -24,19 +24,19 @@ class SubscriptionMockSubscriber(eventBus: MessageBus) extends Actor {
   def receive = active(0)
 
   def active(acc: Int): Actor.Receive = {
-    case _: SubscriptionTarget => context become active(acc + 1)
+    case _: MonitorTarget => context become active(acc + 1)
     case "reset" => context become active(0)
     case "get" => sender ! acc
   }
 }
 
-class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
-  import SubscriptionChannel.{ formatSubscriptionChildName, startSubscription, stopAllSubscription, stopSubscription }
-  import SubscriptionChannel.{ SubscriptionStart, SubscriptionStop}
+class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
+  import MonitorChannel.{ formatMonitorName, startMonitor, stopMonitor }
+  import MonitorChannel.{ MonitorStart, MonitorStop}
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("SubscriptionSuite"))
+  def this() = this(ActorSystem("MonitorSuite"))
 
   val eventListener = ConfigFactory.parseResources("test.conf")
 
@@ -48,70 +48,71 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     val eventBus = new MessageBus
   }
 
-  "The Subscription actors" should "launch an exception when the messages received cannot be handled" in new Bus {
-    val _system = ActorSystem("SubscriptionSuiteTest1", eventListener)
+  "The Monitor actors" should "launch an exception when the messages received cannot be handled" in new Bus {
+    val _system = ActorSystem("MonitorSuiteTest1", eventListener)
 
     val suid = UUID.randomUUID()
     val frequency = 50.milliseconds
     val targets = List(Process(1))
-    val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], eventBus, suid, frequency, targets), "subchild1")
-    val subsSupervisor = _system.actorOf(Props(classOf[SubscriptionSupervisor], eventBus), "subsup1")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, suid, frequency, targets), "monitor1")
+    val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
-    EventFilter.warning(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStop("test", suid)
+    EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStop("test", suid)
     })(_system)
 
-    EventFilter.warning(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStart("test", suid, Duration.Zero, targets)
+    EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStart("test", suid, Duration.Zero, targets)
     })(_system)
 
     // Not an exception, just an assessment (switching in the running state).
-    EventFilter.info(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStart("test", suid, frequency, targets)
+    EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStart("test", suid, frequency, targets)
     })(_system)
 
-    EventFilter.warning(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStart("test", suid, frequency, targets)
+    EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStart("test", suid, frequency, targets)
     })(_system)
 
-    EventFilter.warning(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStop("test", UUID.randomUUID())
+    EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStop("test", UUID.randomUUID())
     })(_system)
 
-    EventFilter.warning(occurrences = 1, source = subsSupervisor.path.toString).intercept({
-      stopSubscription(suid)(eventBus)
+    EventFilter.warning(occurrences = 1, source = monitors.path.toString).intercept({
+      stopMonitor(suid)(eventBus)
     })(_system)
 
-    Await.result(gracefulStop(subsChild, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(subsSupervisor, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
+    _system.awaitTermination(timeout.duration)
   }
 
-  "A SubscriptionChild actor" should "start to listen ticks for its frequency and produce messages" in new Bus {
-    val _system = ActorSystem("SubscriptionSuiteTest2", eventListener)
+  "A MonitorChild actor" should "start to listen ticks for its frequency and produce messages" in new Bus {
+    val _system = ActorSystem("MonitorSuiteTest2", eventListener)
     val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock2")
 
     val frequency = 25.milliseconds
     val suid = UUID.randomUUID()
     val targets = List(Process(1), Application("java"), All)
     
-    val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], eventBus, suid, frequency, targets), "subchild2")
-    val subscriber = _system.actorOf(Props(classOf[SubscriptionMockSubscriber], eventBus))
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, suid, frequency, targets), "monitor2")
+    val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
-    watcher.watch(subsChild)
+    watcher.watch(monitor)
 
-    EventFilter.info(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStart("test", suid, frequency, targets)
+    EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStart("test", suid, frequency, targets)
     })(_system)
 
     Thread.sleep(250)
 
-    EventFilter.info(occurrences = 1, source = subsChild.path.toString).intercept({
-      subsChild ! SubscriptionStop("test", suid)
+    EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorStop("test", suid)
     })(_system)
 
     awaitAssert({
-      watcher.expectTerminated(subsChild)
+      watcher.expectTerminated(monitor)
     }, 20.seconds)
 
     awaitAssert({
@@ -125,14 +126,15 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[Int]) should be >= ((targets.size * 10) - (targets.size * 10 * 0.10).toInt)
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(subsChild, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
     _system.shutdown()
+    _system.awaitTermination(timeout.duration)
   }
 
   it can "handle a large number of targets" in new Bus {
-    val _system = ActorSystem("SubscriptionSuiteTest3")
+    val _system = ActorSystem("MonitorSuiteTest3")
 
     val frequency = 25.milliseconds
     val suid = UUID.randomUUID()
@@ -143,17 +145,17 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock3")
-    val subsChild = _system.actorOf(Props(classOf[SubscriptionChild], eventBus, suid, frequency, targets.toList), "subchild3")
-    val subscriber = _system.actorOf(Props(classOf[SubscriptionMockSubscriber], eventBus))
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, suid, frequency, targets.toList), "monitor3")
+    val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
-    watcher.watch(subsChild)
+    watcher.watch(monitor)
 
-    subsChild ! SubscriptionStart("test", suid, frequency, targets.toList)
+    monitor ! MonitorStart("test", suid, frequency, targets.toList)
     Thread.sleep(250)
-    subsChild ! SubscriptionStop("test", suid)
+    monitor ! MonitorStop("test", suid)
 
     awaitAssert({
-      watcher.expectTerminated(subsChild)
+      watcher.expectTerminated(monitor)
     }, 20.seconds)
 
     awaitAssert({
@@ -167,34 +169,35 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[Int]) should be >= ((targets.size * 10) - (targets.size * 10 * 0.10).toInt)
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(subsChild, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(subscriber, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
     _system.shutdown()
+    _system.awaitTermination(timeout.duration)
   }
 
-  "A SubscriptionSupervisor actor" should "handle its SubscriptionChild actors and subscribers have to receive messages" in new Bus {
-    val _system = ActorSystem("SubscriptionSuiteTest4")
+  "A Monitors actor" should "handle its MonitorChild actors and subscribers have to receive messages" in new Bus {
+    val _system = ActorSystem("MonitorSuiteTest4")
     val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock4")
-    val subsSupervisor = _system.actorOf(Props(classOf[SubscriptionSupervisor], eventBus), "subsup4")
+    val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors4")
 
-    val subscription = new Subscription(eventBus)
+    val monitor = new Monitor(eventBus)
     val frequency = 25.milliseconds
     val targets = List(Process(1), Application("java"))
 
     val subscribers = scala.collection.mutable.ListBuffer[ActorRef]()
 
     for(i <- 0 until 100) {
-      subscribers += _system.actorOf(Props(classOf[SubscriptionMockSubscriber], eventBus))
+      subscribers += _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     }
 
-    startSubscription(subscription.suid, frequency, targets)(eventBus)
+    startMonitor(monitor.suid, frequency, targets)(eventBus)
     Thread.sleep(250)
-    subscription.cancel
+    monitor.cancel
 
     awaitAssert({
       intercept[ActorNotFound] {
-        Await.result(_system.actorSelection(formatSubscriptionChildName(subscription.suid)).resolveOne(), timeout.duration)
+        Await.result(_system.actorSelection(formatMonitorName(monitor.suid)).resolveOne(), timeout.duration)
       }
     }, 20.seconds)
 
@@ -212,30 +215,30 @@ class SubscriptionSuite(system: ActorSystem) extends UnitTest(system) {
     }
     
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(subsSupervisor, timeout.duration), timeout.duration)  
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)  
     _system.shutdown()
+    _system.awaitTermination(timeout.duration)
   }
 
-  it should "handle a large number of subscriptions" in new Bus {
-    val _system = ActorSystem("SubscriptionSuiteTest5")
+  it should "handle a large number of monitors" in new Bus {
+    val _system = ActorSystem("MonitorSuiteTest5")
     val clock = _system.actorOf(Props(classOf[Clock], eventBus), "clock5")
-    val subsSupervisor = _system.actorOf(Props(classOf[SubscriptionSupervisor], eventBus), "subsup5")
+    val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")
 
     val targets = List(All)
-    val subscriptions = scala.collection.mutable.ListBuffer[Subscription]()
+    val subscriptions = scala.collection.mutable.ListBuffer[Monitor]()
 
     for(frequency <- 50 to 100) {
-      val subscription = new Subscription(eventBus)
+      val subscription = new Monitor(eventBus)
       subscriptions += subscription
-      startSubscription(subscription.suid, frequency.milliseconds, targets)(eventBus)
+      startMonitor(subscription.suid, frequency.milliseconds, targets)(eventBus)
     }
 
     Thread.sleep(1000)
 
-    stopAllSubscription()(eventBus)
-
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(subsSupervisor, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
+    _system.awaitTermination(timeout.duration)
   }
 }
