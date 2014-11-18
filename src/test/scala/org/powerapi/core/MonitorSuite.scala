@@ -123,7 +123,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= ((targets.size * 10) - (targets.size * 10 * 0.10).toInt)
+    expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -166,7 +166,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= ((targets.size * 10) - (targets.size * 10 * 0.10).toInt)
+    expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
 
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -210,7 +210,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 0 until 100) {
       subscribers(i) ! "get"
       // We assume a service quality of 90% (regarding the number of processed messages).
-      expectMsgClass(classOf[Int]) should be >= ((targets.size * 10) - (targets.size * 10 * 0.10).toInt)
+      expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
       Await.result(gracefulStop(subscribers(i), timeout.duration), timeout.duration)
     }
     
