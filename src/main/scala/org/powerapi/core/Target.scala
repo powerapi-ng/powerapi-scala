@@ -40,4 +40,4 @@ case class Application(name: String) extends Target
 /**
  * Monitoring target for the whole system.
  */
-object ALL extends Target
+object All extends Target
