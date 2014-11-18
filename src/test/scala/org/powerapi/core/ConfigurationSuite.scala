@@ -70,7 +70,7 @@ class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
   it can "read complex values" in {
     config.map match {
-      case ConfigValue(map: Map[_, _]) => map should contain theSameElementsAs Map("item1" -> "value1", "item2" -> "value2")
+      case ConfigValue(map) => map should contain theSameElementsAs Map("item1" -> "value1", "item2" -> "value2")
       case _ => fail()
     }
   }

@@ -33,7 +33,7 @@ trait ConfigResult[T]
  * Subtypes to specify the different types of result.
  */
 case class ConfigValue[T](value: T) extends ConfigResult[T]
-case class ConfigError(exception: Throwable) extends ConfigResult[Throwable]
+case class ConfigError[T](exception: Throwable) extends ConfigResult[T]
 
 /**
  * Base trait for dealing with configuration files.
@@ -46,7 +46,7 @@ trait Configuration {
    *
    * @param request: requet for getting information.
    */
-  def load[T](request: Config => T): ConfigResult[_] = {
+  def load[T](request: Config => T): ConfigResult[T] = {
     try {
       ConfigValue(request(conf))
     }
