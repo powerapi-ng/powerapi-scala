@@ -28,6 +28,7 @@ import java.util.UUID
 import akka.actor.ActorRef
 import akka.event.LookupClassification
 
+
 /**
  * Messages are the messages used to route the messages in the bus.
  */
@@ -60,21 +61,21 @@ trait EventBus extends akka.event.EventBus {
 class MessageBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
   override protected def classify(event: Event): Classifier = event.topic
-  
+
   // will be invoked for each event for all subscribers which registered themselves
   // for the event’s classifier
   override protected def publish(event: Event, subscriber: Subscriber): Unit = {
     subscriber ! event
   }
-  
+
   // must define a full order over the subscribers, expressed as expected from
   // `java.lang.Comparable.compare`
   override protected def compareSubscribers(a: Subscriber, b: Subscriber): Int =
     a.compareTo(b)
-  
+
   // determines the initial size of the index data structure
   // used internally (i.e. the expected number of different classifiers)
-  override protected def mapSize: Int = 2048
+  override protected def mapSize(): Int = 256
 }
 
 /**
@@ -83,15 +84,15 @@ class MessageBus extends EventBus with LookupClassification {
 class Channel {
   type M <: Message
 
-  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
+  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
     bus.subscribe(subscriber, topic)
   }
 
-  def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef) = {
+  def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
     bus.unsubscribe(subscriber, topic)
   }
 
-  def publish(message: M)(bus: EventBus) = {
+  def publish(message: M)(bus: EventBus): Unit = {
     bus.publish(message)
   }
 }

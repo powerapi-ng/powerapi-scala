@@ -23,15 +23,12 @@
 
 package org.powerapi.core
 
-import org.powerapi.test.UnitTest
-
-import akka.actor.{ ActorRef, ActorSystem, Props, Terminated }
-import akka.actor.SupervisorStrategy.{ Directive, Escalate, Restart, Resume, Stop }
+import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
+import akka.actor.{ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingReceive
-
-import akka.testkit.{ EventFilter, TestActorRef, TestKit }
-
+import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
+import org.powerapi.test.UnitTest
 
 class TestComponent extends Component {
   def receive = LoggingReceive {
@@ -126,7 +123,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
 
     val supervisor = TestActorRef(Props(classOf[TestSupervisor], handleFailureOne))(system)
     supervisor ! Props[TestChild]
-    var child = expectMsgClass(classOf[ActorRef])
+    val child = expectMsgClass(classOf[ActorRef])
 
     child ! 42
     child ! "state"

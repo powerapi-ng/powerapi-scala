@@ -1,21 +1,19 @@
 package org.powerapi.core
 
-import org.powerapi.test.UnitTest
-
 import java.util.UUID
 
-import scala.concurrent.Await
-import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
-
-import akka.actor.{ Actor, ActorIdentity, ActorNotFound, ActorRef, ActorSystem, Identify, Props }
+import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
 import akka.pattern.gracefulStop
-import akka.testkit.{ EventFilter, TestKit, TestProbe }
+import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
-
 import com.typesafe.config.ConfigFactory
+import org.powerapi.test.UnitTest
+
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, DurationInt}
 
 class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
-  import MonitorChannel.{ subscribeTarget, MonitorTarget }
+  import org.powerapi.core.MonitorChannel.{MonitorTarget, subscribeTarget}
 
   override def preStart() = {
     subscribeTarget(eventBus)(self)
@@ -31,9 +29,8 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 }
 
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
-  import ClockChannel.{ formatClockChildName }
-  import MonitorChannel.{ formatMonitorChildName, startMonitor, stopMonitor }
-  import MonitorChannel.{ MonitorStart, MonitorStop}
+  import org.powerapi.core.ClockChannel.formatClockChildName
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopMonitor}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -194,7 +191,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     startMonitor(monitor.muid, frequency, targets)(eventBus)
     Thread.sleep(250)
-    monitor.cancel
+    monitor.cancel()
 
     awaitAssert({
       intercept[ActorNotFound] {

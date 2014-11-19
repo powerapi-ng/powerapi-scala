@@ -24,9 +24,10 @@
 package org.powerapi.core
 
 import java.util.UUID
-import scala.concurrent.duration.FiniteDuration
 
 import akka.actor.ActorRef
+
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * Monitor channel and messages.
@@ -90,25 +91,25 @@ object MonitorChannel extends Channel {
    * External methods used by the Sensor actors for interacting with the bus.
    */
   def subscribeTarget: MessageBus => ActorRef => Unit = {
-    subscribe(topicToPublish) _
+    subscribe(topicToPublish)
   }
 
   /**
    * External Methods used by the API (or a Monitor object) for interacting with the bus.
    */
   def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
-    publish(MonitorStart(topic, muid, frequency, targets)) _
+    publish(MonitorStart(topic, muid, frequency, targets))
   }
 
   def stopMonitor(muid: UUID): MessageBus => Unit = {
-    publish(MonitorStop(topic, muid)) _
+    publish(MonitorStop(topic, muid))
   }
 
   /**
    * Internal methods used by the Monitors actor for interacting with the bus.
    */
   def subscribeHandlingMonitor: MessageBus => ActorRef => Unit = {
-    subscribe(topic) _
+    subscribe(topic)
   }
 
   lazy val stopAllMonitor = MonitorStopAll(topic)
@@ -117,13 +118,13 @@ object MonitorChannel extends Channel {
    * Internal methods used by the MonitorChild actors for interacting with the bus.
    */
   def publishTarget(muid: UUID, target: Target): MessageBus => Unit = {
-    publish(MonitorTarget(topicToPublish, muid, target)) _
+    publish(MonitorTarget(topicToPublish, muid, target))
   }
 
   /**
    * Use to format the MonitorChild name.
    */
-  def formatMonitorChildName(muid: UUID) = {
+  def formatMonitorChildName(muid: UUID): String = {
     s"monitor-$muid"
   }
 }
