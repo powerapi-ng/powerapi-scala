@@ -1,16 +1,33 @@
 *.class
 *.log
+*~
+
+# activator specific
+activator*
 
 # sbt specific
-.cache/
 .history/
 .lib/
 dist/*
-target/
 lib_managed/
 src_managed/
-project/boot/
-project/plugins/project/
+*#
+*.iml
+*.ipr
+*.iws
+*.pyc
+*.tm.epoch
+*.vim
+*-shim.sbt
+.idea/
+/project/plugins/project
+project/boot
+target/
+/logs
+.cache
+.classpath
+.project
+.settings
 
 # Scala-IDE specific
 .scala_dependencies
