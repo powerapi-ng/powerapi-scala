@@ -22,7 +22,8 @@
  */
 package org.powerapi.core
 
-import com.typesafe.config.{ Config, ConfigException, ConfigFactory }
+import com.typesafe.config.{Config, ConfigException, ConfigFactory}
+
 
 /**
  * Base trait for configuration result.
@@ -44,7 +45,7 @@ trait Configuration {
   /**
    * Method to load a value from a configuration file.
    *
-   * @param request: requet for getting information.
+   * @param request: request for getting information.
    */
   def load[T](request: Config => T): ConfigResult[T] = {
     try {

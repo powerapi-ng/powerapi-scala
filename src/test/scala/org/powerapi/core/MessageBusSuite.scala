@@ -23,12 +23,11 @@
 
 package org.powerapi.core
 
-import org.powerapi.test.UnitTest
-
 import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
+import org.powerapi.test.UnitTest
 
 case class MessageReport(muid: UUID, topic: String) extends Report
 

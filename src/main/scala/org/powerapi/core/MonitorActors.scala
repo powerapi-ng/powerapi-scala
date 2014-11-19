@@ -24,11 +24,12 @@ package org.powerapi.core
 
 import java.util.UUID
 
+import akka.actor.SupervisorStrategy.{Directive, Resume}
+import akka.actor.{Actor, PoisonPill, Props}
+import akka.event.LoggingReceive
+
 import scala.concurrent.duration.FiniteDuration
 
-import akka.actor.{ Actor, PoisonPill, Props }
-import akka.actor.SupervisorStrategy.{ Directive, Resume }
-import akka.event.LoggingReceive
 
 /**
  * One child represents one monitor.
@@ -39,11 +40,11 @@ class MonitorChild(eventBus: MessageBus,
                    frequency: FiniteDuration,
                    targets: List[Target]) extends Component {
 
-  import ClockChannel.{ ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock }
-  import MonitorChannel.{ MonitorStart, MonitorStop, MonitorStopAll, publishTarget }
+  import org.powerapi.core.ClockChannel.{ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishTarget}
 
-  def receive = LoggingReceive {
-    case MonitorStart(_, id, freq, targs) if(muid == id && frequency == freq && targets == targs) => start()
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
   } orElse default
 
   /**
@@ -58,7 +59,7 @@ class MonitorChild(eventBus: MessageBus,
   /**
    * Start the clock, subscribe on the associated topic for receiving tick messages.
    */
-  def start() = {
+  def start(): Unit = {
     startClock(frequency)(eventBus)
     subscribeClock(frequency)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
@@ -68,7 +69,7 @@ class MonitorChild(eventBus: MessageBus,
   /**
    * Handle ticks for publishing the targets in the right topics.
    */
-  def produceMessages() = {
+  def produceMessages(): Unit = {
     targets.foreach(target => publishTarget(muid, target)(eventBus))
   }
 
@@ -76,7 +77,7 @@ class MonitorChild(eventBus: MessageBus,
    * Publish a request for stopping the clock which is responsible to produce the ticks at this frequency,
    * stop to listen ticks and kill the monitor actor.
    */
-  def stop() = {
+  def stop(): Unit = {
     stopClock(frequency)(eventBus)
     unsubscribeClock(frequency)(eventBus)(self)
     log.info("monitor is stopped, muid: {}", muid)
@@ -89,14 +90,13 @@ class MonitorChild(eventBus: MessageBus,
  * It is responsible to handle a pool of child actors which represent all monitors.
  */
 class Monitors(eventBus: MessageBus) extends Component with Supervisor {
-  import MonitorChannel.{ formatMonitorChildName, stopAllMonitor, subscribeHandlingMonitor }
-  import MonitorChannel.{ MonitorStart, MonitorStop, MonitorStopAll }
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeHandlingMonitor}
 
-  override def preStart() = {
+  override def preStart(): Unit = {
     subscribeHandlingMonitor(eventBus)(self)
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     context.actorSelection("*") ! stopAllMonitor
   }
 
@@ -107,7 +107,7 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
     case _: UnsupportedOperationException => Resume 
   }
 
-  def receive = LoggingReceive {
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case msg: MonitorStart => start(msg)
   } orElse default
 
@@ -125,7 +125,7 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
    *
    * @param msg: Message received for starting a monitor.
    */
-  def start(msg: MonitorStart) = {
+  def start(msg: MonitorStart): Unit = {
     val name = formatMonitorChildName(msg.muid)
     val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets), name)
     child ! msg
@@ -137,7 +137,7 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
    *
    * @param msg: Message received for stopping a given monitor.
    */
-  def stop(msg: MonitorStop) = {
+  def stop(msg: MonitorStop): Unit = {
     val name = formatMonitorChildName(msg.muid)
     context.actorSelection(name) ! msg
   }
@@ -147,7 +147,7 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
    *
    * @param msg: Message received for stopping all monitor actors.
    */
-  def stopAll(msg: MonitorStopAll) = {
+  def stopAll(msg: MonitorStopAll): Unit = {
     context.actorSelection("*") ! msg
     context.become(receive)
   }
@@ -159,8 +159,8 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
 class Monitor(eventBus: MessageBus) {
   val muid = UUID.randomUUID()
 
-  def cancel() = {
-    import MonitorChannel.stopMonitor
+  def cancel(): Unit = {
+    import org.powerapi.core.MonitorChannel.stopMonitor
     
     stopMonitor(muid)(eventBus)
   }

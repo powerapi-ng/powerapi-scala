@@ -23,9 +23,10 @@
 
 package org.powerapi.core
 
+import akka.actor.ActorRef
+
 import scala.concurrent.duration.FiniteDuration
 
-import akka.actor.ActorRef
 
 /**
  * Clock channel and messages.
@@ -87,27 +88,27 @@ object ClockChannel extends Channel {
    * External methods used by the Monitor actors to subscribe/unsubscribe,
    * start/stop a clock which runs at a frequency.
    */
-  def subscribeClock(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
-    subscribe(clockTickTopic(frequency)) _
+  def subscribeClock(frequency: FiniteDuration): (MessageBus => ActorRef => Unit) = {
+    subscribe(clockTickTopic(frequency))
   }
 
   def unsubscribeClock(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
-    unsubscribe(clockTickTopic(frequency)) _
+    unsubscribe(clockTickTopic(frequency))
   }
 
   def startClock(frequency: FiniteDuration): MessageBus => Unit = {
-    publish(ClockStart(topic, frequency)) _
+    publish(ClockStart(topic, frequency))
   }
 
   def stopClock(frequency: FiniteDuration): MessageBus => Unit ={
-    publish(ClockStop(topic, frequency)) _
+    publish(ClockStop(topic, frequency))
   }
 
   /**
    * Internal methods used by the Clocks actor for interacting with the bus.
    */
   def subscribeTickSubscription: MessageBus => ActorRef => Unit = {
-    subscribe(topic) _
+    subscribe(topic)
   }
 
   lazy val stopAllClock = ClockStopAll(topic)
@@ -116,20 +117,20 @@ object ClockChannel extends Channel {
    * Internal methods used by the ClockChild actors for interacting with the bus.
    */
   def publishTick(frequency: FiniteDuration): MessageBus => Unit = {
-    publish(ClockTick(clockTickTopic(frequency), frequency)) _
+    publish(ClockTick(clockTickTopic(frequency), frequency))
   }
 
   /**
    * Use to format the ClockChild name.
    */
-  def formatClockChildName(frequency: FiniteDuration) = {
+  def formatClockChildName(frequency: FiniteDuration): String = {
     s"clock-${frequency.toNanos}"
   }
 
   /**
-   * Use to format a freqyency to an associated topic.
+   * Use to format a frequency to an associated topic.
    */
-  private def clockTickTopic(frequency: FiniteDuration) = {
+  private def clockTickTopic(frequency: FiniteDuration): String = {
     s"tick:${frequency.toNanos}"
   }
 }

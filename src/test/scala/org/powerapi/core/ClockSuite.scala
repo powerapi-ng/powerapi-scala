@@ -23,20 +23,18 @@
 
 package org.powerapi.core
 
+import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
+import akka.pattern.gracefulStop
+import akka.testkit.{EventFilter, TestKit, TestProbe}
+import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 import org.powerapi.test.UnitTest
 
 import scala.concurrent.Await
-import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
-
-import akka.actor.{ Actor, ActorNotFound, ActorRef, ActorSystem, Props }
-import akka.pattern.gracefulStop
-import akka.util.Timeout
-import akka.testkit.{ EventFilter, TestKit, TestProbe }
-
-import com.typesafe.config.ConfigFactory
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
 class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) extends Actor {
-  import ClockChannel.{ ClockTick, subscribeClock }
+  import org.powerapi.core.ClockChannel.{ClockTick, subscribeClock}
 
   override def preStart() = {
     subscribeClock(frequency)(eventBus)(self)
@@ -52,8 +50,7 @@ class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) exten
 }
 
 class ClockSuite(system: ActorSystem) extends UnitTest(system) {
-  import ClockChannel.{ ClockStart, ClockStop, ClockStopAll }
-  import ClockChannel.{ formatClockChildName, startClock, stopClock, unsubscribeClock }
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, formatClockChildName, startClock, stopClock, unsubscribeClock}
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("ClockSuite"))
@@ -268,7 +265,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[Int]) should equal (0)
     Await.result(gracefulStop(testSubscriber, timeout.duration), timeout.duration)
 
-    for(subscriber <- (subscribersF1 - testSubscriber)) {
+    for(subscriber <- subscribersF1 - testSubscriber) {
       subscriber ! "get"
       // We assume a service quality of 90% (regarding the number of processed messages).
       expectMsgClass(classOf[Int]) should be >= (5 * 0.9).toInt

@@ -23,14 +23,12 @@
 
 package org.powerapi.core
 
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import com.typesafe.config.{Config, ConfigException}
 import org.powerapi.test.UnitTest
 
 import scala.collection.JavaConversions
-
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-
-import com.typesafe.config.{ Config, ConfigException }
 
 class ConfigurationMock extends Configuration {
   val existingKey = load { _.getString("configuration-suite.key") }
@@ -42,7 +40,6 @@ class ConfigurationMock extends Configuration {
     }
   }
 }
-
 
 class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -56,7 +53,7 @@ class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A ConfigurationMock class" should "read a value from a configuration file" in {
     config.existingKey match {
-      case ConfigValue(value) => value should equal("item")
+      case ConfigValue(item) => item should equal("item")
       case _ => fail()
     }
   }

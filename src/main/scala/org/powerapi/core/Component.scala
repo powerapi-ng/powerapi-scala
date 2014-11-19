@@ -23,11 +23,10 @@
 
 package org.powerapi.core
 
-import scala.concurrent.duration.DurationInt
+import akka.actor.SupervisorStrategy.{Directive, Resume}
+import akka.actor.{Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator}
 
-import akka.actor.{ Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator }
-import akka.actor.SupervisorStrategy.{ Directive, Resume }
-import akka.event.LoggingReceive
+import scala.concurrent.duration.DurationInt
 
 /**
  * Base trait for components which use Actor.

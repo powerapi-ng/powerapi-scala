@@ -22,23 +22,20 @@
  */
 package org.powerapi.core
 
-import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
-import scala.concurrent.Await
-
-import akka.actor.{ Actor, ActorRef, Cancellable, PoisonPill, Props }
-import akka.actor.SupervisorStrategy.{ Directive, Resume }
+import akka.actor.SupervisorStrategy.{Directive, Resume}
+import akka.actor.{Actor, Cancellable, PoisonPill, Props}
 import akka.event.LoggingReceive
-import akka.pattern.ask
-import akka.util.Timeout
+
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
  * One child clock is created per frequency.
  * Allows to publish a message in the right topics for a given frequency.
  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Component {
-  import ClockChannel.{ publishTick, ClockStart, ClockStopAll, ClockStop }
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishTick}
 
-  def receive = LoggingReceive {
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case ClockStart(_, freq) if frequency == freq => start()
   } orElse default
 
@@ -61,7 +58,7 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
   /**
    * Start the clock and the associated scheduler for publishing a Tick on the required topic at a given frequency.
    */
-  def start() = {
+  def start(): Unit = {
     val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
       publishTick(frequency)(eventBus)
     } (context.system.dispatcher)
@@ -76,13 +73,13 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
    * @param acc: Accumulator used to know the number of monitors which run at this frequency.
    * @param timer: Timer created for producing ticks.
    */
-  def stop(acc: Int, timer: Cancellable) = {
+  def stop(acc: Int, timer: Cancellable): Unit = {
     if(acc > 1) {
       log.info("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
       context.become(running(acc - 1, timer))
     }
     else {
-      timer.cancel
+      timer.cancel()
       log.info("clock will be stopped, reference: {}", frequency.toNanos)
       self ! PoisonPill
     }
@@ -94,14 +91,13 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  */
 class Clocks(eventBus: MessageBus) extends Component with Supervisor {
-  import ClockChannel.{ ClockStart, ClockStopAll, ClockStop }
-  import ClockChannel.{ formatClockChildName, stopAllClock, subscribeTickSubscription }
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, stopAllClock, subscribeTickSubscription}
 
-  override def preStart() = {  
+  override def preStart(): Unit = {
     subscribeTickSubscription(eventBus)(self)
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     context.actorSelection("*") ! stopAllClock
   }
 
@@ -112,7 +108,7 @@ class Clocks(eventBus: MessageBus) extends Component with Supervisor {
     case _: UnsupportedOperationException => Resume 
   }
 
-  def receive = LoggingReceive {
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case msg: ClockStart => start(msg)
   } orElse default
 
@@ -130,7 +126,7 @@ class Clocks(eventBus: MessageBus) extends Component with Supervisor {
    * 
    * @param msg: Message received for starting a clock at a given frequency.
    */
-  def start(msg: ClockStart) = {
+  def start(msg: ClockStart): Unit = {
     val name = formatClockChildName(msg.frequency)
 
     val child = context.child(name) match {
@@ -147,7 +143,7 @@ class Clocks(eventBus: MessageBus) extends Component with Supervisor {
    * 
    * @param msg: Message received for stopping a clock at a given frequency.
    */
-  def stop(msg: ClockStop) = {
+  def stop(msg: ClockStop): Unit = {
     val name = formatClockChildName(msg.frequency)
     context.actorSelection(name) ! msg
   }
@@ -157,7 +153,7 @@ class Clocks(eventBus: MessageBus) extends Component with Supervisor {
    *
    * @param msg: Message received for stopping all clocks.
    */
-  def stopAll(msg: ClockStopAll) = {
+  def stopAll(msg: ClockStopAll): Unit = {
     context.actorSelection("*") ! msg
     context.become(receive)
   }
