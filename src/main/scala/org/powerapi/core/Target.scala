@@ -27,16 +27,21 @@ package org.powerapi.core
  * Targets are system elements that can be monitored by PowerAPI
  */
 trait Target
+
 /**
  * Monitoring target for a specific Process IDentifier.
- * @param pid: process identifier
+ *
+ * @param pid: process identifier.
  */
 case class Process(pid: Long) extends Target
+
 /**
  * Monitoring target for a specific application.
+ *
  * @param name: name of the application.
  */
 case class Application(name: String) extends Target
+
 /**
  * Monitoring target for the whole system.
  */

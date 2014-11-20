@@ -108,6 +108,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A ClockChild actor" should "produce Ticks, stop its own timer if needed and thus stop to publish Ticks" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest2", eventListener)
 
     val frequency = 25.milliseconds
@@ -141,6 +143,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle only one timer and stop it if there is no subscription" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest3", eventListener)
 
     val frequency = 25.milliseconds
@@ -181,6 +185,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Clocks actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
@@ -290,6 +296,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest5")
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")

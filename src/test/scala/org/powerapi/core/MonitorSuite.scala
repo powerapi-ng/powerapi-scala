@@ -87,6 +87,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A MonitorChild actor" should "start to listen ticks for its frequency and produce messages" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest2", eventListener)
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks2")
 
@@ -132,6 +134,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "handle a large number of targets" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest3")
 
     val frequency = 25.milliseconds
@@ -175,7 +179,10 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Monitors actor" should "handle its MonitorChild actors and subscribers have to receive messages" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest4")
+
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks4")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors4")
 
@@ -219,6 +226,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle a large number of monitors" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest5")
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")
