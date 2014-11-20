@@ -84,15 +84,15 @@ class MessageBus extends EventBus with LookupClassification {
 class Channel {
   type M <: Message
 
-  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
+  protected def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
     bus.subscribe(subscriber, topic)
   }
 
-  def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
+  protected def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
     bus.unsubscribe(subscriber, topic)
   }
 
-  def publish(message: M)(bus: EventBus): Unit = {
+  protected def publish(message: M)(bus: EventBus): Unit = {
     bus.publish(message)
   }
 }

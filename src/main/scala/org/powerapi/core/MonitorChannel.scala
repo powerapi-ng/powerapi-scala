@@ -44,10 +44,13 @@ object MonitorChannel extends Channel {
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
+   * @param frequency: monitor frequency.
    */
   case class MonitorTarget(topic: String,
                            muid: UUID,
-                           target: Target) extends MonitorMessage with Report
+                           target: Target,
+                           frequency: FiniteDuration,
+                           timestamp: Long) extends MonitorMessage with Report
 
   /**
    * MonitorStart is represented as a dedicated type of message.
@@ -117,8 +120,8 @@ object MonitorChannel extends Channel {
   /**
    * Internal methods used by the MonitorChild actors for interacting with the bus.
    */
-  def publishTarget(muid: UUID, target: Target): MessageBus => Unit = {
-    publish(MonitorTarget(topicToPublish, muid, target))
+  def publishTarget(muid: UUID, target: Target, frequency: FiniteDuration, timestamp: Long): MessageBus => Unit = {
+    publish(MonitorTarget(topicToPublish, muid, target, frequency, timestamp))
   }
 
   /**

@@ -51,7 +51,7 @@ class MonitorChild(eventBus: MessageBus,
    * Running state.
    */
   def running: Actor.Receive = LoggingReceive {
-    case _: ClockTick => produceMessages()
+    case ClockTick(_, _, timestamp) => produceMessages(timestamp)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -69,8 +69,8 @@ class MonitorChild(eventBus: MessageBus,
   /**
    * Handle ticks for publishing the targets in the right topics.
    */
-  def produceMessages(): Unit = {
-    targets.foreach(target => publishTarget(muid, target)(eventBus))
+  def produceMessages(timestamp: Long): Unit = {
+    targets.foreach(target => publishTarget(muid, target, frequency, timestamp)(eventBus))
   }
 
   /**

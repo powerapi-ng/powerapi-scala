@@ -24,12 +24,15 @@
 package org.powerapi.core
 
 import akka.actor.SupervisorStrategy.{Directive, Resume}
-import akka.actor.{Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator}
+import akka.actor._
+import akka.event.LoggingReceive
 
 import scala.concurrent.duration.DurationInt
 
 /**
  * Base trait for components which use Actor.
+ *
+ * @author mcolmant
  */
 trait Component extends Actor with ActorLogging {
   /**
@@ -41,7 +44,27 @@ trait Component extends Actor with ActorLogging {
 }
 
 /**
+ * Base trait for each PowerAPI sensor.
+ * Each of them should listen to a MonitorTarget message and thus process it.
+ */
+abstract class Sensor(eventBus: MessageBus) extends Component {
+  import org.powerapi.core.MonitorChannel.{MonitorTarget, subscribeTarget}
+
+  override def preStart(): Unit = {
+    subscribeTarget(eventBus)(self)
+  }
+
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: MonitorTarget => process(msg)
+  } orElse default
+
+  def process(target: MonitorTarget): Unit
+}
+
+/**
  * Supervisor strategy.
+ *
+ * @author mcolmant
  */
 trait Supervisor extends Component {
   def handleFailure: PartialFunction[Throwable, Directive]
@@ -53,6 +76,8 @@ trait Supervisor extends Component {
 /**
  * This class is used for defining a default supervisor strategy for the Guardian Actor.
  * The Guardian Actor is the main actor used when system.actorOf(...) is used.
+ *
+ * @author mcolmant
  */
 class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
   def handleFailure: PartialFunction[Throwable, Directive] = {
