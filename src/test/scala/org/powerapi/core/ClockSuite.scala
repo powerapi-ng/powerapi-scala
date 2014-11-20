@@ -28,7 +28,7 @@ import akka.pattern.gracefulStop
 import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.powerapi.test.UnitTest
+import org.powerapi.UnitTest
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}

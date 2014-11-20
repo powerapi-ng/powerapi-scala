@@ -23,12 +23,17 @@
 
 package org.powerapi.core
 
+import java.util.UUID
+
 import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
 import akka.actor.{ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.powerapi.test.UnitTest
+import org.powerapi.UnitTest
+import org.powerapi.core.MonitorChannel.MonitorTarget
+
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 class TestComponent extends Component {
   def receive = LoggingReceive {
@@ -55,12 +60,24 @@ class TestChild extends Component {
   }
 }
 
+case class MessageWrapperMock(muid: UUID, target: Target, frequency: FiniteDuration, timestamp: Long)
+
+class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
+  def process(monitorTarget: MonitorTarget): Unit = {
+    actorRef ! MessageWrapperMock(monitorTarget.muid, monitorTarget.target, monitorTarget.frequency, monitorTarget.timestamp)
+  }
+}
+
 class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
 
   def this() = this(ActorSystem("ComponentSuite", ConfigFactory.parseResources("test.conf")))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
+  }
+
+  trait Bus {
+    val eventBus = new MessageBus
   }
 
   "A component" should "have a default behavior and a processing one" in {
@@ -114,6 +131,20 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       child ! new Exception("crash")
       expectMsgPF() { case t @ Terminated(child) if t.existenceConfirmed => () }
     })(system)
+  }
+
+  "A Sensor" should "process MonitorTarget messages" in new Bus {
+    import org.powerapi.core.MonitorChannel.publishTarget
+
+    val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
+
+    val muid = UUID.randomUUID()
+    val frequency = 25.milliseconds
+    val target = Process(0)
+    val timestamp = 1l
+
+    publishTarget(muid, target, frequency, timestamp)(eventBus)
+    expectMsg(MessageWrapperMock(muid, target, frequency, timestamp))
   }
 
   "A different failure strategy" can "be applied for different supervisors" in {

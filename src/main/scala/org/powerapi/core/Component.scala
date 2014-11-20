@@ -58,7 +58,7 @@ abstract class Sensor(eventBus: MessageBus) extends Component {
     case msg: MonitorTarget => process(msg)
   } orElse default
 
-  def process(target: MonitorTarget): Unit
+  def process(monitorTarget: MonitorTarget): Unit
 }
 
 /**
