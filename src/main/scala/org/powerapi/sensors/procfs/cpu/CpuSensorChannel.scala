@@ -25,6 +25,7 @@ package org.powerapi.sensors.procfs.cpu
 
 import java.util.UUID
 
+import akka.actor.ActorRef
 import org.powerapi.core.{Channel, MessageBus, Report, Target}
 
 
@@ -41,6 +42,7 @@ object CpuSensorChannel extends Channel {
    * Wrapper classes.
    */
   case class TargetPercent(percent: Double = 0)
+  case class CacheKey(muid: UUID, target: Target)
 
   /**
    * CpuSensorReport is represented as a dedicated type of message.
@@ -60,12 +62,19 @@ object CpuSensorChannel extends Channel {
   /**
    * Topic for communicating with the Formula actors.
    */
-  private val topicToPublish = "sensor:compute"
+  private val topic = "sensor:compute"
 
   /**
    * Publish a CpuSensorReport in the event bus.
    */
   def publishCpuReport(muid: UUID, target: Target, targetPercent: TargetPercent, timestamp: Long): MessageBus => Unit = {
-    publish(CpuSensorReport(topicToPublish, muid, target, targetPercent, timestamp))
+    publish(CpuSensorReport(topic, muid, target, targetPercent, timestamp))
+  }
+
+  /**
+   * External method use by the Formula for interacting with the bus.
+   */
+  def subscribeCpuSensor: MessageBus => ActorRef => Unit = {
+    subscribe(topic)
   }
 }

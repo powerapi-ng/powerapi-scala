@@ -63,7 +63,7 @@ object MonitorChannel extends Channel {
   case class MonitorStart(topic: String,
                           muid: UUID,
                           frequency: FiniteDuration,
-                          targets: List[Target]) extends MonitorMessage
+                          targets: List[Target]) extends MonitorMessage with Report
 
   /**
    * MonitorStop is represented as a dedicated type of message.
@@ -71,7 +71,7 @@ object MonitorChannel extends Channel {
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    */
-  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage
+  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage with Report
 
   /**
    * MonitorStopAll is represented as a dedicated type of message.
