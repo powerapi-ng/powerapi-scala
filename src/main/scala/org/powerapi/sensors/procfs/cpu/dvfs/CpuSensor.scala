@@ -23,7 +23,15 @@
 
 package org.powerapi.sensors.procfs.cpu.dvfs
 
-import org.powerapi.core.{ConfigValue, MessageBus, OSHelper}
+import java.io.IOException
+import java.util.UUID
+
+import org.powerapi.core.MonitorChannel.MonitorTicks
+import org.powerapi.core.{Target, ConfigValue, MessageBus, OSHelper}
+import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, publishCpuReport, TimeInStates}
+import org.powerapi.sensors.procfs.cpu.FileControl.using
+
+import scala.io.Source
 
 /**
  * CPU sensor configuration.
@@ -35,15 +43,15 @@ trait Configuration extends org.powerapi.core.Configuration {
   /**
    * OS cores number (can be logical).
    */
-  lazy val cores = load { _.getString("powerapi.hardware.cores") } match {
+  lazy val cores = load { _.getInt("powerapi.hardware.cores") } match {
     case ConfigValue(nbCores) => nbCores
-    case _ => "0"
+    case _ => 0
   }
 
   /**
    * Time in state file, giving information about how many time CPU spent under each frequency.
    */
-  lazy val timeInStatePath = load { _.getString("powerapi.sysfs.time-in-states-path") } match {
+  lazy val timeInStatePath = load { _.getString("powerapi.sysfs.timeinstates-path") } match {
     case ConfigValue(path) => path
     case _ => "/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
   }
@@ -65,13 +73,55 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.s
   class Frequencies {
     // time_in_state line format: frequency time
     private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
+    lazy val cache = collection.mutable.Map[CacheKey, TimeInStates]()
 
-    /*def timeInStates(): Map[Int, Long] = {
-      for(core <- cores) {
+    def timeInStates(): Map[Int, Long] = {
+      val result = collection.mutable.HashMap[Int, Long]()
 
+      for(core <- 0 until cores) {
+        try {
+          using(Source.fromFile(timeInStatePath.replace("%?index", s"$core")))(source => {
+            log.debug("using {} as a sysfs timeinstates path", timeInStatePath)
+
+            for(line <- source.getLines) {
+              line match {
+                case TimeInStateFormat(freq, t) => result += (freq.toInt -> (t.toLong + (result.getOrElse(freq.toInt, 0l))))
+              }
+            }
+          })
+        }
+        catch {
+          case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); None
+        }
       }
-    }*/
+
+      result.toMap[Int, Long]
+    }
+
+    def refreshCache(key: CacheKey, now: TimeInStates): Unit = {
+      cache += (key -> now)
+    }
+
+    def handleTarget(muid: UUID, target: Target): TimeInStates = {
+      val now = TimeInStates(timeInStates)
+      val key = CacheKey(muid, target)
+      val old = cache.getOrElse(key, now)
+      refreshCache(key, now)
+      now - old
+    }
   }
 
+  lazy val frequencies = new Frequencies
 
+  override def sense(monitorTicks: MonitorTicks): Unit = {
+    for(target <- monitorTicks.subscription.targets) {
+      publishCpuReport(
+        monitorTicks.subscription.muid,
+        target,
+        targetRatio.handleTarget(monitorTicks.subscription.muid, target),
+        frequencies.handleTarget(monitorTicks.subscription.muid, target),
+        monitorTicks.timestamp
+      )(eventBus)
+    }
+  }
 }

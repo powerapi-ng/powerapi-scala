@@ -25,7 +25,7 @@ package org.powerapi.sensors.procfs.cpu.simple
 
 import java.util.UUID
 
-import org.powerapi.core._
+import org.powerapi.core.{All, Sensor, MessageBus, OSHelper, Target}
 import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.CacheKey
 
 /**
@@ -182,9 +182,14 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
 
   lazy val targetRatio = new TargetRatio
 
-  def sense(monitorTargets: MonitorTicks): Unit = {
-    for(target <- monitorTargets.subscription.targets) {
-      publishCpuReport(monitorTargets.subscription.muid, target, targetRatio.handleTarget(monitorTargets.subscription.muid, target), monitorTargets.timestamp)(eventBus)
+  def sense(monitorTicks: MonitorTicks): Unit = {
+    for(target <- monitorTicks.subscription.targets) {
+      publishCpuReport(
+        monitorTicks.subscription.muid,
+        target,
+        targetRatio.handleTarget(monitorTicks.subscription.muid, target),
+        monitorTicks.timestamp
+      )(eventBus)
     }
   }
 }

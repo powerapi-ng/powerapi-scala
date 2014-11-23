@@ -62,8 +62,8 @@ class TestChild extends Component {
 
 
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
-  def sense(monitorTargets: MonitorTicks): Unit = {
-    actorRef ! monitorTargets.subscription
+  def sense(monitorTicks: MonitorTicks): Unit = {
+    actorRef ! monitorTicks.subscription
   }
 }
 

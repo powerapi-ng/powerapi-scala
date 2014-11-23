@@ -29,8 +29,8 @@ import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
+import org.powerapi.core.{All, Application, OSHelper, MessageBus, Process, Thread}
 import org.powerapi.core.MonitorChannel.{MonitorSubscription, MonitorTicks}
-import org.powerapi.core._
 import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, CpuSensorReport, TargetRatio, subscribeCpuProcSensor}
 
 import scala.concurrent.duration.DurationInt
@@ -135,12 +135,41 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     )
   }
 
-  it should "process a MonitorTargets message and then publish a CpuSensorReport" in {
+  it should "process a MonitorTicks message and then publish a CpuSensorReport" in {
     TestActorRef(Props(classOf[MockSubscriber], eventBus, testActor), "subscriber")(system)
-    val monitorTargets = MonitorTicks("test", MonitorSubscription(UUID.randomUUID(), 25.milliseconds, List(Process(1), Application("app"))), System.currentTimeMillis)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTargets)
-    expectMsgClass(classOf[CpuSensorReport])
-    expectMsgClass(classOf[CpuSensorReport])
+    val oldP1ElapsedTime = p1ElapsedTime / 2
+    val oldAppElapsedTime = appElapsedTime / 2
+    val oldGlobalElapsedTime = globalElapsedTime / 2
+
+    val muid1 = UUID.randomUUID()
+    val muid2 = UUID.randomUUID()
+
+    val monitorTicks1 = MonitorTicks("test", MonitorSubscription(muid1, 25.milliseconds, List(Process(1))), System.currentTimeMillis)
+    val monitorTicks2 = MonitorTicks("test", MonitorSubscription(muid2, 50.milliseconds, List(Process(1), Application("app"))), System.currentTimeMillis)
+
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid1, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid2, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid2, Application("app")), (oldAppElapsedTime, oldGlobalElapsedTime))
+
+    val processRatio = TargetRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+    val appRatio = TargetRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTicks1)
+    expectMsgClass(classOf[CpuSensorReport]) match {
+      case CpuSensorReport(_, m, Process(1), pr, _, _) if m == muid1 && pr == processRatio => assert(true)
+      case _ => assert(false)
+    }
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTicks2)
+    expectMsgClass(classOf[CpuSensorReport]) match {
+      case CpuSensorReport(_, m, Process(1), pr, _, _) if m == muid2 && pr == processRatio => assert(true)
+      case CpuSensorReport(_, m, Application("app"), appr, _, _) if m == muid2 && appr == appRatio => assert(true)
+      case _ => assert(false)
+    }
+    expectMsgClass(classOf[CpuSensorReport]) match {
+      case CpuSensorReport(_, m, Process(1), pr, _, _) if m == muid2 && pr == processRatio => assert(true)
+      case CpuSensorReport(_, m, Application("app"), appr, _, _) if m == muid2 && appr == appRatio => assert(true)
+      case _ => assert(false)
+    }
   }
 }
