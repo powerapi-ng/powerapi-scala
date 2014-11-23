@@ -23,9 +23,10 @@
 
 package org.powerapi.core
 
+import akka.actor.{OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator, ActorLogging, Actor}
 import akka.actor.SupervisorStrategy.{Directive, Resume}
-import akka.actor._
 import akka.event.LoggingReceive
+import org.powerapi.core.MonitorChannel.{MonitorTicks, subscribeMonitorTicks}
 
 import scala.concurrent.duration.DurationInt
 
@@ -48,17 +49,16 @@ trait Component extends Actor with ActorLogging {
  * Each of them should listen to a MonitorTarget message and thus process it.
  */
 abstract class Sensor(eventBus: MessageBus) extends Component {
-  import org.powerapi.core.MonitorChannel.{MonitorTarget, subscribeTarget}
 
   override def preStart(): Unit = {
-    subscribeTarget(eventBus)(self)
+    subscribeMonitorTicks(eventBus)(self)
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: MonitorTarget => process(msg)
+    case msg: MonitorTicks => sense(msg)
   } orElse default
 
-  def process(monitorTarget: MonitorTarget): Unit
+  def sense(monitorTarget: MonitorTicks): Unit
 }
 
 /**

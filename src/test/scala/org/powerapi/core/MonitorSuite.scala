@@ -31,21 +31,22 @@ import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
+import org.powerapi.core.MonitorChannel.MonitorSubscription
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt}
 
 class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
-  import org.powerapi.core.MonitorChannel.{MonitorTarget, subscribeTarget}
+  import org.powerapi.core.MonitorChannel.{MonitorTicks, subscribeMonitorTicks}
 
   override def preStart() = {
-    subscribeTarget(eventBus)(self)
+    subscribeMonitorTicks(eventBus)(self)
   }
 
   def receive = active(0)
 
   def active(acc: Int): Actor.Receive = {
-    case _: MonitorTarget => context become active(acc + 1)
+    case _: MonitorTicks => context become active(acc + 1)
     case "reset" => context become active(0)
     case "get" => sender ! acc
   }
@@ -75,7 +76,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 50.milliseconds
     val targets = List(Process(1))
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor1")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, MonitorSubscription(muid, frequency, targets)), "monitor1")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
@@ -83,16 +84,16 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, Duration.Zero, targets)
+      monitor ! MonitorStart("test", MonitorSubscription(muid, Duration.Zero, targets))
     })(_system)
 
     // Not an exception, just an assessment (switching in the running state).
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets)
+      monitor ! MonitorStart("test", MonitorSubscription(muid, frequency, targets))
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets)
+      monitor ! MonitorStart("test", MonitorSubscription(muid, frequency, targets))
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
@@ -119,13 +120,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val targets = List(Process(1), Application("java"), All)
     
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor2")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, MonitorSubscription(muid, frequency, targets)), "monitor2")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets)
+      monitor ! MonitorStart("test", MonitorSubscription(muid, frequency, targets))
     })(_system)
 
     Thread.sleep(250)
@@ -146,7 +147,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
+    expectMsgClass(classOf[Int]) should be >= (10 * 0.9).toInt
 
     Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -170,12 +171,12 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks3")
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets.toList), "monitor3")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, MonitorSubscription(muid, frequency, targets.toList)), "monitor3")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
 
-    monitor ! MonitorStart("test", muid, frequency, targets.toList)
+    monitor ! MonitorStart("test", MonitorSubscription(muid, frequency, targets.toList))
     Thread.sleep(250)
     monitor ! MonitorStop("test", muid)
 
@@ -191,7 +192,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
+    expectMsgClass(classOf[Int]) should be >= (10 * 0.9).toInt
 
     Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -219,7 +220,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       subscribers += _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     }
 
-    startMonitor(monitor.muid, frequency, targets)(eventBus)
+    startMonitor(MonitorSubscription(monitor.muid, frequency, targets))(eventBus)
     Thread.sleep(250)
     monitor.cancel()
 
@@ -238,7 +239,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 0 until 100) {
       subscribers(i) ! "get"
       // We assume a service quality of 90% (regarding the number of processed messages).
-      expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
+      expectMsgClass(classOf[Int]) should be >= (10 * 0.9).toInt
       Await.result(gracefulStop(subscribers(i), timeout.duration), timeout.duration)
     }
     
@@ -259,7 +260,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     for(frequency <- 50 to 100) {
       val monitor = new Monitor(eventBus)
-      startMonitor(monitor.muid, frequency.milliseconds, targets)(eventBus)
+      startMonitor(MonitorSubscription(monitor.muid, frequency.milliseconds, targets))(eventBus)
     }
 
     Thread.sleep(1000)

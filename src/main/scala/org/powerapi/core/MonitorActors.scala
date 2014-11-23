@@ -27,24 +27,20 @@ import java.util.UUID
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, PoisonPill, Props}
 import akka.event.LoggingReceive
-
-import scala.concurrent.duration.FiniteDuration
+import org.powerapi.core.MonitorChannel.MonitorSubscription
 
 
 /**
  * One child represents one monitor.
  * Allows to publish messages in the right topics depending of the targets.
  */
-class MonitorChild(eventBus: MessageBus,
-                   muid: UUID,
-                   frequency: FiniteDuration,
-                   targets: List[Target]) extends Component {
+class MonitorChild(eventBus: MessageBus, subscription: MonitorSubscription) extends Component {
 
   import org.powerapi.core.ClockChannel.{ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock}
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishTarget}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishTargets}
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
+    case MonitorStart(_, subs) if subscription == subs => start()
   } orElse default
 
   /**
@@ -52,7 +48,7 @@ class MonitorChild(eventBus: MessageBus,
    */
   def running: Actor.Receive = LoggingReceive {
     case ClockTick(_, _, timestamp) => produceMessages(timestamp)
-    case MonitorStop(_, id) if muid == id => stop()
+    case MonitorStop(_, id) if subscription.muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
 
@@ -60,17 +56,17 @@ class MonitorChild(eventBus: MessageBus,
    * Start the clock, subscribe on the associated topic for receiving tick messages.
    */
   def start(): Unit = {
-    startClock(frequency)(eventBus)
-    subscribeClock(frequency)(eventBus)(self)
-    log.info("monitor is started, muid: {}", muid)
+    startClock(subscription.frequency)(eventBus)
+    subscribeClock(subscription.frequency)(eventBus)(self)
+    log.info("monitor is started, muid: {}", subscription.muid)
     context.become(running)
   }
 
   /**
-   * Handle ticks for publishing the targets in the right topics.
+   * Handle ticks for publishing the targets in the right topic.
    */
   def produceMessages(timestamp: Long): Unit = {
-    targets.foreach(target => publishTarget(muid, target, frequency, timestamp)(eventBus))
+    publishTargets(subscription, timestamp)(eventBus)
   }
 
   /**
@@ -78,9 +74,9 @@ class MonitorChild(eventBus: MessageBus,
    * stop to listen ticks and kill the monitor actor.
    */
   def stop(): Unit = {
-    stopClock(frequency)(eventBus)
-    unsubscribeClock(frequency)(eventBus)(self)
-    log.info("monitor is stopped, muid: {}", muid)
+    stopClock(subscription.frequency)(eventBus)
+    unsubscribeClock(subscription.frequency)(eventBus)(self)
+    log.info("monitor is stopped, muid: {}", subscription.muid)
     self ! PoisonPill
   }
 }
@@ -126,8 +122,8 @@ class Monitors(eventBus: MessageBus) extends Component with Supervisor {
    * @param msg: Message received for starting a monitor.
    */
   def start(msg: MonitorStart): Unit = {
-    val name = formatMonitorChildName(msg.muid)
-    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets), name)
+    val name = formatMonitorChildName(msg.subscription.muid)
+    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.subscription), name)
     child ! msg
     context.become(running)
   }

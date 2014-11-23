@@ -23,8 +23,6 @@
 
 package org.powerapi.core
 
-import java.util.UUID
-
 import akka.actor.ActorRef
 import akka.event.LookupClassification
 
@@ -37,16 +35,6 @@ trait Message {
    * A message is associated with a topic which is used to route the messages on the bus.
    */
   def topic: String
-}
-
-/**
- * Reports are the base messages exchanged between PowerAPI components.
- */
-trait Report extends Message {
-  /**
-   * A report is associated with a monitor unique identifier (MUID), which is at the origin of the report flow.
-   */
-  def muid: UUID
 }
 
 trait EventBus extends akka.event.EventBus {

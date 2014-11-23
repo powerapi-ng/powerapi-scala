@@ -23,7 +23,10 @@
 
 package org.powerapi.sensors.procfs.cpu.simple
 
-import org.powerapi.core.{MessageBus, OSHelper, Sensor}
+import java.util.UUID
+
+import org.powerapi.core._
+import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.CacheKey
 
 /**
  * CPU sensor configuration.
@@ -38,7 +41,7 @@ trait Configuration extends org.powerapi.core.Configuration {
    * Global stat file, giving global information of the system itself.
    * Typically presents under /proc/stat.
    */
-  lazy val globalStatPath = load { _.getString("powerapi.procfs.global-stat") } match {
+  lazy val globalStatPath = load { _.getString("powerapi.procfs.global-path") } match {
     case ConfigValue(path) => path
     case _ => "/proc/stat"
   }
@@ -47,7 +50,7 @@ trait Configuration extends org.powerapi.core.Configuration {
    * Process stat file, giving information about the process itself.
    * Typically presents under /proc/[pid]/stat.
    */
-  lazy val processStatPath = load { _.getString("powerapi.procfs.process-stat") } match {
+  lazy val processStatPath = load { _.getString("powerapi.procfs.process-path") } match {
     case ConfigValue(path) if path.contains("%?pid") => path
     case _ => "/proc/%?pid/stat"
   }
@@ -65,18 +68,17 @@ trait Configuration extends org.powerapi.core.Configuration {
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with Configuration {
   import java.io.IOException
 
-  import org.powerapi.core.MonitorChannel.MonitorTarget
+  import org.powerapi.core.MonitorChannel.MonitorTicks
   import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.publishCpuReport
-
   import scala.io.Source
 
   /**
    * Delegate class collecting time information contained into both globalStatPath and processStatPath files
    * and providing the target CPU percent usage.
    */
-  class TargetPercent {
-    import org.powerapi.core.{All, Application, Process}
-    import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, TargetPercent}
+  class TargetRatio {
+    import org.powerapi.core.{Application, Process}
+    import org.powerapi.sensors.procfs.cpu.FileControl.using
 
     private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
 
@@ -85,39 +87,42 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
      */
     lazy val cache = collection.mutable.Map[CacheKey, (Long, Long)]()
 
-    def globalElapsedTime(): Long = {
+    def globalElapsedTime(): Option[Long] = {
       try {
-        val bufferedSource = Source.fromFile(globalStatPath)
-        log.debug("using {} as a procfs global stat path", globalStatPath)
+        using(Source.fromFile(globalStatPath))(source => {
+          log.debug("using {} as a procfs global stat path", globalStatPath)
 
-        bufferedSource.getLines.toIndexedSeq(0) match {
-          /**
-           * Exclude all guest columns, they are already added in utime column.
-           *
-           * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
-           */
-          case GlobalStatFormat(times) => times.split("\\s").slice(0, 8).foldLeft(0: Long) {
-            (acc, x) => acc + x.toLong
+          val time = source.getLines.toIndexedSeq(0) match {
+            /**
+             * Exclude all guest columns, they are already added in utime column.
+             *
+             * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
+             */
+            case GlobalStatFormat(times) => times.split("\\s").slice(0, 8).foldLeft(0: Long) {
+              (acc, x) => acc + x.toLong
+            }
           }
-          case _ => log.warning("unable to parse line from file {}", globalStatPath); 0l
-        }
+
+          Some(time)
+        })
       }
       catch {
-        case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); 0l
+        case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); None
       }
     }
 
-    def processElapsedTime(process: Process): Long = {
+    def processElapsedTime(process: Process): Option[Long] = {
       try {
-        val bufferedSource = Source.fromFile(processStatPath.replace("%?pid", s"${process.pid}"))
-        log.debug("using {} as a procfs process stat path", processStatPath)
+        using(Source.fromFile(processStatPath.replace("%?pid", s"${process.pid}")))(source => {
+          log.debug("using {} as a procfs process stat path", processStatPath)
 
-        val statLine = bufferedSource.getLines.toIndexedSeq(0).split("\\s")
-        // User time + System time
-        statLine(13).toLong + statLine(14).toLong
+          val statLine = source.getLines.toIndexedSeq(0).split("\\s")
+          // User time + System time
+          Some(statLine(13).toLong + statLine(14).toLong)
+        })
       }
       catch {
-        case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); 0l
+        case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); None
       }
     }
 
@@ -126,42 +131,60 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
     }
 
     def handleProcessTarget(process: Process): (Long, Long) = {
-      (processElapsedTime(process), globalElapsedTime())
+      lazy val processTime: Long = processElapsedTime(process) match {
+        case Some(value) => value
+        case _ => 0l
+      }
+      lazy val globalTime: Long = globalElapsedTime() match {
+        case Some(value) => value
+        case _ => 0l
+      }
+
+      (processTime, globalTime)
     }
 
     def handleApplicationTarget(application: Application): (Long, Long) = {
-      lazy val elapsedTime = osHelper.getProcesses(application).foldLeft(0: Long) {
-        (acc, process: Process) => acc + processElapsedTime(process)
+      lazy val processTime: Long = osHelper.getProcesses(application).foldLeft(0: Long) {
+        (acc, process: Process) => {
+          processElapsedTime(process) match {
+            case Some(value) => acc + value
+            case _ => acc
+          }
+        }
       }
-
-      (elapsedTime, globalElapsedTime())
+      lazy val globalTime: Long = globalElapsedTime() match {
+        case Some(value) => value
+        case _ => 0l
+      }
+      (processTime, globalTime)
     }
 
-    def handleMonitorTarget(monitorTarget: MonitorTarget) = {
-      val now = monitorTarget.target match {
+    def handleTarget(muid: UUID, target: Target): org.powerapi.sensors.procfs.cpu.CpuSensorChannel.TargetRatio = {
+      val now = target match {
         case process: Process => handleProcessTarget(process)
         case application: Application => handleApplicationTarget(application)
         case All => log.warning("target All is not handled by this sensor"); (0l, 0l)
       }
 
-      val key = CacheKey(monitorTarget.muid, monitorTarget.target)
+      val key = CacheKey(muid, target)
       val old = cache.getOrElse(key, now)
       refreshCache(key, now)
-
       val globalDiff = now._2 - old._2
 
-      if(globalDiff <= 0) {
-        TargetPercent(0)
+      if (globalDiff <= 0) {
+        org.powerapi.sensors.procfs.cpu.CpuSensorChannel.TargetRatio(0)
       }
       else {
-        TargetPercent((now._1 - old._1).doubleValue / globalDiff)
+        org.powerapi.sensors.procfs.cpu.CpuSensorChannel.TargetRatio((now._1 - old._1).doubleValue / globalDiff)
       }
     }
   }
 
-  lazy val targetPercent = new TargetPercent
+  lazy val targetRatio = new TargetRatio
 
-  def process(monitorTarget: MonitorTarget): Unit = {
-    publishCpuReport(monitorTarget.muid, monitorTarget.target, targetPercent.handleMonitorTarget(monitorTarget), monitorTarget.timestamp)(eventBus)
+  def sense(monitorTargets: MonitorTicks): Unit = {
+    for(target <- monitorTargets.subscription.targets) {
+      publishCpuReport(monitorTargets.subscription.muid, target, targetRatio.handleTarget(monitorTargets.subscription.muid, target), monitorTargets.timestamp)(eventBus)
+    }
   }
 }

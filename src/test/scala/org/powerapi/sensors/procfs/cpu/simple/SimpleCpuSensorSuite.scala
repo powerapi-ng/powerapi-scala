@@ -29,9 +29,9 @@ import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.MonitorChannel.MonitorTarget
+import org.powerapi.core.MonitorChannel.{MonitorSubscription, MonitorTicks}
 import org.powerapi.core._
-import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, CpuSensorReport, TargetPercent, subscribeCpuSensor}
+import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, CpuSensorReport, TargetRatio, subscribeCpuProcSensor}
 
 import scala.concurrent.duration.DurationInt
 
@@ -54,7 +54,7 @@ class OSHelperMock extends OSHelper {
 
 class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
   override def preStart() = {
-    subscribeCpuSensor(eventBus)(self)
+    subscribeCpuProcSensor(eventBus)(self)
   }
 
   def receive = {
@@ -89,19 +89,21 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   val cpuSensor = TestActorRef(Props(classOf[SimpleCpuSensorMock], eventBus, new OSHelperMock()), "simple-CpuSensor")(system)
 
   "A simple CpuSensor" should "read global elapsed time from a given dedicated system file" in {
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.globalElapsedTime should equal(globalElapsedTime)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.globalElapsedTime should equal(Some(globalElapsedTime))
   }
 
   it should "read process elapsed time from a given dedicated system file" in {
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.processElapsedTime(Process(1)) should equal(p1ElapsedTime)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.processElapsedTime(Process(1)) should equal(Some(p1ElapsedTime))
   }
 
   it should "refresh its cache after each processed message" in {
-    val monitorTarget = MonitorTarget("test", UUID.randomUUID(), Process(1), 25.milliseconds, System.currentTimeMillis)
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.cache shouldBe empty
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.handleMonitorTarget(monitorTarget)
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.cache should equal(
-      Map(CacheKey(monitorTarget.muid, monitorTarget.target) -> (p1ElapsedTime, globalElapsedTime))
+    val muid = UUID.randomUUID()
+    val processTarget = Process(1)
+
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.cache shouldBe empty
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleTarget(muid, processTarget)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.cache should equal(
+      Map(CacheKey(muid, processTarget) -> (p1ElapsedTime, globalElapsedTime))
     )
   }
 
@@ -110,33 +112,35 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val oldAppElapsedTime = appElapsedTime / 2
     val oldGlobalElapsedTime = globalElapsedTime / 2
 
-    val processTarget = MonitorTarget("test", UUID.randomUUID(), Process(1), 25.milliseconds, System.currentTimeMillis)
-    val appTarget = MonitorTarget("test", UUID.randomUUID(), Application("app"), 50.milliseconds, System.currentTimeMillis())
+    val muid = UUID.randomUUID()
+    val processTarget = Process(1)
+    val appTarget = Application("app")
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.refreshCache(CacheKey(processTarget.muid, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.refreshCache(CacheKey(appTarget.muid, Application("app")), (oldAppElapsedTime, oldGlobalElapsedTime))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid, processTarget), (oldP1ElapsedTime, oldGlobalElapsedTime))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid, appTarget), (oldAppElapsedTime, oldGlobalElapsedTime))
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.handleMonitorTarget(processTarget) should equal(
-      TargetPercent((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleTarget(muid, processTarget) should equal(
+      TargetRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
     )
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.handleMonitorTarget(appTarget) should equal(
-      TargetPercent((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
-    )
-  }
-
-  it should "not handle a App target" in {
-    val allTarget = MonitorTarget("test", UUID.randomUUID(), All, 25.milliseconds, System.currentTimeMillis)
-
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetPercent.handleMonitorTarget(allTarget) should equal(
-      TargetPercent(0)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleTarget(muid, appTarget) should equal(
+      TargetRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
     )
   }
 
-  it should "process a MonitorTarget message and then publish a CpuReport" in {
+  it should "not handle an All target" in {
+    val muid = UUID.randomUUID()
+
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleTarget(muid, All) should equal(
+      TargetRatio(0)
+    )
+  }
+
+  it should "process a MonitorTargets message and then publish a CpuSensorReport" in {
     TestActorRef(Props(classOf[MockSubscriber], eventBus, testActor), "subscriber")(system)
+    val monitorTargets = MonitorTicks("test", MonitorSubscription(UUID.randomUUID(), 25.milliseconds, List(Process(1), Application("app"))), System.currentTimeMillis)
 
-    val processTarget = MonitorTarget("test", UUID.randomUUID(), Process(1), 25.milliseconds, System.currentTimeMillis)
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].process(processTarget)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTargets)
+    expectMsgClass(classOf[CpuSensorReport])
     expectMsgClass(classOf[CpuSensorReport])
   }
 }

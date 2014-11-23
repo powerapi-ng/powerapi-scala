@@ -26,12 +26,13 @@ package org.powerapi.sensors.procfs.cpu
 import java.util.UUID
 
 import akka.actor.ActorRef
-import org.powerapi.core.{Channel, MessageBus, Report, Target}
+import org.powerapi.core.{Channel, Message, MessageBus, Target}
 
 
 /**
  * Monitor channel and messages.
  *
+ * @author abourdon
  * @author mcolmant
  */
 object CpuSensorChannel extends Channel {
@@ -41,7 +42,11 @@ object CpuSensorChannel extends Channel {
   /**
    * Wrapper classes.
    */
-  case class TargetPercent(percent: Double = 0)
+  case class TimeInStates(times: Map[Int, Long]) {
+    def -(that: TimeInStates) =
+      TimeInStates((for ((frequency, time) <- times) yield (frequency, time - that.times.getOrElse(frequency, 0: Long))).toMap)
+  }
+  case class TargetRatio(percent: Double = 0)
   case class CacheKey(muid: UUID, target: Target)
 
   /**
@@ -50,31 +55,51 @@ object CpuSensorChannel extends Channel {
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
-   * @param targetPercent: target cpu percent usage.
+   * @param targetRatio: target cpu percent usage.
+   * @param timeInStates: time spent by the CPU in its frequencies.
    * @param timestamp: Origin time for the ClockTick message.
    */
   case class CpuSensorReport(topic: String,
                              muid: UUID,
                              target: Target,
-                             targetPercent: TargetPercent,
-                             timestamp: Long) extends Report
+                             targetRatio: TargetRatio,
+                             timeInStates: TimeInStates = TimeInStates(Map()),
+                             timestamp: Long) extends Message
 
   /**
    * Topic for communicating with the Formula actors.
    */
-  private val topic = "sensor:compute"
+  private val topicProc = "sensor:proc"
+  private val topicProcDvfs = "sensor:proc-dvfs"
 
   /**
    * Publish a CpuSensorReport in the event bus.
    */
-  def publishCpuReport(muid: UUID, target: Target, targetPercent: TargetPercent, timestamp: Long): MessageBus => Unit = {
-    publish(CpuSensorReport(topic, muid, target, targetPercent, timestamp))
+  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, timestamp: Long): MessageBus => Unit = {
+    publish(CpuSensorReport(topic = topicProc,
+                            muid = muid,
+                            target = target,
+                            targetRatio = targetRatio,
+                            timestamp = timestamp))
+  }
+
+  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, timeInStates: TimeInStates, timestamp: Long): MessageBus => Unit = {
+    publish(CpuSensorReport(topic = topicProc,
+                            muid = muid,
+                            target = target,
+                            targetRatio = targetRatio,
+                            timeInStates = timeInStates,
+                            timestamp = timestamp))
   }
 
   /**
    * External method use by the Formula for interacting with the bus.
    */
-  def subscribeCpuSensor: MessageBus => ActorRef => Unit = {
-    subscribe(topic)
+  def subscribeCpuProcSensor: MessageBus => ActorRef => Unit = {
+    subscribe(topicProc)
+  }
+
+  def subscribeCpuProcDvfsSensor: MessageBus => ActorRef => Unit = {
+    subscribe(topicProcDvfs)
   }
 }

@@ -86,7 +86,6 @@ object LinuxHelper extends OSHelper with Configuration {
        */
       pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").toList.map(dir => Thread(dir.getName.toLong))
     }
-
     else List()
   }
 }

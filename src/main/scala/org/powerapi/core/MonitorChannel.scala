@@ -39,31 +39,33 @@ object MonitorChannel extends Channel {
   trait MonitorMessage extends Message
 
   /**
-   * MonitorTarget is represented as a dedicated type of message.
+   * Wrapper for containing the monitor informations.
+   *
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
+   * @param frequency: monitor frequency.
+   * @param targets: monitor targets.
+   */
+  case class MonitorSubscription(muid: UUID, frequency: FiniteDuration, targets: List[Target])
+
+  /**
+   * MonitorTicks is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param target: monitor target.
-   * @param frequency: monitor frequency.
+   * @param subscription: monitor informations.
+   * @param timestamp: time origin of the report flow.
    */
-  case class MonitorTarget(topic: String,
-                           muid: UUID,
-                           target: Target,
-                           frequency: FiniteDuration,
-                           timestamp: Long) extends MonitorMessage with Report
+  case class MonitorTicks(topic: String,
+                          subscription: MonitorSubscription,
+                          timestamp: Long) extends MonitorMessage
 
   /**
    * MonitorStart is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param frequency: clock frequency.
-   * @param targets: monitor targets.
+   * @param subscription: monitor informations.
    */
   case class MonitorStart(topic: String,
-                          muid: UUID,
-                          frequency: FiniteDuration,
-                          targets: List[Target]) extends MonitorMessage with Report
+                          subscription: MonitorSubscription) extends MonitorMessage
 
   /**
    * MonitorStop is represented as a dedicated type of message.
@@ -71,7 +73,7 @@ object MonitorChannel extends Channel {
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    */
-  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage with Report
+  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage
 
   /**
    * MonitorStopAll is represented as a dedicated type of message.
@@ -93,15 +95,15 @@ object MonitorChannel extends Channel {
   /**
    * External methods used by the Sensor actors for interacting with the bus.
    */
-  def subscribeTarget: MessageBus => ActorRef => Unit = {
+  def subscribeMonitorTicks: MessageBus => ActorRef => Unit = {
     subscribe(topicToPublish)
   }
 
   /**
    * External Methods used by the API (or a Monitor object) for interacting with the bus.
    */
-  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
-    publish(MonitorStart(topic, muid, frequency, targets))
+  def startMonitor(subscription: MonitorSubscription): MessageBus => Unit = {
+    publish(MonitorStart(topic, subscription))
   }
 
   def stopMonitor(muid: UUID): MessageBus => Unit = {
@@ -120,8 +122,8 @@ object MonitorChannel extends Channel {
   /**
    * Internal methods used by the MonitorChild actors for interacting with the bus.
    */
-  def publishTarget(muid: UUID, target: Target, frequency: FiniteDuration, timestamp: Long): MessageBus => Unit = {
-    publish(MonitorTarget(topicToPublish, muid, target, frequency, timestamp))
+  def publishTargets(subscription: MonitorSubscription, timestamp: Long): MessageBus => Unit = {
+    publish(MonitorTicks(topicToPublish, subscription, timestamp))
   }
 
   /**

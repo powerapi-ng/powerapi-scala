@@ -31,9 +31,9 @@ import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
-import org.powerapi.core.MonitorChannel.MonitorTarget
+import org.powerapi.core.MonitorChannel.{MonitorSubscription, MonitorTicks}
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.DurationInt
 
 class TestComponent extends Component {
   def receive = LoggingReceive {
@@ -60,11 +60,10 @@ class TestChild extends Component {
   }
 }
 
-case class MessageWrapperMock(muid: UUID, target: Target, frequency: FiniteDuration, timestamp: Long)
 
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
-  def process(monitorTarget: MonitorTarget): Unit = {
-    actorRef ! MessageWrapperMock(monitorTarget.muid, monitorTarget.target, monitorTarget.frequency, monitorTarget.timestamp)
+  def sense(monitorTargets: MonitorTicks): Unit = {
+    actorRef ! monitorTargets.subscription
   }
 }
 
@@ -134,17 +133,18 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Sensor" should "process MonitorTarget messages" in new Bus {
-    import org.powerapi.core.MonitorChannel.publishTarget
+    import org.powerapi.core.MonitorChannel.publishTargets
 
     val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
 
     val muid = UUID.randomUUID()
     val frequency = 25.milliseconds
-    val target = Process(0)
+    val targets = List(Process(0), Process(1))
     val timestamp = 1l
+    val subscription = MonitorSubscription(muid, frequency, targets)
 
-    publishTarget(muid, target, frequency, timestamp)(eventBus)
-    expectMsg(MessageWrapperMock(muid, target, frequency, timestamp))
+    publishTargets(subscription, timestamp)(eventBus)
+    expectMsg(subscription)
   }
 
   "A different failure strategy" can "be applied for different supervisors" in {

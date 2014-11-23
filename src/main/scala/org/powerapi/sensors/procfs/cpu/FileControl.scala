@@ -2,9 +2,9 @@
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
- * 
+ *
  * Copyright (C) 2011-2014 Inria, University of Lille 1.
- * 
+ *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
@@ -21,31 +21,22 @@
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 
-package org.powerapi.core
+package org.powerapi.sensors.procfs.cpu
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import org.powerapi.UnitTest
-
-class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
-
-  def this() = this(ActorSystem("MessageSuite"))
-
-  override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
-  }
-
-  "The MessageBus" should "handle messages by topic" in {
-    val eventBus = new MessageBus
-    val msg1 = new Message { val topic = "topic1" }
-    val msg2 = new Message { val topic = "topic2" }
-
-    eventBus.subscribe(testActor, "topic1")
-    eventBus.publish(msg1)
-    eventBus.publish(msg2)
-    expectMsg(msg1)
-    eventBus.unsubscribe(testActor)
-    eventBus.publish(msg2)
-    expectNoMsg()
+/**
+ * Implement the Loan's pattern for closing automatically a resource.
+ *
+ * @see https://wiki.scala-lang.org/display/SYGN/Loan
+ *
+ * @author mcolmant
+ */
+object FileControl {
+  def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
+    try {
+      f(resource)
+    }
+    finally {
+      resource.close()
+    }
   }
 }
