@@ -20,26 +20,19 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.sensors.procfs.cpu.dvfs
 
-import java.io.IOException
-import java.util.UUID
-
-import org.powerapi.core.MonitorChannel.MonitorTicks
-import org.powerapi.core.{Target, ConfigValue, MessageBus, OSHelper}
-import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, publishCpuReport, TimeInStates}
-import org.powerapi.sensors.procfs.cpu.FileControl.using
-
-import scala.io.Source
+import org.powerapi.core.{MessageBus, OSHelper}
 
 /**
  * CPU sensor configuration.
  *
- * @author abourdon
- * @author mcolmant
+ * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait Configuration extends org.powerapi.core.Configuration {
+  import org.powerapi.core.ConfigValue
+
   /**
    * OS cores number (can be logical).
    */
@@ -63,14 +56,22 @@ trait Configuration extends org.powerapi.core.Configuration {
  *
  * @see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
  *
- * @author abourdon
- * @author mcolmant
+ * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.sensors.procfs.cpu.simple.CpuSensor(eventBus, osHelper) with Configuration {
+  import org.powerapi.core.MonitorChannel.MonitorTick
+  import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.publishCpuReport
+
   /**
    * Delegate class to deal with time spent within each CPU frequencies.
    */
   class Frequencies {
+    import java.io.IOException
+    import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, TimeInStates}
+    import org.powerapi.sensors.procfs.cpu.FileControl.using
+    import scala.io.Source
+
     // time_in_state line format: frequency time
     private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
     lazy val cache = collection.mutable.Map[CacheKey, TimeInStates]()
@@ -102,9 +103,9 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.s
       cache += (key -> now)
     }
 
-    def handleTarget(muid: UUID, target: Target): TimeInStates = {
+    def handleMonitorTick(tick: MonitorTick): TimeInStates = {
       val now = TimeInStates(timeInStates)
-      val key = CacheKey(muid, target)
+      val key = CacheKey(tick.muid, tick.target)
       val old = cache.getOrElse(key, now)
       refreshCache(key, now)
       now - old
@@ -113,15 +114,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.s
 
   lazy val frequencies = new Frequencies
 
-  override def sense(monitorTicks: MonitorTicks): Unit = {
-    for(target <- monitorTicks.subscription.targets) {
-      publishCpuReport(
-        monitorTicks.subscription.muid,
-        target,
-        targetRatio.handleTarget(monitorTicks.subscription.muid, target),
-        frequencies.handleTarget(monitorTicks.subscription.muid, target),
-        monitorTicks.timestamp
-      )(eventBus)
-    }
+  override def sense(monitorTick: MonitorTick): Unit = {
+    publishCpuReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
   }
 }

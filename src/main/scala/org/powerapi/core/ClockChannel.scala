@@ -20,16 +20,15 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import akka.actor.ActorRef
-
 import scala.concurrent.duration.FiniteDuration
-
 
 /**
  * Clock channel and messages.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object ClockChannel extends Channel {
 

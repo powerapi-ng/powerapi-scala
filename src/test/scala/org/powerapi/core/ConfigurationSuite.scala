@@ -20,14 +20,12 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigException}
 import org.powerapi.UnitTest
-
 import scala.collection.JavaConversions
 
 class ConfigurationMock extends Configuration {

@@ -20,7 +20,6 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
@@ -29,7 +28,6 @@ import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
-
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 

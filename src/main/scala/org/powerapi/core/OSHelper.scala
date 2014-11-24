@@ -20,7 +20,6 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import java.io.File
@@ -28,15 +27,16 @@ import java.io.File
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
  *
- * @author mcolmant
  * @param tid: thread identifier
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 case class Thread(tid: Long)
 
 /**
  * Base trait use for implementing os specific methods.
  *
- * @author mcolmant
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait OSHelper {
   /**
@@ -57,7 +57,7 @@ trait OSHelper {
 /**
  * Linux special helper.
  *
- * @author mcolmant
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object LinuxHelper extends OSHelper with Configuration {
   import scala.sys.process.stringSeqToProcess

@@ -20,19 +20,15 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import java.util.UUID
-
 import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
 import akka.actor.{ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
-import org.powerapi.core.MonitorChannel.{MonitorSubscription, MonitorTicks}
-
 import scala.concurrent.duration.DurationInt
 
 class TestComponent extends Component {
@@ -62,8 +58,10 @@ class TestChild extends Component {
 
 
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
-  def sense(monitorTicks: MonitorTicks): Unit = {
-    actorRef ! monitorTicks.subscription
+  import org.powerapi.core.MonitorChannel.MonitorTick
+
+  def sense(monitorTick: MonitorTick): Unit = {
+    actorRef ! monitorTick
   }
 }
 
@@ -117,7 +115,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
     EventFilter[IllegalArgumentException](occurrences = 1, source = child.path.toString).intercept({      
       watch(child)
       child ! new IllegalArgumentException("bad argument")
-      expectMsgPF() { case Terminated(child) => () }
+      expectMsgPF() { case Terminated(_) => () }
     })(system)
 
     EventFilter[Exception]("crash", occurrences = 1, source = supervisor.path.toString).intercept({
@@ -128,23 +126,26 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       child ! "state"
       expectMsg(42)
       child ! new Exception("crash")
-      expectMsgPF() { case t @ Terminated(child) if t.existenceConfirmed => () }
+      expectMsgPF() { case t @ Terminated(_) if t.existenceConfirmed => () }
     })(system)
   }
 
   "A Sensor" should "process MonitorTarget messages" in new Bus {
-    import org.powerapi.core.MonitorChannel.publishTargets
+    import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.MonitorChannel.{MonitorTick, publishTarget}
 
     val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
 
     val muid = UUID.randomUUID()
-    val frequency = 25.milliseconds
-    val targets = List(Process(0), Process(1))
-    val timestamp = 1l
-    val subscription = MonitorSubscription(muid, frequency, targets)
+    val target = Process(1)
+    val clockTick = ClockTick("test", 25.milliseconds)
 
-    publishTargets(subscription, timestamp)(eventBus)
-    expectMsg(subscription)
+    publishTarget(muid, target, clockTick)(eventBus)
+
+    expectMsgClass(classOf[MonitorTick]) match {
+      case MonitorTick(_, id, targ, tick) if muid == id && target == targ && clockTick == tick => assert(true)
+      case _ => assert(false)
+    }
   }
 
   "A different failure strategy" can "be applied for different supervisors" in {

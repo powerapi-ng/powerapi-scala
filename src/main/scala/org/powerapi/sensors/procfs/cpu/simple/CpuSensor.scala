@@ -20,19 +20,15 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.sensors.procfs.cpu.simple
 
-import java.util.UUID
-
-import org.powerapi.core.{All, Sensor, MessageBus, OSHelper, Target}
-import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.CacheKey
+import org.powerapi.core.{MessageBus, OSHelper, Sensor}
 
 /**
  * CPU sensor configuration.
  *
- * @author abourdon
- * @author mcolmant
+ * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait Configuration extends org.powerapi.core.Configuration {
   import org.powerapi.core.ConfigValue
@@ -62,23 +58,23 @@ trait Configuration extends org.powerapi.core.Configuration {
  *
  * @see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
  *
- * @author abourdon
- * @author mcolmant
+ * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with Configuration {
-  import java.io.IOException
-
-  import org.powerapi.core.MonitorChannel.MonitorTicks
+  import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.publishCpuReport
-  import scala.io.Source
 
   /**
    * Delegate class collecting time information contained into both globalStatPath and processStatPath files
    * and providing the target CPU percent usage.
    */
   class TargetRatio {
-    import org.powerapi.core.{Application, Process}
+    import java.io.IOException
+    import org.powerapi.core.{All, Application, Process}
+    import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.CacheKey
     import org.powerapi.sensors.procfs.cpu.FileControl.using
+    import scala.io.Source
 
     private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
 
@@ -159,18 +155,18 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
       (processTime, globalTime)
     }
 
-    def handleTarget(muid: UUID, target: Target): org.powerapi.sensors.procfs.cpu.CpuSensorChannel.TargetRatio = {
-      val now = target match {
+    def handleMonitorTick(tick: MonitorTick): org.powerapi.sensors.procfs.cpu.CpuSensorChannel.TargetRatio = {
+      val now = tick.target match {
         case process: Process => handleProcessTarget(process)
         case application: Application => handleApplicationTarget(application)
-        case All => log.warning("target All is not handled by this sensor"); (0l, 0l)
+        case All => (0l, 0l)
       }
 
-      val key = CacheKey(muid, target)
+      val key = CacheKey(tick.muid, tick.target)
       val old = cache.getOrElse(key, now)
       refreshCache(key, now)
-      val globalDiff = now._2 - old._2
 
+      val globalDiff = now._2 - old._2
       if (globalDiff <= 0) {
         org.powerapi.sensors.procfs.cpu.CpuSensorChannel.TargetRatio(0)
       }
@@ -182,14 +178,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
 
   lazy val targetRatio = new TargetRatio
 
-  def sense(monitorTicks: MonitorTicks): Unit = {
-    for(target <- monitorTicks.subscription.targets) {
-      publishCpuReport(
-        monitorTicks.subscription.muid,
-        target,
-        targetRatio.handleTarget(monitorTicks.subscription.muid, target),
-        monitorTicks.timestamp
-      )(eventBus)
-    }
+  def sense(monitorTick: MonitorTick): Unit = {
+    publishCpuReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
   }
 }

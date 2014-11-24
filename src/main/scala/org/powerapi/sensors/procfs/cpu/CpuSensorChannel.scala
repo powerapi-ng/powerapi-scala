@@ -20,20 +20,18 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.sensors.procfs.cpu
 
 import java.util.UUID
-
 import akka.actor.ActorRef
+import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.{Channel, Message, MessageBus, Target}
-
 
 /**
  * Monitor channel and messages.
  *
- * @author abourdon
- * @author mcolmant
+ * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object CpuSensorChannel extends Channel {
 
@@ -57,14 +55,14 @@ object CpuSensorChannel extends Channel {
    * @param target: monitor target.
    * @param targetRatio: target cpu percent usage.
    * @param timeInStates: time spent by the CPU in its frequencies.
-   * @param timestamp: Origin time for the ClockTick message.
+   * @param tick: tick origin.
    */
   case class CpuSensorReport(topic: String,
                              muid: UUID,
                              target: Target,
                              targetRatio: TargetRatio,
                              timeInStates: TimeInStates = TimeInStates(Map()),
-                             timestamp: Long) extends Message
+                             tick: ClockTick) extends Message
 
   /**
    * Topic for communicating with the Formula actors.
@@ -75,21 +73,21 @@ object CpuSensorChannel extends Channel {
   /**
    * Publish a CpuSensorReport in the event bus.
    */
-  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, timestamp: Long): MessageBus => Unit = {
+  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, tick: ClockTick): MessageBus => Unit = {
     publish(CpuSensorReport(topic = topicProc,
                             muid = muid,
                             target = target,
                             targetRatio = targetRatio,
-                            timestamp = timestamp))
+                            tick = tick))
   }
 
-  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, timeInStates: TimeInStates, timestamp: Long): MessageBus => Unit = {
+  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, timeInStates: TimeInStates, tick: ClockTick): MessageBus => Unit = {
     publish(CpuSensorReport(topic = topicProc,
                             muid = muid,
                             target = target,
                             targetRatio = targetRatio,
                             timeInStates = timeInStates,
-                            timestamp = timestamp))
+                            tick = tick))
   }
 
   /**

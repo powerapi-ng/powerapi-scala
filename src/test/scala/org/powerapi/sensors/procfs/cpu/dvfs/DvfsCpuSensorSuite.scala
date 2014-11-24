@@ -20,19 +20,14 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.sensors.procfs.cpu.dvfs
 
 import java.util.UUID
-
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.MonitorChannel.{MonitorSubscription, MonitorTicks}
-import org.powerapi.core.{Application, MessageBus, OSHelper, Process, Thread}
-import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, CpuSensorReport, TimeInStates, subscribeCpuProcSensor}
-
+import org.powerapi.core.{MessageBus, OSHelper}
 import scala.concurrent.duration.DurationInt
 
 trait DvfsCpuSensorConfigurationMock extends Configuration {
@@ -47,12 +42,16 @@ class DvfsCpuSensorMock(messageBus: MessageBus, osHelper: OSHelper)
   with DvfsCpuSensorConfigurationMock
 
 class OSHelperMock extends OSHelper {
+  import org.powerapi.core.{Application, Process, Thread}
+
   def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
 
   def getThreads(process: Process): List[Thread] = List()
 }
 
 class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
+  import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CpuSensorReport, subscribeCpuProcSensor}
+
   override def preStart() = {
     subscribeCpuProcSensor(eventBus)(self)
   }
@@ -62,13 +61,11 @@ class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
   }
 }
 
-/**
- * DvfsCpuSensorSuite
- *
- * @author abourdon
- * @author mcolmant
- */
 class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
+  import org.powerapi.core.{Application, Process}
+  import org.powerapi.core.ClockChannel.ClockTick
+  import org.powerapi.core.MonitorChannel.MonitorTick
+  import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, CpuSensorReport, TimeInStates}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -100,11 +97,11 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "Frequencies' cache" should "be correctly updated during process phase" in {
     val muid = UUID.randomUUID()
-    val target = Process(1)
+    val processTarget = Process(1)
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.cache should have size 0
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.handleTarget(muid, target)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.handleMonitorTick(MonitorTick("test", muid, processTarget, ClockTick("test", 25.milliseconds)))
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.cache should equal(
-      Map(CacheKey(muid, target) -> TimeInStates(Map(4000000 -> 16, 3000000 -> 12, 2000000 -> 8, 1000000 -> 4)))
+      Map(CacheKey(muid, processTarget) -> TimeInStates(Map(4000000 -> 16, 3000000 -> 12, 2000000 -> 8, 1000000 -> 4)))
     )
   }
 
@@ -112,25 +109,24 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     TestActorRef(Props(classOf[MockSubscriber], eventBus, testActor), "subscriber")(system)
     val muid = UUID.randomUUID()
     val timeInStates = TimeInStates(Map(4000000 -> 6, 3000000 -> 2, 2000000 -> 2, 1000000 -> 2))
-    val monitorTicks = MonitorTicks("test", MonitorSubscription(muid, 25.milliseconds, List(Process(1), Application("app"))), System.currentTimeMillis)
+    val monitorTick1 = MonitorTick("test", muid, Process(1), ClockTick("test", 25.milliseconds))
+    val monitorTick2 = MonitorTick("test", muid, Application("app"), ClockTick("test", 25.milliseconds))
 
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.refreshCache(CacheKey(muid, Process(1)),
       TimeInStates(Map(4000000 -> 10, 3000000 -> 10, 2000000 -> 6, 1000000 -> 2))
     )
-
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.refreshCache(CacheKey(muid, Application("app")),
       TimeInStates(Map(4000000 -> 10, 3000000 -> 10, 2000000 -> 6, 1000000 -> 2))
     )
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTicks)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTick1)
     expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, m, Process(1), _, t ,_) if m == muid && t == timeInStates => assert(true)
-      case CpuSensorReport(_, m, Application("app"), _, t ,_) if m == muid && t == timeInStates => assert(true)
+      case CpuSensorReport(_, id, Process(1), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTick2)
     expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, m, Process(1), _, t ,_) if m == muid && t == timeInStates => assert(true)
-      case CpuSensorReport(_, m, Application("app"), _, t ,_) if m == muid && t == timeInStates => assert(true)
+      case CpuSensorReport(_, id, Application("app"), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
   }

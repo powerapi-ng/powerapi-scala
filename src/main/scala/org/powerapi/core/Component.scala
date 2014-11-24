@@ -20,20 +20,17 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import akka.actor.{OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator, ActorLogging, Actor}
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.event.LoggingReceive
-import org.powerapi.core.MonitorChannel.{MonitorTicks, subscribeMonitorTicks}
-
 import scala.concurrent.duration.DurationInt
 
 /**
  * Base trait for components which use Actor.
  *
- * @author mcolmant
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait Component extends Actor with ActorLogging {
   /**
@@ -47,24 +44,27 @@ trait Component extends Actor with ActorLogging {
 /**
  * Base trait for each PowerAPI sensor.
  * Each of them should listen to a MonitorTarget message and thus process it.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 abstract class Sensor(eventBus: MessageBus) extends Component {
+  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
 
   override def preStart(): Unit = {
-    subscribeMonitorTicks(eventBus)(self)
+    subscribeMonitorTick(eventBus)(self)
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: MonitorTicks => sense(msg)
+    case msg: MonitorTick => sense(msg)
   } orElse default
 
-  def sense(monitorTarget: MonitorTicks): Unit
+  def sense(monitorTarget: MonitorTick): Unit
 }
 
 /**
  * Supervisor strategy.
  *
- * @author mcolmant
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait Supervisor extends Component {
   def handleFailure: PartialFunction[Throwable, Directive]
@@ -77,7 +77,7 @@ trait Supervisor extends Component {
  * This class is used for defining a default supervisor strategy for the Guardian Actor.
  * The Guardian Actor is the main actor used when system.actorOf(...) is used.
  *
- * @author mcolmant
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
   def handleFailure: PartialFunction[Throwable, Directive] = {

@@ -25,12 +25,13 @@ package org.powerapi.core
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, Cancellable, PoisonPill, Props}
 import akka.event.LoggingReceive
-
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
  * One child clock is created per frequency.
  * Allows to publish a message in the right topics for a given frequency.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Component {
   import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishTick}
@@ -89,6 +90,8 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
 /**
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Clocks(eventBus: MessageBus) extends Component with Supervisor {
   import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, stopAllClock, subscribeTickSubscription}

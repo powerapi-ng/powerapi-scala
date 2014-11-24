@@ -20,7 +20,6 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.sensors.procfs.cpu
 
 /**
@@ -28,7 +27,7 @@ package org.powerapi.sensors.procfs.cpu
  *
  * @see https://wiki.scala-lang.org/display/SYGN/Loan
  *
- * @author mcolmant
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object FileControl {
   def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
