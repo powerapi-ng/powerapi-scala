@@ -68,7 +68,8 @@ abstract class Sensor(eventBus: MessageBus) extends Component {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 abstract class Formula(eventBus: MessageBus) extends Component {
-  import org.powerapi.sensors.procfs.cpu.SensorReport
+
+  import org.powerapi.sensor.SensorReport
 
   type SR <: SensorReport
 

@@ -20,14 +20,16 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.sensors.procfs.cpu.dvfs
+package org.powerapi.module.procfs.sensor.cpu.dvfs
 
 import java.util.UUID
+
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.{MessageBus, OSHelper}
+
 import scala.concurrent.duration.DurationInt
 
 trait DvfsCpuSensorConfigurationMock extends Configuration {
@@ -50,7 +52,7 @@ class OSHelperMock extends OSHelper {
 }
 
 class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
+  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
 
   override def preStart() = {
     subscribeCpuProcfsDvfsSensor(eventBus)(self)
@@ -62,10 +64,10 @@ class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
 }
 
 class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.{Application, Process}
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TimeInStates}
+  import org.powerapi.core.{Application, Process}
+  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TimeInStates}
 
   implicit val timeout = Timeout(1.seconds)
 

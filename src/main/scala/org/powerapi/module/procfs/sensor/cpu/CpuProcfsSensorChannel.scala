@@ -20,12 +20,14 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.sensors.procfs.cpu
+package org.powerapi.module.procfs.sensor.cpu
 
 import java.util.UUID
+
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.{Channel, MessageBus, Target}
+import org.powerapi.sensor.SensorReport
 
 /**
  * CpuProcfsSensorChannel channel and messages.

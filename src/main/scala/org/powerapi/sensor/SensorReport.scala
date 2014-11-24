@@ -20,22 +20,19 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.sensors.procfs.cpu
+package org.powerapi.sensor
+
+import java.util.UUID
+
+import org.powerapi.core.Message
 
 /**
- * Implement the Loan's pattern for closing automatically a resource.
- *
- * @see https://wiki.scala-lang.org/display/SYGN/Loan
+ * Main sensor message.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object CpuProcfsFileControl {
-  def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
-    try {
-      f(resource)
-    }
-    finally {
-      resource.close()
-    }
-  }
+
+trait SensorReport extends Message {
+  def topic: String
+  def muid: UUID
 }

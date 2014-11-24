@@ -20,9 +20,11 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.sensors.procfs.cpu.simple
+package org.powerapi.module.procfs.sensor.cpu.simple
 
 import org.powerapi.core.{MessageBus, OSHelper, Sensor}
+import org.powerapi.module.procfs.sensor.cpu
+import org.powerapi.module.procfs.sensor.cpu.{CpuProcfsSensorChannel, CpuProcfsFileControl}
 
 /**
  * CPU sensor configuration.
@@ -63,7 +65,7 @@ trait Configuration extends org.powerapi.core.Configuration {
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with Configuration {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.publishCpuProcfsReport
+  import CpuProcfsSensorChannel.publishCpuProcfsReport
 
   /**
    * Delegate class collecting time information contained into both globalStatPath and processStatPath files
@@ -71,10 +73,12 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
    */
   class TargetRatio {
     import java.io.IOException
-    import org.powerapi.core.{All, Application, Process}
-    import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.CacheKey
-    import org.powerapi.sensors.procfs.cpu.CpuProcfsFileControl.using
-    import scala.io.Source
+
+import org.powerapi.core.{All, Application, Process}
+    import CpuProcfsFileControl.using
+    import CpuProcfsSensorChannel.CacheKey
+
+import scala.io.Source
 
     private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
 
@@ -156,7 +160,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
       (processTime, globalTime)
     }
 
-    def handleMonitorTick(tick: MonitorTick): org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.TargetRatio = {
+    def handleMonitorTick(tick: MonitorTick): CpuProcfsSensorChannel.TargetRatio = {
       val now = tick.target match {
         case process: Process => handleProcessTarget(process)
         case application: Application => handleApplicationTarget(application)
@@ -169,10 +173,10 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
 
       val globalDiff = now._2 - old._2
       if (globalDiff <= 0) {
-        org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.TargetRatio(0)
+        cpu.CpuProcfsSensorChannel.TargetRatio(0)
       }
       else {
-        org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.TargetRatio((now._1 - old._1).doubleValue / globalDiff)
+        cpu.CpuProcfsSensorChannel.TargetRatio((now._1 - old._1).doubleValue / globalDiff)
       }
     }
   }

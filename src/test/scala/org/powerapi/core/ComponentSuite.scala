@@ -30,7 +30,7 @@ import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
 import org.powerapi.core.SensorMockChannel.SensorMockReport
-import org.powerapi.sensors.procfs.cpu.SensorReport
+import org.powerapi.sensor.SensorReport
 import scala.concurrent.duration.DurationInt
 
 class TestComponent extends Component {
@@ -67,7 +67,8 @@ class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventB
 }
 
 object SensorMockChannel extends Channel {
-  import org.powerapi.sensors.procfs.cpu.SensorReport
+
+  import org.powerapi.sensor.SensorReport
 
   type M = SensorMockReport
 
