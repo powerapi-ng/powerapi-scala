@@ -20,7 +20,6 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.module.procfs.sensor.cpu.simple
 
 import java.util.UUID
