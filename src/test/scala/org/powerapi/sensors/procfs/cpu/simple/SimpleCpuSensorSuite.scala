@@ -51,14 +51,14 @@ class OSHelperMock extends OSHelper {
 }
 
 class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CpuSensorReport, subscribeCpuProcSensor}
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsSensor}
 
   override def preStart() = {
-    subscribeCpuProcSensor(eventBus)(self)
+    subscribeCpuProcfsSensor(eventBus)(self)
   }
 
   def receive = {
-    case msg: CpuSensorReport => actorRef ! msg
+    case msg: CpuProcfsSensorReport => actorRef ! msg
   }
 }
 
@@ -66,7 +66,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.{All, Application, Process}
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, CpuSensorReport, TargetRatio}
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TargetRatio}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -133,7 +133,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     )
   }
 
-  it should "process a MonitorTicks message and then publish a CpuSensorReport" in {
+  it should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
     TestActorRef(Props(classOf[MockSubscriber], eventBus, testActor), "subscriber")(system)
 
     val oldP1ElapsedTime = p1ElapsedTime / 2
@@ -155,18 +155,18 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val appRatio = TargetRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
 
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTicks1)
-    expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, id, Process(1), processr, _, _) if muid1 == id && processRatio == processr => assert(true)
+    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
+      case CpuProcfsSensorReport(_, id, Process(1), processr, _, _) if muid1 == id && processRatio == processr => assert(true)
       case _ => assert(false)
     }
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTicks2)
-    expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, id, Process(1), processr, _, _) if muid2 == id && processRatio == processr => assert(true)
+    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
+      case CpuProcfsSensorReport(_, id, Process(1), processr, _, _) if muid2 == id && processRatio == processr => assert(true)
       case _ => assert(false)
     }
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTicks3)
-    expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, id, Application("app"), appr, _, _) if id == muid2 && appRatio == appr => assert(true)
+    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
+      case CpuProcfsSensorReport(_, id, Application("app"), appr, _, _) if id == muid2 && appRatio == appr => assert(true)
       case _ => assert(false)
     }
   }

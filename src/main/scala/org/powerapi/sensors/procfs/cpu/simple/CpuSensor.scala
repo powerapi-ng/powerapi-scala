@@ -63,7 +63,7 @@ trait Configuration extends org.powerapi.core.Configuration {
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with Configuration {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.publishCpuReport
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.publishCpuProcfsReport
 
   /**
    * Delegate class collecting time information contained into both globalStatPath and processStatPath files
@@ -180,6 +180,6 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
   lazy val targetRatio = new TargetRatio
 
   def sense(monitorTick: MonitorTick): Unit = {
-    publishCpuReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    publishCpuProcfsReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
   }
 }

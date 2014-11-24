@@ -50,14 +50,14 @@ class OSHelperMock extends OSHelper {
 }
 
 class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CpuSensorReport, subscribeCpuProcSensor}
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
 
   override def preStart() = {
-    subscribeCpuProcSensor(eventBus)(self)
+    subscribeCpuProcfsDvfsSensor(eventBus)(self)
   }
 
   def receive = {
-    case msg: CpuSensorReport => actorRef ! msg
+    case msg: CpuProcfsSensorReport => actorRef ! msg
   }
 }
 
@@ -65,7 +65,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.{Application, Process}
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, CpuSensorReport, TimeInStates}
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TimeInStates}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -105,7 +105,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     )
   }
 
-  "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a CpuSensorReport" in {
+  "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
     TestActorRef(Props(classOf[MockSubscriber], eventBus, testActor), "subscriber")(system)
     val muid = UUID.randomUUID()
     val timeInStates = TimeInStates(Map(4000000 -> 6, 3000000 -> 2, 2000000 -> 2, 1000000 -> 2))
@@ -120,13 +120,13 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     )
 
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTick1)
-    expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, id, Process(1), _, times ,_) if muid == id && timeInStates == times => assert(true)
+    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
+      case CpuProcfsSensorReport(_, id, Process(1), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTick2)
-    expectMsgClass(classOf[CpuSensorReport]) match {
-      case CpuSensorReport(_, id, Application("app"), _, times ,_) if muid == id && timeInStates == times => assert(true)
+    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
+      case CpuProcfsSensorReport(_, id, Application("app"), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
   }

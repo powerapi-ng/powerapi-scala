@@ -61,7 +61,7 @@ trait Configuration extends org.powerapi.core.Configuration {
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.sensors.procfs.cpu.simple.CpuSensor(eventBus, osHelper) with Configuration {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.publishCpuReport
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.publishCpuProcfsReport
 
   /**
    * Delegate class to deal with time spent within each CPU frequencies.
@@ -115,6 +115,6 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.s
   lazy val frequencies = new Frequencies
 
   override def sense(monitorTick: MonitorTick): Unit = {
-    publishCpuReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    publishCpuProcfsReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
   }
 }

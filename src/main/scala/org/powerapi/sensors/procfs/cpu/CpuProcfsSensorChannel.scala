@@ -28,14 +28,14 @@ import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.{Channel, Message, MessageBus, Target}
 
 /**
- * Monitor channel and messages.
+ * CpuProcfsSensorChannel channel and messages.
  *
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object CpuProcfsSensorChannel extends Channel {
 
-  type M = CpuSensorReport
+  type M = CpuProcfsSensorReport
 
   /**
    * Wrapper classes.
@@ -48,7 +48,7 @@ object CpuProcfsSensorChannel extends Channel {
   case class CacheKey(muid: UUID, target: Target)
 
   /**
-   * CpuSensorReport is represented as a dedicated type of message.
+   * CpuProcfsSensorReport is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
@@ -57,47 +57,47 @@ object CpuProcfsSensorChannel extends Channel {
    * @param timeInStates: time spent by the CPU in its frequencies.
    * @param tick: tick origin.
    */
-  case class CpuSensorReport(topic: String,
-                             muid: UUID,
-                             target: Target,
-                             targetRatio: TargetRatio,
-                             timeInStates: TimeInStates = TimeInStates(Map()),
-                             tick: ClockTick) extends Message
+  case class CpuProcfsSensorReport(topic: String,
+                                   muid: UUID,
+                                   target: Target,
+                                   targetRatio: TargetRatio,
+                                   timeInStates: TimeInStates = TimeInStates(Map()),
+                                   tick: ClockTick) extends Message
 
   /**
    * Topic for communicating with the Formula actors.
    */
-  private val topicProc = "sensor:proc"
-  private val topicProcDvfs = "sensor:proc-dvfs"
+  private val topicProcfsSimple = "sensor:cpu-procfs-simple"
+  private val topicProcfsDvfs = "sensor:cpu-procfs-dvfs"
 
   /**
-   * Publish a CpuSensorReport in the event bus.
+   * Publish a CpuProcfsSensorReport in the event bus.
    */
-  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, tick: ClockTick): MessageBus => Unit = {
-    publish(CpuSensorReport(topic = topicProc,
-                            muid = muid,
-                            target = target,
-                            targetRatio = targetRatio,
-                            tick = tick))
+  def publishCpuProcfsReport(muid: UUID, target: Target, targetRatio: TargetRatio, tick: ClockTick): MessageBus => Unit = {
+    publish(CpuProcfsSensorReport(topic = topicProcfsSimple,
+                                  muid = muid,
+                                  target = target,
+                                  targetRatio = targetRatio,
+                                  tick = tick))
   }
 
-  def publishCpuReport(muid: UUID, target: Target, targetRatio: TargetRatio, timeInStates: TimeInStates, tick: ClockTick): MessageBus => Unit = {
-    publish(CpuSensorReport(topic = topicProc,
-                            muid = muid,
-                            target = target,
-                            targetRatio = targetRatio,
-                            timeInStates = timeInStates,
-                            tick = tick))
+  def publishCpuProcfsReport(muid: UUID, target: Target, targetRatio: TargetRatio, timeInStates: TimeInStates, tick: ClockTick): MessageBus => Unit = {
+    publish(CpuProcfsSensorReport(topic = topicProcfsDvfs,
+                                  muid = muid,
+                                  target = target,
+                                  targetRatio = targetRatio,
+                                  timeInStates = timeInStates,
+                                  tick = tick))
   }
 
   /**
    * External method use by the Formula for interacting with the bus.
    */
-  def subscribeCpuProcSensor: MessageBus => ActorRef => Unit = {
-    subscribe(topicProc)
+  def subscribeCpuProcfsSensor: MessageBus => ActorRef => Unit = {
+    subscribe(topicProcfsSimple)
   }
 
-  def subscribeCpuProcDvfsSensor: MessageBus => ActorRef => Unit = {
-    subscribe(topicProcDvfs)
+  def subscribeCpuProcfsDvfsSensor: MessageBus => ActorRef => Unit = {
+    subscribe(topicProcfsDvfs)
   }
 }
