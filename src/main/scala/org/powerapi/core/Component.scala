@@ -43,7 +43,7 @@ trait Component extends Actor with ActorLogging {
 
 /**
  * Base trait for each PowerAPI sensor.
- * Each of them should listen to a MonitorTarget message and thus process it.
+ * Each of them should react to a MonitorTarget, sense informations and then publish a MonitorTick.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */

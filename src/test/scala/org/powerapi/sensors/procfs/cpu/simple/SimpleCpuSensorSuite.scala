@@ -51,7 +51,7 @@ class OSHelperMock extends OSHelper {
 }
 
 class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
-  import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CpuSensorReport, subscribeCpuProcSensor}
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CpuSensorReport, subscribeCpuProcSensor}
 
   override def preStart() = {
     subscribeCpuProcSensor(eventBus)(self)
@@ -66,7 +66,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.{All, Application, Process}
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, CpuSensorReport, TargetRatio}
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, CpuSensorReport, TargetRatio}
 
   implicit val timeout = Timeout(1.seconds)
 

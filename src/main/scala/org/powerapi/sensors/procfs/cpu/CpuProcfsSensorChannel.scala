@@ -33,7 +33,7 @@ import org.powerapi.core.{Channel, Message, MessageBus, Target}
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object CpuSensorChannel extends Channel {
+object CpuProcfsSensorChannel extends Channel {
 
   type M = CpuSensorReport
 

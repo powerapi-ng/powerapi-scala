@@ -29,7 +29,7 @@ package org.powerapi.sensors.procfs.cpu
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object FileControl {
+object CpuProcfsFileControl {
   def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
     try {
       f(resource)

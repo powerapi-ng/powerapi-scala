@@ -61,15 +61,15 @@ trait Configuration extends org.powerapi.core.Configuration {
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.sensors.procfs.cpu.simple.CpuSensor(eventBus, osHelper) with Configuration {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.publishCpuReport
+  import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.publishCpuReport
 
   /**
    * Delegate class to deal with time spent within each CPU frequencies.
    */
   class Frequencies {
     import java.io.IOException
-    import org.powerapi.sensors.procfs.cpu.CpuSensorChannel.{CacheKey, TimeInStates}
-    import org.powerapi.sensors.procfs.cpu.FileControl.using
+    import org.powerapi.sensors.procfs.cpu.CpuProcfsSensorChannel.{CacheKey, TimeInStates}
+    import org.powerapi.sensors.procfs.cpu.CpuProcfsFileControl.using
     import scala.io.Source
 
     // time_in_state line format: frequency time
