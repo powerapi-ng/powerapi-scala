@@ -91,7 +91,7 @@ object CpuProcfsSensorChannel extends Channel {
   }
 
   /**
-   * External method use by the Formula for interacting with the bus.
+   * External method used by the Formula for interacting with the bus.
    */
   def subscribeCpuProcfsSensor: MessageBus => ActorRef => Unit = {
     subscribe(topicProcfsSimple)
