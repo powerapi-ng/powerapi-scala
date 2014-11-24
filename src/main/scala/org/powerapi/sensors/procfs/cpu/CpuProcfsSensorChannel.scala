@@ -25,7 +25,7 @@ package org.powerapi.sensors.procfs.cpu
 import java.util.UUID
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Channel, Message, MessageBus, Target}
+import org.powerapi.core.{Channel, MessageBus, Target}
 
 /**
  * CpuProcfsSensorChannel channel and messages.
@@ -35,7 +35,7 @@ import org.powerapi.core.{Channel, Message, MessageBus, Target}
  */
 object CpuProcfsSensorChannel extends Channel {
 
-  type M = CpuProcfsSensorReport
+  type M = SensorReport
 
   /**
    * Wrapper classes.
@@ -62,7 +62,7 @@ object CpuProcfsSensorChannel extends Channel {
                                    target: Target,
                                    targetRatio: TargetRatio,
                                    timeInStates: TimeInStates = TimeInStates(Map()),
-                                   tick: ClockTick) extends Message
+                                   tick: ClockTick) extends SensorReport
 
   /**
    * Topic for communicating with the Formula actors.

@@ -45,7 +45,6 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
     case _: MonitorTick => context become active(acc + 1)
     case "reset" => context become active(0)
     case "get" => sender ! acc
-    case ex => println(ex)
   }
 }
 

@@ -43,7 +43,7 @@ trait Component extends Actor with ActorLogging {
 
 /**
  * Base trait for each PowerAPI sensor.
- * Each of them should react to a MonitorTarget, sense informations and then publish a MonitorTick.
+ * Each of them should react to a MonitorTick, sense informations and then publish a SensorReport.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
@@ -58,7 +58,30 @@ abstract class Sensor(eventBus: MessageBus) extends Component {
     case msg: MonitorTick => sense(msg)
   } orElse default
 
-  def sense(monitorTarget: MonitorTick): Unit
+  def sense(monitorTick: MonitorTick): Unit
+}
+
+/**
+ * Base trait for each PowerAPI formula.
+ * Each of them should react to a SensorReport, compute the power and then publish a PowerReport.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+abstract class Formula(eventBus: MessageBus) extends Component {
+  import org.powerapi.sensors.procfs.cpu.SensorReport
+
+  type SR <: SensorReport
+
+  override def preStart(): Unit = {
+    subscribeSensorReport()
+  }
+
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: SR => compute(msg)
+  } orElse default
+
+  def subscribeSensorReport(): Unit
+  def compute(sensorReport: SR): Unit
 }
 
 /**

@@ -29,6 +29,8 @@ import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
+import org.powerapi.core.SensorMockChannel.SensorMockReport
+import org.powerapi.sensors.procfs.cpu.SensorReport
 import scala.concurrent.duration.DurationInt
 
 class TestComponent extends Component {
@@ -56,12 +58,43 @@ class TestChild extends Component {
   }
 }
 
-
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
   import org.powerapi.core.MonitorChannel.MonitorTick
 
   def sense(monitorTick: MonitorTick): Unit = {
     actorRef ! monitorTick
+  }
+}
+
+object SensorMockChannel extends Channel {
+  import org.powerapi.sensors.procfs.cpu.SensorReport
+
+  type M = SensorMockReport
+
+  private val topic = "test"
+
+  case class SensorMockReport(topic: String, muid: UUID, power: Double) extends SensorReport
+
+  def subscribeMockMessage: MessageBus => ActorRef => Unit = {
+    subscribe(topic)
+  }
+
+  def publishSensorMockReport(muid: UUID, power: Double): MessageBus => Unit = {
+    publish(SensorMockReport(topic, muid, power))
+  }
+}
+
+class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends Formula(eventBus) {
+  import SensorMockChannel.{SensorMockReport, subscribeMockMessage}
+
+  type SR = SensorMockReport
+
+  def subscribeSensorReport(): Unit = {
+    subscribeMockMessage(eventBus)(self)
+  }
+
+  def compute(sensorReport: SensorMockReport): Unit = {
+    actorRef ! sensorReport.power * coeff
   }
 }
 
@@ -130,7 +163,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
     })(system)
   }
 
-  "A Sensor" should "process MonitorTarget messages" in new Bus {
+  "A Sensor" should "process MonitorTick messages" in new Bus {
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.{MonitorTick, publishTarget}
 
@@ -146,6 +179,19 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       case MonitorTick(_, id, targ, tick) if muid == id && target == targ && clockTick == tick => assert(true)
       case _ => assert(false)
     }
+  }
+
+  "A Formula" should "process SensorReport messages" in new Bus {
+    import SensorMockChannel.publishSensorMockReport
+
+    val coeff = 10d
+    val formulaMock = TestActorRef(Props(classOf[FormulaMock], eventBus, testActor, coeff))(system)
+
+    val muid = UUID.randomUUID()
+    val power = 2.2d
+
+    publishSensorMockReport(muid, power)(eventBus)
+    expectMsgClass(classOf[Double]) should equal(power * coeff)
   }
 
   "A different failure strategy" can "be applied for different supervisors" in {
