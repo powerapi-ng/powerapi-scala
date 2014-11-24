@@ -92,7 +92,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.s
           })
         }
         catch {
-          case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); None
+          case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage);
         }
       }
 

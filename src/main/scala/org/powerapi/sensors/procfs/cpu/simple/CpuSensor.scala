@@ -97,6 +97,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
             case GlobalStatFormat(times) => times.split("\\s").slice(0, 8).foldLeft(0: Long) {
               (acc, x) => acc + x.toLong
             }
+            case _ => 0l
           }
 
           Some(time)
