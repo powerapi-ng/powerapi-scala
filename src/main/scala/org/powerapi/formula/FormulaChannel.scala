@@ -63,13 +63,14 @@ object FormulaChannel extends Channel {
                          target: Target,
                          power: Double,
                          unit: PowerUnit,
+                         device: String,
                          tick: ClockTick) extends Message
 
   /**
    * Publish a PowerReport in the event bus.
    */
-  def publishPowerReport(muid: UUID, target: Target, power: Double, unit: PowerUnit, tick: ClockTick): MessageBus => Unit = {
-    publish(PowerReport(powerReportMuid(muid), muid, target, power, unit, tick))
+  def publishPowerReport(muid: UUID, target: Target, power: Double, unit: PowerUnit, device: String, tick: ClockTick): MessageBus => Unit = {
+    publish(PowerReport(powerReportMuid(muid), muid, target, power, unit, device, tick))
   }
 
   /**

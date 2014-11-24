@@ -76,6 +76,6 @@ class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with Configurat
 
   def compute(sensorReport: CpuProcfsSensorReport): Unit = {
     lazy val power = (tdp * tdpFactor) * sensorReport.targetRatio.percent
-    publishPowerReport(sensorReport.muid, sensorReport.target, power, PowerUnit.W, sensorReport.tick)(eventBus)
+    publishPowerReport(sensorReport.muid, sensorReport.target, power, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
   }
 }

@@ -83,7 +83,7 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     formulaMock.underlyingActor.asInstanceOf[CpuFormula].compute(CpuProcfsSensorReport(topic, muid, target, targetRatio, TimeInStates(Map()), tick))
 
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, tic) if muid == id && target == targ && power == pow && tick == tic => assert(true)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tick == tic => assert(true)
       case _ => assert(false)
     }
   }
