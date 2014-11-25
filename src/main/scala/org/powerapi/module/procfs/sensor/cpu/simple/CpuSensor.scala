@@ -22,9 +22,10 @@
  */
 package org.powerapi.module.procfs.sensor.cpu.simple
 
-import org.powerapi.core.{MessageBus, OSHelper, Sensor}
+import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.procfs.sensor.cpu
 import org.powerapi.module.procfs.sensor.cpu.{CpuProcfsSensorChannel, CpuProcfsFileControl}
+import org.powerapi.sensor.Sensor
 
 /**
  * CPU sensor configuration.

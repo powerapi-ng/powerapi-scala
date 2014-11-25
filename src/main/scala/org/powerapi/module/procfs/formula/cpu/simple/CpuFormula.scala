@@ -22,7 +22,8 @@
  */
 package org.powerapi.module.procfs.formula.cpu.simple
 
-import org.powerapi.core.{Formula, MessageBus}
+import org.powerapi.core.MessageBus
+import org.powerapi.formula.Formula
 
 /**
  * CPU formula configuration.

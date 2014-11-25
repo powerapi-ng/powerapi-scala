@@ -22,16 +22,12 @@
  */
 package org.powerapi.core
 
-import java.util.UUID
 import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
 import akka.actor.{ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
-import org.powerapi.core.SensorMockChannel.SensorMockReport
-import org.powerapi.sensor.SensorReport
-import scala.concurrent.duration.DurationInt
 
 class TestComponent extends Component {
   def receive = LoggingReceive {
@@ -55,47 +51,6 @@ class TestChild extends Component {
     case ex: Exception => throw ex
     case x: Int => state = x
     case "state" => sender ! state
-  }
-}
-
-class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
-  import org.powerapi.core.MonitorChannel.MonitorTick
-
-  def sense(monitorTick: MonitorTick): Unit = {
-    actorRef ! monitorTick
-  }
-}
-
-object SensorMockChannel extends Channel {
-
-  import org.powerapi.sensor.SensorReport
-
-  type M = SensorMockReport
-
-  private val topic = "test"
-
-  case class SensorMockReport(topic: String, muid: UUID, power: Double) extends SensorReport
-
-  def subscribeMockMessage: MessageBus => ActorRef => Unit = {
-    subscribe(topic)
-  }
-
-  def publishSensorMockReport(muid: UUID, power: Double): MessageBus => Unit = {
-    publish(SensorMockReport(topic, muid, power))
-  }
-}
-
-class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends Formula(eventBus) {
-  import SensorMockChannel.{SensorMockReport, subscribeMockMessage}
-
-  type SR = SensorMockReport
-
-  def subscribeSensorReport(): Unit = {
-    subscribeMockMessage(eventBus)(self)
-  }
-
-  def compute(sensorReport: SensorMockReport): Unit = {
-    actorRef ! sensorReport.power * coeff
   }
 }
 
@@ -162,37 +117,6 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       child ! new Exception("crash")
       expectMsgPF() { case t @ Terminated(_) if t.existenceConfirmed => () }
     })(system)
-  }
-
-  "A Sensor" should "process MonitorTick messages" in new Bus {
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.{MonitorTick, publishTarget}
-
-    val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
-
-    val muid = UUID.randomUUID()
-    val target = Process(1)
-    val clockTick = ClockTick("test", 25.milliseconds)
-
-    publishTarget(muid, target, clockTick)(eventBus)
-
-    expectMsgClass(classOf[MonitorTick]) match {
-      case MonitorTick(_, id, targ, tick) if muid == id && target == targ && clockTick == tick => assert(true)
-      case _ => assert(false)
-    }
-  }
-
-  "A Formula" should "process SensorReport messages" in new Bus {
-    import SensorMockChannel.publishSensorMockReport
-
-    val coeff = 10d
-    val formulaMock = TestActorRef(Props(classOf[FormulaMock], eventBus, testActor, coeff))(system)
-
-    val muid = UUID.randomUUID()
-    val power = 2.2d
-
-    publishSensorMockReport(muid, power)(eventBus)
-    expectMsgClass(classOf[Double]) should equal(power * coeff)
   }
 
   "A different failure strategy" can "be applied for different supervisors" in {

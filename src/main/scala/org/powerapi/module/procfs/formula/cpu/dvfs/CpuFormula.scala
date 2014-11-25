@@ -23,7 +23,8 @@
 package org.powerapi.module.procfs.formula.cpu.dvfs
 
 import com.typesafe.config.Config
-import org.powerapi.core.{Formula, MessageBus}
+import org.powerapi.core.MessageBus
+import org.powerapi.formula.Formula
 
 import scala.collection.JavaConversions
 
