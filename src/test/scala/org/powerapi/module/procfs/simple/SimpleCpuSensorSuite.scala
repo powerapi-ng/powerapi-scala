@@ -20,7 +20,7 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.sensor.cpu.simple
+package org.powerapi.module.procfs.simple
 
 import java.util.UUID
 
@@ -32,7 +32,7 @@ import org.powerapi.core.{MessageBus, OSHelper}
 
 import scala.concurrent.duration.DurationInt
 
-trait SimpleCpuSensorConfigurationMock extends Configuration {
+trait SimpleCpuSensorConfigurationMock extends SensorConfiguration {
   val basepath = getClass.getResource("/").getPath
 
   override lazy val globalStatPath = s"$basepath/proc/stat"
@@ -55,7 +55,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.core.{All, Application, Process}
-  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TargetRatio}
+  import org.powerapi.module.procfs.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TargetRatio}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -124,7 +124,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
     import org.powerapi.core.MonitorChannel.publishTarget
-    import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.subscribeCpuProcfsSensor
+    import org.powerapi.module.procfs.CpuProcfsSensorChannel.subscribeCpuProcfsSensor
 
     val oldP1ElapsedTime = p1ElapsedTime / 2
     val oldAppElapsedTime = appElapsedTime / 2

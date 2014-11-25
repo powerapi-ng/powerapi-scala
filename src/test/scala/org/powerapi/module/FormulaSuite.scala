@@ -20,17 +20,16 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.formula
+package org.powerapi.module
 
 import java.util.UUID
-import akka.actor.{Props, ActorSystem, ActorRef}
+
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
 import org.powerapi.core.{Channel, MessageBus}
 
 object SensorMockChannel extends Channel {
-
-  import org.powerapi.sensor.SensorReport
 
   type M = SensorMockReport
 
@@ -48,7 +47,7 @@ object SensorMockChannel extends Channel {
 }
 
 class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends Formula(eventBus) {
-  import SensorMockChannel.{SensorMockReport, subscribeMockMessage}
+  import org.powerapi.module.SensorMockChannel.{SensorMockReport, subscribeMockMessage}
 
   type SR = SensorMockReport
 
@@ -74,7 +73,7 @@ class FormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Formula" should "process SensorReport messages" in new Bus {
-    import SensorMockChannel.publishSensorMockReport
+    import org.powerapi.module.SensorMockChannel.publishSensorMockReport
 
     val coeff = 10d
     val formulaMock = TestActorRef(Props(classOf[FormulaMock], eventBus, testActor, coeff))(system)

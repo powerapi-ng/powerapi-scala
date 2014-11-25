@@ -20,10 +20,11 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.formula.cpu.simple
+package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.MessageBus
-import org.powerapi.formula.Formula
+import org.powerapi.module.{PowerChannel, Formula}
+import org.powerapi.module.procfs.CpuProcfsSensorChannel
 
 /**
  * CPU formula configuration.
@@ -31,7 +32,7 @@ import org.powerapi.formula.Formula
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Configuration extends org.powerapi.core.Configuration {
+trait FormulaConfiguration extends org.powerapi.core.Configuration {
   import org.powerapi.core.ConfigValue
 
   /**
@@ -64,10 +65,10 @@ trait Configuration extends org.powerapi.core.Configuration {
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with Configuration {
-  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsSensor}
-  import org.powerapi.formula.PowerUnit
-  import org.powerapi.formula.FormulaChannel.publishPowerReport
+class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaConfiguration {
+  import CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsSensor}
+  import PowerChannel.publishPowerReport
+  import org.powerapi.module.PowerUnit
 
   override type SR = CpuProcfsSensorReport
 

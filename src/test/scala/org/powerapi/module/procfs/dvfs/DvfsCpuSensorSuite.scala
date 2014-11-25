@@ -20,7 +20,7 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.sensor.cpu.dvfs
+package org.powerapi.module.procfs.dvfs
 
 import java.util.UUID
 
@@ -32,7 +32,7 @@ import org.powerapi.core.{MessageBus, OSHelper}
 
 import scala.concurrent.duration.DurationInt
 
-trait DvfsCpuSensorConfigurationMock extends Configuration {
+trait DvfsCpuSensorConfigurationMock extends SensorConfiguration {
   val basepath = getClass.getResource("/").getPath
 
   override lazy val cores = 4
@@ -55,7 +55,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.core.{Application, Process}
-  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TimeInStates}
+  import org.powerapi.module.procfs.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TimeInStates}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -97,7 +97,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
     import org.powerapi.core.MonitorChannel.publishTarget
-    import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.subscribeCpuProcfsDvfsSensor
+    import org.powerapi.module.procfs.CpuProcfsSensorChannel.subscribeCpuProcfsDvfsSensor
 
     val muid = UUID.randomUUID()
     val tickMock = ClockTick("test", 25.milliseconds)

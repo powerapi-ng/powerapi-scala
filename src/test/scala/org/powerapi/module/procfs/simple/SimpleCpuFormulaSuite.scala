@@ -20,7 +20,7 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.formula.cpu.simple
+package org.powerapi.module.procfs.simple
 
 import java.util.UUID
 import akka.actor.{Props, ActorSystem}
@@ -28,9 +28,11 @@ import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.module.PowerChannel
+import org.powerapi.module.procfs.CpuProcfsSensorChannel
 import scala.concurrent.duration.DurationInt
 
-trait SimpleCpuFormulaConfigurationMock extends Configuration {
+trait SimpleCpuFormulaConfigurationMock extends FormulaConfiguration {
   override lazy val tdp = 220
   override lazy val tdpFactor = 0.7
 }
@@ -55,9 +57,9 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.formula.FormulaChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.formula.PowerUnit
-    import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{publishCpuProcfsReport, TargetRatio}
+    import PowerChannel.{PowerReport, subscribePowerReport}
+    import CpuProcfsSensorChannel.{publishCpuProcfsReport, TargetRatio}
+    import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
     val target = Process(1)

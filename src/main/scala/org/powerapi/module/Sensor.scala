@@ -20,22 +20,40 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.sensor.cpu
+package org.powerapi.module
+
+import java.util.UUID
+
+import akka.event.LoggingReceive
+import org.powerapi.core.{Component, Message, MessageBus}
 
 /**
- * Implement the Loan's pattern for closing automatically a resource.
- *
- * @see https://wiki.scala-lang.org/display/SYGN/Loan
+ * Main sensor message.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object CpuProcfsFileControl {
-  def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
-    try {
-      f(resource)
-    }
-    finally {
-      resource.close()
-    }
+
+trait SensorReport extends Message {
+  def topic: String
+  def muid: UUID
+}
+
+/**
+ * Base trait for each PowerAPI sensor.
+ * Each of them should react to a MonitorTick, sense informations and then publish a SensorReport.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+abstract class Sensor(eventBus: MessageBus) extends Component {
+  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+
+  override def preStart(): Unit = {
+    subscribeMonitorTick(eventBus)(self)
   }
+
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: MonitorTick => sense(msg)
+  } orElse default
+
+  def sense(monitorTick: MonitorTick): Unit
 }

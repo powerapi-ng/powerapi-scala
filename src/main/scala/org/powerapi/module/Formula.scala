@@ -20,13 +20,34 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.formula
+package org.powerapi.module
 
 import java.util.UUID
-
 import akka.actor.ActorRef
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{MessageBus, Message, Target, Channel}
+import akka.event.LoggingReceive
+import org.powerapi.core.{Channel, Component, MessageBus}
+
+/**
+ * Base trait for each PowerAPI formula.
+ * Each of them should react to a SensorReport, compute the power and then publish a PowerReport.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+abstract class Formula(eventBus: MessageBus) extends Component {
+
+  type SR <: SensorReport
+
+  override def preStart(): Unit = {
+    subscribeSensorReport()
+  }
+
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: SR => compute(msg)
+  } orElse default
+
+  def subscribeSensorReport(): Unit
+  def compute(sensorReport: SR): Unit
+}
 
 /**
  * Power units.
@@ -41,12 +62,14 @@ object PowerUnit extends Enumeration {
 }
 
 /**
- * FormulaChannel channel and messages.
+ * PowerChannel channel and messages.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object FormulaChannel extends Channel {
-  import org.powerapi.formula.PowerUnit.PowerUnit
+object PowerChannel extends Channel {
+  import org.powerapi.core.ClockChannel.ClockTick
+  import org.powerapi.core.{Message, Target}
+  import org.powerapi.module.PowerUnit.PowerUnit
 
   type M = PowerReport
 

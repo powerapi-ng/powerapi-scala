@@ -20,13 +20,15 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.sensor
+package org.powerapi.module
 
 import java.util.UUID
-import akka.actor.{ActorRef, Props, ActorSystem}
+
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
 import org.powerapi.core.{MessageBus, Process}
+
 import scala.concurrent.duration.DurationInt
 
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {

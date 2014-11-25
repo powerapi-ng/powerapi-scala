@@ -20,12 +20,11 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.sensor.cpu.simple
+package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.{MessageBus, OSHelper}
-import org.powerapi.module.procfs.sensor.cpu
-import org.powerapi.module.procfs.sensor.cpu.{CpuProcfsSensorChannel, CpuProcfsFileControl}
-import org.powerapi.sensor.Sensor
+import org.powerapi.module.Sensor
+import org.powerapi.module.procfs.CpuProcfsSensorChannel
 
 /**
  * CPU sensor configuration.
@@ -33,7 +32,7 @@ import org.powerapi.sensor.Sensor
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Configuration extends org.powerapi.core.Configuration {
+trait SensorConfiguration extends org.powerapi.core.Configuration {
   import org.powerapi.core.ConfigValue
 
   /**
@@ -64,7 +63,7 @@ trait Configuration extends org.powerapi.core.Configuration {
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with Configuration {
+class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with SensorConfiguration {
   import org.powerapi.core.MonitorChannel.MonitorTick
   import CpuProcfsSensorChannel.publishCpuProcfsReport
 
@@ -76,7 +75,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
     import java.io.IOException
 
 import org.powerapi.core.{All, Application, Process}
-    import CpuProcfsFileControl.using
+    import org.powerapi.module.procfs.CpuProcfsFileControl.using
     import CpuProcfsSensorChannel.CacheKey
 
 import scala.io.Source
@@ -174,10 +173,10 @@ import scala.io.Source
 
       val globalDiff = now._2 - old._2
       if (globalDiff <= 0) {
-        cpu.CpuProcfsSensorChannel.TargetRatio(0)
+        CpuProcfsSensorChannel.TargetRatio(0)
       }
       else {
-        cpu.CpuProcfsSensorChannel.TargetRatio((now._1 - old._1).doubleValue / globalDiff)
+        CpuProcfsSensorChannel.TargetRatio((now._1 - old._1).doubleValue / globalDiff)
       }
     }
   }

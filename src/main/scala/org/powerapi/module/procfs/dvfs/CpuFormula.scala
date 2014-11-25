@@ -20,11 +20,12 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.formula.cpu.dvfs
+package org.powerapi.module.procfs.dvfs
 
 import com.typesafe.config.Config
 import org.powerapi.core.MessageBus
-import org.powerapi.formula.Formula
+import org.powerapi.module.{PowerChannel, Formula}
+import org.powerapi.module.procfs.CpuProcfsSensorChannel
 
 import scala.collection.JavaConversions
 
@@ -34,7 +35,7 @@ import scala.collection.JavaConversions
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Configuration extends org.powerapi.module.procfs.formula.cpu.simple.Configuration {
+trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConfiguration {
   import org.powerapi.core.ConfigValue
 
   /**
@@ -63,10 +64,10 @@ trait Configuration extends org.powerapi.module.procfs.formula.cpu.simple.Config
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with Configuration {
-  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
-  import org.powerapi.formula.PowerUnit
-  import org.powerapi.formula.FormulaChannel.publishPowerReport
+class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaConfiguration {
+  import CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
+  import PowerChannel.publishPowerReport
+  import org.powerapi.module.PowerUnit
 
   override type SR = CpuProcfsSensorReport
 

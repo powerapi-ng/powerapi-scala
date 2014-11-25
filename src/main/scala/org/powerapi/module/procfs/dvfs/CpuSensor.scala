@@ -20,10 +20,10 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.sensor.cpu.dvfs
+package org.powerapi.module.procfs.dvfs
 
 import org.powerapi.core.{MessageBus, OSHelper}
-import org.powerapi.module.procfs.sensor.cpu.{CpuProcfsSensorChannel, CpuProcfsFileControl}
+import org.powerapi.module.procfs.{CpuProcfsSensorChannel, CpuProcfsFileControl}
 
 /**
  * CPU sensor configuration.
@@ -31,7 +31,7 @@ import org.powerapi.module.procfs.sensor.cpu.{CpuProcfsSensorChannel, CpuProcfsF
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Configuration extends org.powerapi.core.Configuration {
+trait SensorConfiguration extends org.powerapi.core.Configuration {
   import org.powerapi.core.ConfigValue
 
   /**
@@ -60,7 +60,7 @@ trait Configuration extends org.powerapi.core.Configuration {
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.procfs.sensor.cpu.simple.CpuSensor(eventBus, osHelper) with Configuration {
+class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.procfs.simple.CpuSensor(eventBus, osHelper) with SensorConfiguration {
   import org.powerapi.core.MonitorChannel.MonitorTick
   import CpuProcfsSensorChannel.publishCpuProcfsReport
 
