@@ -101,7 +101,7 @@ import scala.io.Source
             case GlobalStatFormat(times) => times.split("\\s").slice(0, 8).foldLeft(0: Long) {
               (acc, x) => acc + x.toLong
             }
-            case _ => 0l
+            case _ => log.warning("unable to parse line from {}", globalStatPath); 0l
           }
 
           Some(time)

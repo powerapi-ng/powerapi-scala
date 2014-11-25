@@ -90,6 +90,7 @@ import scala.io.Source
             for(line <- source.getLines) {
               line match {
                 case TimeInStateFormat(freq, t) => result += (freq.toInt -> (t.toLong + (result.getOrElse(freq.toInt, 0l))))
+                case _ => log.warning("unable to parse line {} from file {}", line, timeInStatePath)
               }
             }
           })
