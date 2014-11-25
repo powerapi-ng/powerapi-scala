@@ -24,7 +24,7 @@ package org.powerapi.module.procfs.sensor.cpu.dvfs
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
@@ -49,18 +49,6 @@ class OSHelperMock extends OSHelper {
   def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
 
   def getThreads(process: Process): List[Thread] = List()
-}
-
-class MockSubscriber(eventBus: MessageBus, actorRef: ActorRef) extends Actor {
-  import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
-
-  override def preStart() = {
-    subscribeCpuProcfsDvfsSensor(eventBus)(self)
-  }
-
-  def receive = {
-    case msg: CpuProcfsSensorReport => actorRef ! msg
-  }
 }
 
 class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
@@ -108,11 +96,12 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
-    TestActorRef(Props(classOf[MockSubscriber], eventBus, testActor), "subscriber")(system)
+    import org.powerapi.core.MonitorChannel.publishTarget
+    import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.subscribeCpuProcfsDvfsSensor
+
     val muid = UUID.randomUUID()
+    val tickMock = ClockTick("test", 25.milliseconds)
     val timeInStates = TimeInStates(Map(4000000 -> 6, 3000000 -> 2, 2000000 -> 2, 1000000 -> 2))
-    val monitorTick1 = MonitorTick("test", muid, Process(1), ClockTick("test", 25.milliseconds))
-    val monitorTick2 = MonitorTick("test", muid, Application("app"), ClockTick("test", 25.milliseconds))
 
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.refreshCache(CacheKey(muid, Process(1)),
       TimeInStates(Map(4000000 -> 10, 3000000 -> 10, 2000000 -> 6, 1000000 -> 2))
@@ -121,12 +110,14 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       TimeInStates(Map(4000000 -> 10, 3000000 -> 10, 2000000 -> 6, 1000000 -> 2))
     )
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTick1)
+    subscribeCpuProcfsDvfsSensor(eventBus)(testActor)
+
+    publishTarget(muid, Process(1), tickMock)(eventBus)
     expectMsgClass(classOf[CpuProcfsSensorReport]) match {
       case CpuProcfsSensorReport(_, id, Process(1), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].sense(monitorTick2)
+    publishTarget(muid, Application("app"), tickMock)(eventBus)
     expectMsgClass(classOf[CpuProcfsSensorReport]) match {
       case CpuProcfsSensorReport(_, id, Application("app"), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)

@@ -23,7 +23,7 @@
 package org.powerapi.module.procfs.formula.cpu.simple
 
 import java.util.UUID
-import akka.actor.{Actor, ActorRef, Props, ActorSystem}
+import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
@@ -38,18 +38,6 @@ trait SimpleCpuFormulaConfigurationMock extends Configuration {
 class SimpleCpuFormulaMock(messageBus: MessageBus)
   extends CpuFormula(messageBus)
   with SimpleCpuFormulaConfigurationMock
-
-class MockSubscriber(eventBus: MessageBus, muid: UUID, actorRef: ActorRef) extends Actor {
-  import org.powerapi.formula.FormulaChannel.{PowerReport, subscribePowerReport}
-
-  override def preStart() = {
-    subscribePowerReport(muid)(eventBus)(self)
-  }
-
-  def receive = {
-    case msg: PowerReport => actorRef ! msg
-  }
-}
 
 class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -67,23 +55,21 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.formula.FormulaChannel.PowerReport
+    import org.powerapi.formula.FormulaChannel.{PowerReport, subscribePowerReport}
     import org.powerapi.formula.PowerUnit
-    import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{CpuProcfsSensorReport, TargetRatio, TimeInStates}
+    import org.powerapi.module.procfs.sensor.cpu.CpuProcfsSensorChannel.{publishCpuProcfsReport, TargetRatio}
 
-    val topic = "test"
     val muid = UUID.randomUUID()
     val target = Process(1)
     val targetRatio = TargetRatio(0.4)
-    val tick = ClockTick("clock", 25.milliseconds)
+    val tickMock = ClockTick("test", 25.milliseconds)
     val power = 220 * 0.7 * targetRatio.percent
 
-    TestActorRef(Props(classOf[MockSubscriber], eventBus, muid, testActor), "subscriber")(system)
-
-    formulaMock.underlyingActor.asInstanceOf[CpuFormula].compute(CpuProcfsSensorReport(topic, muid, target, targetRatio, TimeInStates(Map()), tick))
+    subscribePowerReport(muid)(eventBus)(testActor)
+    publishCpuProcfsReport(muid, target, targetRatio, tickMock)(eventBus)
 
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tick == tic => assert(true)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)
       case _ => assert(false)
     }
   }
