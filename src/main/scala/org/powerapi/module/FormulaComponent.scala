@@ -106,6 +106,10 @@ object PowerChannel extends Channel {
     subscribe(powerReportMuid(muid))
   }
 
+  def unsubscribePowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
+    unsubscribe(powerReportMuid(muid))
+  }
+
   private def powerReportMuid(muid: UUID): String  = {
     s"power:$muid"
   }
