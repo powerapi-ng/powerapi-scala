@@ -38,7 +38,7 @@ import scala.concurrent.duration.FiniteDuration
 class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
-                   targets: List[Target]) extends Component {
+                   targets: List[Target]) extends ActorDefault {
 
   import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
@@ -91,7 +91,7 @@ class MonitorChild(eventBus: MessageBus,
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class Monitors(eventBus: MessageBus) extends Component with Supervisor {
+class Monitors(eventBus: MessageBus) extends Supervisor {
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
 
   override def preStart(): Unit = {

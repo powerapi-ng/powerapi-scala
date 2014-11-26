@@ -23,7 +23,7 @@
 package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.{MessageBus, OSHelper}
-import org.powerapi.module.Sensor
+import org.powerapi.module.SensorComponent
 import org.powerapi.module.procfs.ProcMetricsChannel
 
 /**
@@ -63,7 +63,7 @@ trait SensorConfiguration extends org.powerapi.core.Configuration {
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with SensorConfiguration {
+class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) with SensorConfiguration {
   import org.powerapi.core.MonitorChannel.MonitorTick
   import ProcMetricsChannel.publishUsageReport
 

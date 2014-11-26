@@ -46,7 +46,7 @@ object SensorMockChannel extends Channel {
   }
 }
 
-class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends Formula(eventBus) {
+class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends FormulaComponent(eventBus) {
   import org.powerapi.module.SensorMockChannel.{SensorMockReport, subscribeMockMessage}
 
   type SR = SensorMockReport

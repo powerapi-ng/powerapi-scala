@@ -25,7 +25,7 @@ package org.powerapi.module
 import java.util.UUID
 
 import akka.event.LoggingReceive
-import org.powerapi.core.{Component, Message, MessageBus}
+import org.powerapi.core.{APIComponent, Message, MessageBus}
 
 /**
  * Main sensor message.
@@ -43,7 +43,7 @@ trait SensorReport extends Message {
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-abstract class Sensor(eventBus: MessageBus) extends Component {
+abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
   import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
 
   override def preStart(): Unit = {

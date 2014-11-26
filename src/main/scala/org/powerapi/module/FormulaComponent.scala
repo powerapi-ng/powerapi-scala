@@ -25,7 +25,7 @@ package org.powerapi.module
 import java.util.UUID
 import akka.actor.ActorRef
 import akka.event.LoggingReceive
-import org.powerapi.core.{Channel, Component, MessageBus}
+import org.powerapi.core.{APIComponent, Channel, MessageBus}
 
 /**
  * Base trait for each PowerAPI formula.
@@ -33,7 +33,7 @@ import org.powerapi.core.{Channel, Component, MessageBus}
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-abstract class Formula(eventBus: MessageBus) extends Component {
+abstract class FormulaComponent(eventBus: MessageBus) extends APIComponent {
 
   type SR <: SensorReport
 

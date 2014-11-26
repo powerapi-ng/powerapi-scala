@@ -32,7 +32,7 @@ import scala.concurrent.duration.DurationInt
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Component extends Actor with ActorLogging {
+trait ActorDefault extends Actor with ActorLogging {
   /**
    * Default behavior when a received message is unknown.
    */
@@ -42,11 +42,18 @@ trait Component extends Actor with ActorLogging {
 }
 
 /**
+ * Base trait for API component.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+trait APIComponent extends ActorDefault
+
+/**
  * Supervisor strategy.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Supervisor extends Component {
+trait Supervisor extends ActorDefault {
   def handleFailure: PartialFunction[Throwable, Directive]
 
   override def supervisorStrategy: SupervisorStrategy =

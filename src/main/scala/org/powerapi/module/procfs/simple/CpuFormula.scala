@@ -23,7 +23,7 @@
 package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.MessageBus
-import org.powerapi.module.{PowerChannel, Formula}
+import org.powerapi.module.{PowerChannel, FormulaComponent}
 import org.powerapi.module.procfs.ProcMetricsChannel
 
 /**
@@ -65,7 +65,7 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaConfiguration {
+class CpuFormula(eventBus: MessageBus) extends FormulaComponent(eventBus) with FormulaConfiguration {
   import ProcMetricsChannel.{UsageReport, subscribeSimpleUsageReport}
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit

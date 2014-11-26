@@ -31,7 +31,7 @@ import org.powerapi.core.{MessageBus, Process}
 
 import scala.concurrent.duration.DurationInt
 
-class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends Sensor(eventBus) {
+class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends SensorComponent(eventBus) {
   import org.powerapi.core.MonitorChannel.MonitorTick
 
   def sense(monitorTick: MonitorTick): Unit = {

@@ -78,7 +78,7 @@ object ClockChannel extends Channel {
    * External methods used by the Monitor actors to subscribe/unsubscribe,
    * start/stop a clock which runs at a frequency.
    */
-  def subscribeClockTick(frequency: FiniteDuration): (MessageBus => ActorRef => Unit) = {
+  def subscribeClockTick(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
     subscribe(clockTickTopic(frequency))
   }
 

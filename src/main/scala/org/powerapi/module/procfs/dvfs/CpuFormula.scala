@@ -24,7 +24,7 @@ package org.powerapi.module.procfs.dvfs
 
 import com.typesafe.config.Config
 import org.powerapi.core.MessageBus
-import org.powerapi.module.{PowerChannel, Formula}
+import org.powerapi.module.{PowerChannel, FormulaComponent}
 import org.powerapi.module.procfs.ProcMetricsChannel
 
 import scala.collection.JavaConversions
@@ -64,7 +64,7 @@ trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConf
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaConfiguration {
+class CpuFormula(eventBus: MessageBus) extends FormulaComponent(eventBus) with FormulaConfiguration {
   import ProcMetricsChannel.{UsageReport, subscribeDvfsUsageReport}
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
