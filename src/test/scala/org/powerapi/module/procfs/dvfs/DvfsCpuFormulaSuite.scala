@@ -31,7 +31,7 @@ import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel
-import org.powerapi.module.procfs.CpuProcfsSensorChannel
+import org.powerapi.module.procfs.ProcMetricsChannel
 import scala.concurrent.duration.DurationInt
 
 trait DvfsCpuFormulaConfigurationMock extends FormulaConfiguration {
@@ -76,16 +76,16 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   it should "compute correctly the process' power" in {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import CpuProcfsSensorChannel.{CpuProcfsSensorReport, TargetRatio, TimeInStates}
+    import ProcMetricsChannel.{UsageReport, TargetUsageRatio, TimeInStates}
 
     val topic = "test"
     val muid = UUID.randomUUID()
     val target = Process(1)
-    val targetRatio = TargetRatio(0.5)
+    val targetRatio = TargetUsageRatio(0.5)
     val timeInStates = TimeInStates(Map(1800002 -> 1, 2100002 -> 2, 2400003 -> 3))
     val tick = ClockTick("clock", 25.milliseconds)
 
-    val sensorReport = CpuProcfsSensorReport(topic, muid, target, targetRatio, timeInStates, tick)
+    val sensorReport = UsageReport(topic, muid, target, targetRatio, timeInStates, tick)
 
     formulaMock.underlyingActor.asInstanceOf[CpuFormula].power(sensorReport) should equal(
       Some(
@@ -102,12 +102,12 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
     import PowerChannel.{PowerReport, subscribePowerReport}
-    import CpuProcfsSensorChannel.{publishCpuProcfsReport, TargetRatio, TimeInStates}
+    import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio, TimeInStates}
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
     val target = Process(1)
-    val targetRatio = TargetRatio(0.5)
+    val targetRatio = TargetUsageRatio(0.5)
     val timeInStates = TimeInStates(Map(1800002 -> 1, 2100002 -> 2, 2400003 -> 3))
     val tickMock = ClockTick("test", 25.milliseconds)
     val power = (
@@ -117,7 +117,7 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     ) / (1 + 2 + 3)
 
     subscribePowerReport(muid)(eventBus)(testActor)
-    publishCpuProcfsReport(muid, target, targetRatio, timeInStates, tickMock)(eventBus)
+    publishUsageReport(muid, target, targetRatio, timeInStates, tickMock)(eventBus)
 
     expectMsgClass(classOf[PowerReport]) match {
       case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)

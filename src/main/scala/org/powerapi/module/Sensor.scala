@@ -32,7 +32,6 @@ import org.powerapi.core.{Component, Message, MessageBus}
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-
 trait SensorReport extends Message {
   def topic: String
   def muid: UUID

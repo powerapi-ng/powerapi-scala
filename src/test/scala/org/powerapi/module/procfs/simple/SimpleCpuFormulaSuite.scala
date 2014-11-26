@@ -29,7 +29,7 @@ import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel
-import org.powerapi.module.procfs.CpuProcfsSensorChannel
+import org.powerapi.module.procfs.ProcMetricsChannel
 import scala.concurrent.duration.DurationInt
 
 trait SimpleCpuFormulaConfigurationMock extends FormulaConfiguration {
@@ -58,17 +58,17 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
     import PowerChannel.{PowerReport, subscribePowerReport}
-    import CpuProcfsSensorChannel.{publishCpuProcfsReport, TargetRatio}
+    import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio}
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
     val target = Process(1)
-    val targetRatio = TargetRatio(0.4)
+    val targetRatio = TargetUsageRatio(0.4)
     val tickMock = ClockTick("test", 25.milliseconds)
     val power = 220 * 0.7 * targetRatio.percent
 
     subscribePowerReport(muid)(eventBus)(testActor)
-    publishCpuProcfsReport(muid, target, targetRatio, tickMock)(eventBus)
+    publishUsageReport(muid, target, targetRatio, tickMock)(eventBus)
 
     expectMsgClass(classOf[PowerReport]) match {
       case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)

@@ -24,7 +24,7 @@ package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.MessageBus
 import org.powerapi.module.{PowerChannel, Formula}
-import org.powerapi.module.procfs.CpuProcfsSensorChannel
+import org.powerapi.module.procfs.ProcMetricsChannel
 
 /**
  * CPU formula configuration.
@@ -66,17 +66,17 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaConfiguration {
-  import CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsSensor}
+  import ProcMetricsChannel.{UsageReport, subscribeSimpleUsageReport}
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
 
-  override type SR = CpuProcfsSensorReport
+  override type SR = UsageReport
 
   def subscribeSensorReport(): Unit = {
-    subscribeCpuProcfsSensor(eventBus)(self)
+    subscribeSimpleUsageReport(eventBus)(self)
   }
 
-  def compute(sensorReport: CpuProcfsSensorReport): Unit = {
+  def compute(sensorReport: UsageReport): Unit = {
     lazy val power = (tdp * tdpFactor) * sensorReport.targetRatio.percent
     publishPowerReport(sensorReport.muid, sensorReport.target, power, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
   }

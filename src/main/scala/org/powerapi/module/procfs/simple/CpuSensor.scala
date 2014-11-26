@@ -24,7 +24,7 @@ package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.Sensor
-import org.powerapi.module.procfs.CpuProcfsSensorChannel
+import org.powerapi.module.procfs.ProcMetricsChannel
 
 /**
  * CPU sensor configuration.
@@ -65,7 +65,7 @@ trait SensorConfiguration extends org.powerapi.core.Configuration {
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBus) with SensorConfiguration {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import CpuProcfsSensorChannel.publishCpuProcfsReport
+  import ProcMetricsChannel.publishUsageReport
 
   /**
    * Delegate class collecting time information contained into both globalStatPath and processStatPath files
@@ -73,12 +73,10 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends Sensor(eventBu
    */
   class TargetRatio {
     import java.io.IOException
-
-import org.powerapi.core.{All, Application, Process}
-    import org.powerapi.module.procfs.CpuProcfsFileControl.using
-    import CpuProcfsSensorChannel.CacheKey
-
-import scala.io.Source
+    import org.powerapi.core.{All, Application, Process}
+    import org.powerapi.module.procfs.FileControl.using
+    import ProcMetricsChannel.CacheKey
+    import scala.io.Source
 
     private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
 
@@ -160,7 +158,7 @@ import scala.io.Source
       (processTime, globalTime)
     }
 
-    def handleMonitorTick(tick: MonitorTick): CpuProcfsSensorChannel.TargetRatio = {
+    def handleMonitorTick(tick: MonitorTick): ProcMetricsChannel.TargetUsageRatio = {
       val now = tick.target match {
         case process: Process => handleProcessTarget(process)
         case application: Application => handleApplicationTarget(application)
@@ -173,10 +171,10 @@ import scala.io.Source
 
       val globalDiff = now._2 - old._2
       if (globalDiff <= 0) {
-        CpuProcfsSensorChannel.TargetRatio(0)
+        ProcMetricsChannel.TargetUsageRatio(0)
       }
       else {
-        CpuProcfsSensorChannel.TargetRatio((now._1 - old._1).doubleValue / globalDiff)
+        ProcMetricsChannel.TargetUsageRatio((now._1 - old._1).doubleValue / globalDiff)
       }
     }
   }
@@ -184,6 +182,6 @@ import scala.io.Source
   lazy val targetRatio = new TargetRatio
 
   def sense(monitorTick: MonitorTick): Unit = {
-    publishCpuProcfsReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    publishUsageReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
   }
 }

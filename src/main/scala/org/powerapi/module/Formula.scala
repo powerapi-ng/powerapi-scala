@@ -79,6 +79,9 @@ object PowerChannel extends Channel {
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
+   * @param power: target's power consumption.
+   * @param unit: power unit.
+   * @param device: device targeted.
    * @param tick: tick origin.
    */
   case class PowerReport(topic: String,

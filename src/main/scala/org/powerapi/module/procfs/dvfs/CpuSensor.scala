@@ -23,7 +23,7 @@
 package org.powerapi.module.procfs.dvfs
 
 import org.powerapi.core.{MessageBus, OSHelper}
-import org.powerapi.module.procfs.{CpuProcfsSensorChannel, CpuProcfsFileControl}
+import org.powerapi.module.procfs.{ProcMetricsChannel, FileControl}
 
 /**
  * CPU sensor configuration.
@@ -62,18 +62,16 @@ trait SensorConfiguration extends org.powerapi.core.Configuration {
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.procfs.simple.CpuSensor(eventBus, osHelper) with SensorConfiguration {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import CpuProcfsSensorChannel.publishCpuProcfsReport
+  import ProcMetricsChannel.publishUsageReport
 
   /**
    * Delegate class to deal with time spent within each CPU frequencies.
    */
   class Frequencies {
     import java.io.IOException
-
-import CpuProcfsFileControl.using
-    import CpuProcfsSensorChannel.{CacheKey, TimeInStates}
-
-import scala.io.Source
+    import FileControl.using
+    import ProcMetricsChannel.{CacheKey, TimeInStates}
+    import scala.io.Source
 
     // time_in_state line format: frequency time
     private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
@@ -119,6 +117,6 @@ import scala.io.Source
   lazy val frequencies = new Frequencies
 
   override def sense(monitorTick: MonitorTick): Unit = {
-    publishCpuProcfsReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    publishUsageReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
   }
 }

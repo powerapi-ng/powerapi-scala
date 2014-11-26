@@ -32,10 +32,10 @@ import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
 class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) extends Actor {
-  import org.powerapi.core.ClockChannel.{ClockTick, subscribeClock}
+  import org.powerapi.core.ClockChannel.{ClockTick, subscribeClockTick}
 
   override def preStart() = {
-    subscribeClock(frequency)(eventBus)(self)
+    subscribeClockTick(frequency)(eventBus)(self)
   }
 
   def receive = active(0)
@@ -48,7 +48,7 @@ class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) exten
 }
 
 class ClockSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, formatClockChildName, startClock, stopClock, unsubscribeClock}
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, formatClockChildName, startClock, stopClock, unsubscribeClockTick}
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("ClockSuite"))
@@ -254,7 +254,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val testSubscriber = subscribersF1.head
-    unsubscribeClock(frequency1)(eventBus)(testSubscriber)
+    unsubscribeClockTick(frequency1)(eventBus)(testSubscriber)
     startClock(frequency1)(eventBus)
     Thread.sleep(250)
     stopClock(frequency1)(eventBus)

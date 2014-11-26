@@ -47,15 +47,6 @@ object ClockChannel extends Channel {
                        timestamp: Long = System.currentTimeMillis) extends ClockMessage
 
   /**
-   * ClockTickSubscription is represented as a dedicated type of message.
-   * 
-   * @param topic: subject used for routing the message.
-   * @param frequency: clock frequency.
-   */
-  case class ClockTickSubscription(topic: String,
-                                   frequency: FiniteDuration) extends ClockMessage
-
-  /**
    * ClockStart is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
@@ -81,17 +72,17 @@ object ClockChannel extends Channel {
   /** 
    * Topic for communicating with the Clock.
    */
-  private val topic = "tick:subscription"
+  private val topic = "clock:handling"
 
   /**
    * External methods used by the Monitor actors to subscribe/unsubscribe,
    * start/stop a clock which runs at a frequency.
    */
-  def subscribeClock(frequency: FiniteDuration): (MessageBus => ActorRef => Unit) = {
+  def subscribeClockTick(frequency: FiniteDuration): (MessageBus => ActorRef => Unit) = {
     subscribe(clockTickTopic(frequency))
   }
 
-  def unsubscribeClock(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
+  def unsubscribeClockTick(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
     unsubscribe(clockTickTopic(frequency))
   }
 
@@ -106,7 +97,7 @@ object ClockChannel extends Channel {
   /**
    * Internal methods used by the Clocks actor for interacting with the bus.
    */
-  def subscribeTickSubscription: MessageBus => ActorRef => Unit = {
+  def subscribeClockChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
@@ -115,7 +106,7 @@ object ClockChannel extends Channel {
   /**
    * Internal methods used by the ClockChild actors for interacting with the bus.
    */
-  def publishTick(frequency: FiniteDuration): MessageBus => Unit = {
+  def publishClockTick(frequency: FiniteDuration): MessageBus => Unit = {
     publish(ClockTick(clockTickTopic(frequency), frequency))
   }
 

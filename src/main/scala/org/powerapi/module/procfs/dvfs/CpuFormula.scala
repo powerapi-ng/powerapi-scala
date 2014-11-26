@@ -25,7 +25,7 @@ package org.powerapi.module.procfs.dvfs
 import com.typesafe.config.Config
 import org.powerapi.core.MessageBus
 import org.powerapi.module.{PowerChannel, Formula}
-import org.powerapi.module.procfs.CpuProcfsSensorChannel
+import org.powerapi.module.procfs.ProcMetricsChannel
 
 import scala.collection.JavaConversions
 
@@ -65,19 +65,19 @@ trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConf
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaConfiguration {
-  import CpuProcfsSensorChannel.{CpuProcfsSensorReport, subscribeCpuProcfsDvfsSensor}
+  import ProcMetricsChannel.{UsageReport, subscribeDvfsUsageReport}
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
 
-  override type SR = CpuProcfsSensorReport
+  override type SR = UsageReport
 
   def subscribeSensorReport(): Unit = {
-    subscribeCpuProcfsDvfsSensor(eventBus)(self)
+    subscribeDvfsUsageReport(eventBus)(self)
   }
   lazy val constant = (tdp * tdpFactor) / (frequencies.max._1 * math.pow(frequencies.max._2, 2))
   lazy val powers = frequencies.map(frequency => (frequency._1, (constant * frequency._1 * math.pow(frequency._2, 2))))
 
-  def power(sensorReport: CpuProcfsSensorReport): Option[Double] = {
+  def power(sensorReport: UsageReport): Option[Double] = {
     val totalPower = powers.foldLeft(0: Double) {
       (acc, power) => acc + (power._2 * sensorReport.timeInStates.times.getOrElse(power._1, 0: Long))
     }
@@ -93,7 +93,7 @@ class CpuFormula(eventBus: MessageBus) extends Formula(eventBus) with FormulaCon
     }
   }
 
-  def compute(sensorReport: CpuProcfsSensorReport): Unit = {
+  def compute(sensorReport: UsageReport): Unit = {
     lazy val p = power(sensorReport) match {
       case Some(p: Double) => p
       case _ => 0d

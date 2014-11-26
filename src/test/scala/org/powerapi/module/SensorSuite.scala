@@ -52,7 +52,7 @@ class SensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A Sensor" should "process MonitorTick messages" in new Bus {
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.{MonitorTick, publishTarget}
+    import org.powerapi.core.MonitorChannel.{MonitorTick, publishMonitorTick}
 
     val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
 
@@ -60,7 +60,7 @@ class SensorSuite(system: ActorSystem) extends UnitTest(system) {
     val target = Process(1)
     val clockTick = ClockTick("test", 25.milliseconds)
 
-    publishTarget(muid, target, clockTick)(eventBus)
+    publishMonitorTick(muid, target, clockTick)(eventBus)
 
     expectMsgClass(classOf[MonitorTick]) match {
       case MonitorTick(_, id, targ, tick) if muid == id && target == targ && clockTick == tick => assert(true)

@@ -55,7 +55,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.core.{All, Application, Process}
-  import org.powerapi.module.procfs.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TargetRatio}
+  import org.powerapi.module.procfs.ProcMetricsChannel.{CacheKey, UsageReport, TargetUsageRatio}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -107,10 +107,10 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid, appTarget), (oldAppElapsedTime, oldGlobalElapsedTime))
 
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleMonitorTick(MonitorTick("test", muid, processTarget, ClockTick("test", 25.milliseconds))) should equal(
-      TargetRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+      TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
     )
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleMonitorTick(MonitorTick("test", muid, appTarget, ClockTick("test", 25.milliseconds))) should equal(
-      TargetRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+      TargetUsageRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
     )
   }
 
@@ -118,13 +118,13 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
 
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.handleMonitorTick(MonitorTick("test", muid, All, ClockTick("test", 25.milliseconds))) should equal(
-      TargetRatio(0)
+      TargetUsageRatio(0)
     )
   }
 
-  it should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
-    import org.powerapi.core.MonitorChannel.publishTarget
-    import org.powerapi.module.procfs.CpuProcfsSensorChannel.subscribeCpuProcfsSensor
+  it should "process a MonitorTicks message and then publish a UsageReport" in {
+    import org.powerapi.core.MonitorChannel.publishMonitorTick
+    import org.powerapi.module.procfs.ProcMetricsChannel.subscribeSimpleUsageReport
 
     val oldP1ElapsedTime = p1ElapsedTime / 2
     val oldAppElapsedTime = appElapsedTime / 2
@@ -138,24 +138,24 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid2, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.refreshCache(CacheKey(muid2, Application("app")), (oldAppElapsedTime, oldGlobalElapsedTime))
 
-    val processRatio = TargetRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
-    val appRatio = TargetRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+    val processRatio = TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+    val appRatio = TargetUsageRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
 
-    subscribeCpuProcfsSensor(eventBus)(testActor)
+    subscribeSimpleUsageReport(eventBus)(testActor)
 
-    publishTarget(muid1, Process(1), tickMock)(eventBus)
-    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
-      case CpuProcfsSensorReport(_, id, Process(1), processr, _, _) if muid1 == id && processRatio == processr => assert(true)
+    publishMonitorTick(muid1, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case UsageReport(_, id, Process(1), processr, _, _) if muid1 == id && processRatio == processr => assert(true)
       case _ => assert(false)
     }
-    publishTarget(muid2, Process(1), tickMock)(eventBus)
-    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
-      case CpuProcfsSensorReport(_, id, Process(1), processr, _, _) if muid2 == id && processRatio == processr => assert(true)
+    publishMonitorTick(muid2, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case UsageReport(_, id, Process(1), processr, _, _) if muid2 == id && processRatio == processr => assert(true)
       case _ => assert(false)
     }
-    publishTarget(muid2, Application("app"), tickMock)(eventBus)
-    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
-      case CpuProcfsSensorReport(_, id, Application("app"), appr, _, _) if id == muid2 && appRatio == appr => assert(true)
+    publishMonitorTick(muid2, Application("app"), tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case UsageReport(_, id, Application("app"), appr, _, _) if id == muid2 && appRatio == appr => assert(true)
       case _ => assert(false)
     }
   }

@@ -55,7 +55,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.core.{Application, Process}
-  import org.powerapi.module.procfs.CpuProcfsSensorChannel.{CacheKey, CpuProcfsSensorReport, TimeInStates}
+  import org.powerapi.module.procfs.ProcMetricsChannel.{CacheKey, UsageReport, TimeInStates}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -95,9 +95,9 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     )
   }
 
-  "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a CpuProcfsSensorReport" in {
-    import org.powerapi.core.MonitorChannel.publishTarget
-    import org.powerapi.module.procfs.CpuProcfsSensorChannel.subscribeCpuProcfsDvfsSensor
+  "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a UsageReport" in {
+    import org.powerapi.core.MonitorChannel.publishMonitorTick
+    import org.powerapi.module.procfs.ProcMetricsChannel.subscribeDvfsUsageReport
 
     val muid = UUID.randomUUID()
     val tickMock = ClockTick("test", 25.milliseconds)
@@ -110,16 +110,16 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       TimeInStates(Map(4000000 -> 10, 3000000 -> 10, 2000000 -> 6, 1000000 -> 2))
     )
 
-    subscribeCpuProcfsDvfsSensor(eventBus)(testActor)
+    subscribeDvfsUsageReport(eventBus)(testActor)
 
-    publishTarget(muid, Process(1), tickMock)(eventBus)
-    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
-      case CpuProcfsSensorReport(_, id, Process(1), _, times ,_) if muid == id && timeInStates == times => assert(true)
+    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case UsageReport(_, id, Process(1), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
-    publishTarget(muid, Application("app"), tickMock)(eventBus)
-    expectMsgClass(classOf[CpuProcfsSensorReport]) match {
-      case CpuProcfsSensorReport(_, id, Application("app"), _, times ,_) if muid == id && timeInStates == times => assert(true)
+    publishMonitorTick(muid, Application("app"), tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case UsageReport(_, id, Application("app"), _, times ,_) if muid == id && timeInStates == times => assert(true)
       case _ => assert(false)
     }
   }

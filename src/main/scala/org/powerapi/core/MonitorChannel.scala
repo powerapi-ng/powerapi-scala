@@ -110,7 +110,7 @@ object MonitorChannel extends Channel {
   /**
    * Internal methods used by the Monitors actor for interacting with the bus.
    */
-  def subscribeHandlingMonitor: MessageBus => ActorRef => Unit = {
+  def subscribeMonitorsChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
@@ -119,7 +119,7 @@ object MonitorChannel extends Channel {
   /**
    * Internal methods used by the MonitorChild actors for interacting with the bus.
    */
-  def publishTarget(muid: UUID, target: Target, tick: ClockTick): MessageBus => Unit = {
+  def publishMonitorTick(muid: UUID, target: Target, tick: ClockTick): MessageBus => Unit = {
     publish(MonitorTick(topicToPublish, muid, target, tick))
   }
 

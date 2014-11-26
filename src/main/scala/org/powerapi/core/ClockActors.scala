@@ -34,7 +34,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Component {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishTick}
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishClockTick}
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case ClockStart(_, freq) if frequency == freq => start()
@@ -61,7 +61,7 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
    */
   def start(): Unit = {
     val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
-      publishTick(frequency)(eventBus)
+      publishClockTick(frequency)(eventBus)
     } (context.system.dispatcher)
 
     log.info("clock started, reference: {}", frequency.toNanos)
@@ -94,10 +94,10 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends Compon
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Clocks(eventBus: MessageBus) extends Component with Supervisor {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, stopAllClock, subscribeTickSubscription}
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, stopAllClock, subscribeClockChannel}
 
   override def preStart(): Unit = {
-    subscribeTickSubscription(eventBus)(self)
+    subscribeClockChannel(eventBus)(self)
   }
 
   override def postStop(): Unit = {

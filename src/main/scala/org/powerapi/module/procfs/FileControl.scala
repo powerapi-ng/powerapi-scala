@@ -29,7 +29,7 @@ package org.powerapi.module.procfs
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object CpuProcfsFileControl {
+object FileControl {
   def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
     try {
       f(resource)

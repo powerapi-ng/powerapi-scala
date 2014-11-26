@@ -40,8 +40,8 @@ class MonitorChild(eventBus: MessageBus,
                    frequency: FiniteDuration,
                    targets: List[Target]) extends Component {
 
-  import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClock, unsubscribeClock}
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishTarget}
+  import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
@@ -61,7 +61,7 @@ class MonitorChild(eventBus: MessageBus,
    */
   def start(): Unit = {
     startClock(frequency)(eventBus)
-    subscribeClock(frequency)(eventBus)(self)
+    subscribeClockTick(frequency)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
     context.become(running)
   }
@@ -70,7 +70,7 @@ class MonitorChild(eventBus: MessageBus,
    * Handle ticks for publishing the targets in the right topic.
    */
   def produceMessages(tick: ClockTick): Unit = {
-    targets.foreach(target => publishTarget(muid, target, tick)(eventBus))
+    targets.foreach(target => publishMonitorTick(muid, target, tick)(eventBus))
   }
 
   /**
@@ -79,7 +79,7 @@ class MonitorChild(eventBus: MessageBus,
    */
   def stop(): Unit = {
     stopClock(frequency)(eventBus)
-    unsubscribeClock(frequency)(eventBus)(self)
+    unsubscribeClockTick(frequency)(eventBus)(self)
     log.info("monitor is stopped, muid: {}", muid)
     self ! PoisonPill
   }
@@ -92,10 +92,10 @@ class MonitorChild(eventBus: MessageBus,
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Monitors(eventBus: MessageBus) extends Component with Supervisor {
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeHandlingMonitor}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
 
   override def preStart(): Unit = {
-    subscribeHandlingMonitor(eventBus)(self)
+    subscribeMonitorsChannel(eventBus)(self)
   }
 
   override def postStop(): Unit = {
