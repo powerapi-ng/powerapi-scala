@@ -56,9 +56,11 @@ abstract class FormulaComponent(eventBus: MessageBus) extends APIComponent {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object PowerUnit extends Enumeration {
-  type PowerUnit = Value
 
-  val W, kW = Value
+  case class PowerUnit(name: String, description: String) extends Val
+
+  val W = PowerUnit("W", "Watts")
+  val kW = PowerUnit("kW", "KiloWatts")
 }
 
 /**
