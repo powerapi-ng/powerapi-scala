@@ -28,27 +28,29 @@ import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.{MessageBus, OSHelper}
+import org.powerapi.core.{ MessageBus, OSHelper}
 
 import scala.concurrent.duration.DurationInt
 
-trait SimpleCpuSensorConfigurationMock extends SensorConfiguration {
-  val basepath = getClass.getResource("/").getPath
-
-  override lazy val globalStatPath = s"$basepath/proc/stat"
-  override lazy val processStatPath = s"$basepath/proc/%?pid/stat"
-}
-
-class SimpleCpuSensorMock(messageBus: MessageBus, osHelper: OSHelper)
-  extends CpuSensor(messageBus, osHelper)
-  with SimpleCpuSensorConfigurationMock
-
 class OSHelperMock extends OSHelper {
-  import org.powerapi.core.{Application, Process, Thread}
+  import org.powerapi.core.{Application, Process, Thread, TimeInStates}
 
   def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
 
   def getThreads(process: Process): List[Thread] = List()
+
+  def getProcessCpuTime(process: Process): Option[Long] = {
+    process match {
+      case Process(1) => Some(33 + 2)
+      case Process(2) => Some(10 + 5)
+      case Process(3) => Some(3 + 5)
+      case _ => None
+    }
+  }
+
+  def getGlobalCpuTime(): Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
+
+  def getTimeInStates(): TimeInStates = TimeInStates(Map())
 }
 
 class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
@@ -73,17 +75,9 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   val p3ElapsedTime = 3 + 5
   val appElapsedTime = p2ElapsedTime + p3ElapsedTime
 
-  val cpuSensor = TestActorRef(Props(classOf[SimpleCpuSensorMock], eventBus, new OSHelperMock()), "simple-CpuSensor")(system)
+  val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelperMock()), "simple-CpuSensor")(system)
 
-  "A simple CpuSensor" should "read global elapsed time from a given dedicated system file" in {
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.globalElapsedTime should equal(Some(globalElapsedTime))
-  }
-
-  it should "read process elapsed time from a given dedicated system file" in {
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].targetRatio.processElapsedTime(Process(1)) should equal(Some(p1ElapsedTime))
-  }
-
-  it should "refresh its cache after each processed message" in {
+  "A simple CpuSensor" should "refresh its cache after each processed message" in {
     val muid = UUID.randomUUID()
     val processTarget = Process(1)
 

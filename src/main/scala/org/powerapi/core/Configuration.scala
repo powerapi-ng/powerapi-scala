@@ -50,7 +50,7 @@ trait Configuration {
    *
    * @param request: request for getting information.
    */
-  def load[T](request: Config => T): ConfigResult[T] = {
+  protected def load[T](request: Config => T): ConfigResult[T] = {
     try {
       ConfigValue(request(conf))
     }

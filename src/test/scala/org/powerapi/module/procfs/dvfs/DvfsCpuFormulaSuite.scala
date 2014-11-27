@@ -74,15 +74,15 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "compute correctly the process' power" in {
-    import org.powerapi.core.Process
+    import org.powerapi.core.{Process,TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
-    import ProcMetricsChannel.{UsageReport, TargetUsageRatio, TimeInStates}
+    import ProcMetricsChannel.{UsageReport, TargetUsageRatio}
 
     val topic = "test"
     val muid = UUID.randomUUID()
     val target = Process(1)
     val targetRatio = TargetUsageRatio(0.5)
-    val timeInStates = TimeInStates(Map(1800002 -> 1, 2100002 -> 2, 2400003 -> 3))
+    val timeInStates = TimeInStates(Map(1800002l -> 1l, 2100002l -> 2l, 2400003l -> 3l))
     val tick = ClockTick("clock", 25.milliseconds)
 
     val sensorReport = UsageReport(topic, muid, target, targetRatio, timeInStates, tick)
@@ -99,16 +99,16 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.Process
+    import org.powerapi.core.{Process,TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
     import PowerChannel.{PowerReport, subscribePowerReport}
-    import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio, TimeInStates}
+    import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio}
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
     val target = Process(1)
     val targetRatio = TargetUsageRatio(0.5)
-    val timeInStates = TimeInStates(Map(1800002 -> 1, 2100002 -> 2, 2400003 -> 3))
+    val timeInStates = TimeInStates(Map(1800002l -> 1l, 2100002l -> 2l, 2400003l -> 3l))
     val tickMock = ClockTick("test", 25.milliseconds)
     val power = (
       formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(1800002) * 1 +

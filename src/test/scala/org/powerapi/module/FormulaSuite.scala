@@ -29,10 +29,7 @@ import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
 import org.powerapi.core.{Channel, MessageBus}
 
-object SensorMockChannel extends Channel {
-
-  type M = SensorMockReport
-
+object SensorMockChannel extends SensorChannel {
   private val topic = "test"
 
   case class SensorMockReport(topic: String, muid: UUID, power: Double) extends SensorReport

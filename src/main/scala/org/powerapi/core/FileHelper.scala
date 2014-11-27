@@ -20,7 +20,7 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs
+package org.powerapi.core
 
 /**
  * Implement the Loan's pattern for closing automatically a resource.
@@ -29,7 +29,7 @@ package org.powerapi.module.procfs
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object FileControl {
+object FileHelper {
   def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
     try {
       f(resource)

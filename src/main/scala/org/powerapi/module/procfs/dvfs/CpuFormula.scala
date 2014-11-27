@@ -32,7 +32,7 @@ import scala.collection.JavaConversions
 /**
  * CPU formula configuration.
  *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConfiguration {
@@ -61,7 +61,7 @@ trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConf
  * @see [1] "Frequency–Voltage Cooperative CPU Power Control: A Design Rule and Its Application by Feedback Prediction" by Toyama & al.
  * @see [2] http://en.wikipedia.org/wiki/Voltage_and_frequency_scaling.
  *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuFormula(eventBus: MessageBus) extends FormulaComponent(eventBus) with FormulaConfiguration {

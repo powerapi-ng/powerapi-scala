@@ -26,13 +26,12 @@ import java.util.UUID
 
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{MessageBus, Target}
+import org.powerapi.core.{MessageBus, Target, TimeInStates}
 import org.powerapi.module.{SensorReport, SensorChannel}
 
 /**
  * ProcMetricsChannel channel and messages.
  *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object ProcMetricsChannel extends SensorChannel {
@@ -40,10 +39,6 @@ object ProcMetricsChannel extends SensorChannel {
   /**
    * Wrapper classes.
    */
-  case class TimeInStates(times: Map[Int, Long]) {
-    def -(that: TimeInStates) =
-      TimeInStates((for ((frequency, time) <- times) yield (frequency, time - that.times.getOrElse(frequency, 0: Long))).toMap)
-  }
   case class TargetUsageRatio(percent: Double = 0)
   case class CacheKey(muid: UUID, target: Target)
 
@@ -58,11 +53,11 @@ object ProcMetricsChannel extends SensorChannel {
    * @param tick: tick origin.
    */
   case class UsageReport(topic: String,
-                                   muid: UUID,
-                                   target: Target,
-                                   targetRatio: TargetUsageRatio,
-                                   timeInStates: TimeInStates = TimeInStates(Map()),
-                                   tick: ClockTick) extends SensorReport
+                         muid: UUID,
+                         target: Target,
+                         targetRatio: TargetUsageRatio,
+                         timeInStates: TimeInStates = TimeInStates(Map()),
+                         tick: ClockTick) extends SensorReport
 
   /**
    * Topic for communicating with the Formula actors.

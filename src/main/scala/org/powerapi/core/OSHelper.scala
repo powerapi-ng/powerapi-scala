@@ -22,8 +22,6 @@
  */
 package org.powerapi.core
 
-import java.io.File
-
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
  *
@@ -32,6 +30,17 @@ import java.io.File
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 case class Thread(tid: Long)
+
+/**
+ * Wrapper class for the time spent by the cpu in each frequency (if dvfs enabled).
+ *
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+case class TimeInStates(times: Map[Long, Long]) {
+  def -(that: TimeInStates) =
+    TimeInStates((for ((frequency, time) <- times) yield (frequency, time - that.times.getOrElse(frequency, 0: Long))).toMap)
+}
 
 /**
  * Base trait use for implementing os specific methods.
@@ -52,6 +61,37 @@ trait OSHelper {
    * @param process: targeted process.
    */
   def getThreads(process: Process): List[Thread]
+
+  /**
+   * Get the process execution time on the cpu.
+   *
+   * @param process: targeted process
+   */
+  def getProcessCpuTime(process: Process): Option[Long]
+
+  /**
+   * Get the global execution time for the cpu.
+   */
+  def getGlobalCpuTime(): Option[Long]
+
+  /**
+   * Get how many time CPU spent under each frequency.
+   */
+  def getTimeInStates(): TimeInStates
+}
+
+/**
+ * Number of logical cores / Configuration.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+trait LogicalCoresConfiguration {
+  self: Configuration =>
+
+  lazy val cores = load { _.getInt("powerapi.hardware.cores") } match {
+    case ConfigValue(nbCores) => nbCores
+    case _ => 0
+  }
 }
 
 /**
@@ -59,16 +99,52 @@ trait OSHelper {
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object LinuxHelper extends OSHelper with Configuration {
+class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfiguration {
+
+  import java.io.{IOException, File}
+  import org.apache.logging.log4j.LogManager
+  import org.powerapi.core.FileHelper.using
+  import scala.io.Source
   import scala.sys.process.stringSeqToProcess
 
-  val PSFormat = """^\s*(\d+)""".r
+  private val log = LogManager.getLogger
+
+  private val PSFormat = """^\s*(\d+)""".r
+  private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
+  private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
+
   /**
    * This file allows to get all threads associated to one PID with the help of the procfs.
    */
-  lazy val taskPath = load { _.getString("powerapi.procfs.process-task") } match {
-    case ConfigValue(path) if path.contains("$pid") => path
-    case _ => "/proc/$pid/task"
+  lazy val taskPath = load { _.getString("powerapi.procfs.process-task-task") } match {
+    case ConfigValue(path) if path.contains("%?pid") => path
+    case _ => "/proc/%?pid/task"
+  }
+
+  /**
+   * Global stat file, giving global information of the system itself.
+   * Typically presents under /proc/stat.
+   */
+  lazy val globalStatPath = load { _.getString("powerapi.procfs.global-path") } match {
+    case ConfigValue(path) => path
+    case _ => "/proc/stat"
+  }
+
+  /**
+   * Process stat file, giving information about the process itself.
+   * Typically presents under /proc/[pid]/stat.
+   */
+  lazy val processStatPath = load { _.getString("powerapi.procfs.process-path") } match {
+    case ConfigValue(path) if path.contains("%?pid") => path
+    case _ => "/proc/%?pid/stat"
+  }
+
+  /**
+   * Time in state file, giving information about how many time CPU spent under each frequency.
+   */
+  lazy val timeInStatePath = load { _.getString("powerapi.sysfs.timeinstates-path") } match {
+    case ConfigValue(path) => path
+    case _ => "/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
   }
 
   def getProcesses(application: Application): List[Process] = {
@@ -78,14 +154,80 @@ object LinuxHelper extends OSHelper with Configuration {
   }
 
   def getThreads(process: Process): List[Thread] = {
-    val pidDirectory = new File(taskPath.replace("$pid", s"${process.pid}"))
+    val pidDirectory = new File(taskPath.replace("%?pid", s"${process.pid}"))
 
-    if(pidDirectory.exists && pidDirectory.isDirectory) {
+    if (pidDirectory.exists && pidDirectory.isDirectory) {
       /**
        * The pid is removed because it corresponds to the main thread.
        */
       pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").toList.map(dir => Thread(dir.getName.toLong))
     }
     else List()
+  }
+
+  def getProcessCpuTime(process: Process): Option[Long] = {
+    try {
+      using(Source.fromFile(processStatPath.replace("%?pid", s"${process.pid}")))(source => {
+        log.debug("using {} as a procfs process stat path", processStatPath)
+
+        val statLine = source.getLines.toIndexedSeq(0).split("\\s")
+        // User time + System time
+        Some(statLine(13).toLong + statLine(14).toLong)
+      })
+    }
+    catch {
+      case ioe: IOException => log.warn("i/o exception: {}", ioe.getMessage); None
+    }
+  }
+
+  def getGlobalCpuTime(): Option[Long] = {
+    try {
+      using(Source.fromFile(globalStatPath))(source => {
+        log.debug("using {} as a procfs global stat path", globalStatPath)
+
+        val time = source.getLines.toIndexedSeq(0) match {
+          /**
+           * Exclude all guest columns, they are already added in utime column.
+           *
+           * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
+           */
+          case GlobalStatFormat(times) => Some(
+            times.split("\\s").slice(0, 8).foldLeft(0: Long) {
+              (acc, x) => acc + x.toLong
+            }
+          )
+          case _ => log.warn("unable to parse line from {}", globalStatPath); None
+        }
+
+        time
+      })
+    }
+    catch {
+      case ioe: IOException => log.warn("i/o exception: {}", ioe.getMessage); None
+    }
+  }
+
+  def getTimeInStates(): TimeInStates = {
+    val result = collection.mutable.HashMap[Long, Long]()
+
+    for(core <- 0 until cores) {
+      try {
+        using(Source.fromFile(timeInStatePath.replace("%?index", s"$core")))(source => {
+          log.debug("using {} as a sysfs timeinstates path", timeInStatePath)
+
+          for(line <- source.getLines) {
+            line match {
+              case TimeInStateFormat(freq, t) => result += (freq.toLong -> (t.toLong + (result.getOrElse(freq.toLong, 0l))))
+              case _ => log.warn("unable to parse line {} from file {}", line, timeInStatePath)
+            }
+          }
+        })
+      }
+      catch {
+        case ioe: IOException => log.warn("i/o exception: {}", ioe.getMessage);
+      }
+    }
+
+    TimeInStates(result.toMap[Long, Long])
   }
 }

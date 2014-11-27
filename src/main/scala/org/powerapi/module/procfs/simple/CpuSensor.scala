@@ -27,43 +27,15 @@ import org.powerapi.module.SensorComponent
 import org.powerapi.module.procfs.ProcMetricsChannel
 
 /**
- * CPU sensor configuration.
- *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorConfiguration extends org.powerapi.core.Configuration {
-  import org.powerapi.core.ConfigValue
-
-  /**
-   * Global stat file, giving global information of the system itself.
-   * Typically presents under /proc/stat.
-   */
-  lazy val globalStatPath = load { _.getString("powerapi.procfs.global-path") } match {
-    case ConfigValue(path) => path
-    case _ => "/proc/stat"
-  }
-
-  /**
-   * Process stat file, giving information about the process itself.
-   * Typically presents under /proc/[pid]/stat.
-   */
-  lazy val processStatPath = load { _.getString("powerapi.procfs.process-path") } match {
-    case ConfigValue(path) if path.contains("%?pid") => path
-    case _ => "/proc/%?pid/stat"
-  }
-}
-
-/**
  * CPU sensor component that collects data from a /proc and /sys directories
  * which are typically presents under a Linux platform.
  *
  * @see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
  *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) with SensorConfiguration {
+class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) {
   import org.powerapi.core.MonitorChannel.MonitorTick
   import ProcMetricsChannel.publishUsageReport
 
@@ -72,69 +44,24 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
    * and providing the target CPU percent usage.
    */
   class TargetRatio {
-    import java.io.IOException
     import org.powerapi.core.{All, Application, Process}
-    import org.powerapi.module.procfs.FileControl.using
     import ProcMetricsChannel.CacheKey
-    import scala.io.Source
-
-    private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
 
     /**
      * Internal cache, used to get the diff between two ClockTick.
      */
     lazy val cache = collection.mutable.Map[CacheKey, (Long, Long)]()
 
-    def globalElapsedTime(): Option[Long] = {
-      try {
-        using(Source.fromFile(globalStatPath))(source => {
-          log.debug("using {} as a procfs global stat path", globalStatPath)
-
-          val time = source.getLines.toIndexedSeq(0) match {
-            /**
-             * Exclude all guest columns, they are already added in utime column.
-             *
-             * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
-             */
-            case GlobalStatFormat(times) => times.split("\\s").slice(0, 8).foldLeft(0: Long) {
-              (acc, x) => acc + x.toLong
-            }
-            case _ => log.warning("unable to parse line from {}", globalStatPath); 0l
-          }
-
-          Some(time)
-        })
-      }
-      catch {
-        case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); None
-      }
-    }
-
-    def processElapsedTime(process: Process): Option[Long] = {
-      try {
-        using(Source.fromFile(processStatPath.replace("%?pid", s"${process.pid}")))(source => {
-          log.debug("using {} as a procfs process stat path", processStatPath)
-
-          val statLine = source.getLines.toIndexedSeq(0).split("\\s")
-          // User time + System time
-          Some(statLine(13).toLong + statLine(14).toLong)
-        })
-      }
-      catch {
-        case ioe: IOException => log.warning("i/o exception: {}", ioe.getMessage); None
-      }
-    }
-
     def refreshCache(key: CacheKey, now: (Long, Long)): Unit = {
       cache += (key -> now)
     }
 
     def handleProcessTarget(process: Process): (Long, Long) = {
-      lazy val processTime: Long = processElapsedTime(process) match {
+      lazy val processTime: Long = osHelper.getProcessCpuTime(process) match {
         case Some(value) => value
         case _ => 0l
       }
-      lazy val globalTime: Long = globalElapsedTime() match {
+      lazy val globalTime: Long = osHelper.getGlobalCpuTime() match {
         case Some(value) => value
         case _ => 0l
       }
@@ -145,13 +72,13 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
     def handleApplicationTarget(application: Application): (Long, Long) = {
       lazy val processTime: Long = osHelper.getProcesses(application).foldLeft(0: Long) {
         (acc, process: Process) => {
-          processElapsedTime(process) match {
+          osHelper.getProcessCpuTime(process) match {
             case Some(value) => acc + value
             case _ => acc
           }
         }
       }
-      lazy val globalTime: Long = globalElapsedTime() match {
+      lazy val globalTime: Long = osHelper.getGlobalCpuTime() match {
         case Some(value) => value
         case _ => 0l
       }

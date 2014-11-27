@@ -29,7 +29,7 @@ import org.powerapi.module.procfs.ProcMetricsChannel
 /**
  * CPU formula configuration.
  *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait FormulaConfiguration extends org.powerapi.core.Configuration {
@@ -62,7 +62,7 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
  *
  * @see http://en.wikipedia.org/wiki/Thermal_design_power
  *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuFormula(eventBus: MessageBus) extends FormulaComponent(eventBus) with FormulaConfiguration {
