@@ -22,26 +22,26 @@
  */
 package org.powerapi.module
 
+import java.util.UUID
 
-import akka.event.LoggingReceive
-import org.powerapi.core.{APIComponent, MessageBus}
+import org.powerapi.core.{Channel, Message}
 
 /**
- * Base trait for each PowerAPI sensor.
- * Each of them should react to a MonitorTick, sense informations and then publish a SensorReport.
+ * Main sensor message.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
-  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+trait SensorReport extends Message {
+  def topic: String
+  def muid: UUID
+}
 
-  override def preStart(): Unit = {
-    subscribeMonitorTick(eventBus)(self)
-  }
+/**
+ * Base channel for the Sensor components.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+trait SensorChannel extends Channel {
 
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: MonitorTick => sense(msg)
-  } orElse default
-
-  def sense(monitorTick: MonitorTick): Unit
+  type M = SensorReport
 }

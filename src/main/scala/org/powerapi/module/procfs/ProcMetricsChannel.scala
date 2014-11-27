@@ -26,8 +26,8 @@ import java.util.UUID
 
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Channel, MessageBus, Target}
-import org.powerapi.module.SensorReport
+import org.powerapi.core.{MessageBus, Target}
+import org.powerapi.module.{SensorReport, SensorChannel}
 
 /**
  * ProcMetricsChannel channel and messages.
@@ -35,9 +35,7 @@ import org.powerapi.module.SensorReport
  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object ProcMetricsChannel extends Channel {
-
-  type M = SensorReport
+object ProcMetricsChannel extends SensorChannel {
 
   /**
    * Wrapper classes.
