@@ -33,7 +33,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorDefault {
+class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorComponent {
   import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishClockTick}
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {

@@ -38,7 +38,7 @@ import scala.concurrent.duration.FiniteDuration
 class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
-                   targets: List[Target]) extends ActorDefault {
+                   targets: List[Target]) extends ActorComponent {
 
   import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}

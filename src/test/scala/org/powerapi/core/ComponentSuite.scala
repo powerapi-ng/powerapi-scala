@@ -29,13 +29,13 @@ import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
 
-class TestActorDefault extends ActorDefault {
+class TestActorComponent extends ActorComponent {
   def receive = LoggingReceive {
     case "msg" => sender ! "ok"
   } orElse default
 }
 
-class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends ActorDefault with Supervisor {
+class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends ActorComponent with Supervisor {
   def handleFailure: PartialFunction[Throwable, Directive] = f
 
   def receive = {
@@ -44,7 +44,7 @@ class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends ActorDefa
   }
 }
 
-class TestChild extends ActorDefault {
+class TestChild extends ActorComponent {
   var state = 0
 
   def receive = {
@@ -67,7 +67,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A component" should "have a default behavior and a processing one" in {
-    val component = TestActorRef(Props(classOf[TestActorDefault]))(system)
+    val component = TestActorRef(Props(classOf[TestActorComponent]))(system)
     component ! "msg"
     expectMsg("ok")
     intercept[UnsupportedOperationException] { component.receive(new Exception("oups")) }
