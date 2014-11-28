@@ -22,6 +22,8 @@
  */
 package org.powerapi.core
 
+import org.powerapi.configuration.LogicalCoresConfiguration
+
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
  *
@@ -81,22 +83,8 @@ trait OSHelper {
 }
 
 /**
- * Number of logical cores / Configuration.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait LogicalCoresConfiguration {
-  self: Configuration =>
-
-  lazy val cores = load { _.getInt("powerapi.hardware.cores") } match {
-    case ConfigValue(nbCores) => nbCores
-    case _ => 0
-  }
-}
-
-/**
  * Linux special helper.
- *
+ π
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfiguration {
