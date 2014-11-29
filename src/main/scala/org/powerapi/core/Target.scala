@@ -20,24 +20,40 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 /**
  * Targets are system elements that can be monitored by PowerAPI
+ *
+ * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait Target
+
 /**
  * Monitoring target for a specific Process IDentifier.
- * @param pid: process identifier
+ *
+ * @param pid: process identifier.
+ *
+ * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 case class Process(pid: Long) extends Target
+
 /**
  * Monitoring target for a specific application.
+ *
  * @param name: name of the application.
+ *
+ * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 case class Application(name: String) extends Target
+
 /**
  * Monitoring target for the whole system.
+ *
+ * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object All extends Target

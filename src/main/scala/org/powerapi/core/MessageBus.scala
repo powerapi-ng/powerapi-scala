@@ -20,17 +20,16 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
-
-import java.util.UUID
 
 import akka.actor.ActorRef
 import akka.event.LookupClassification
 
-
 /**
  * Messages are the messages used to route the messages in the bus.
+ *
+ * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait Message {
   /**
@@ -40,15 +39,10 @@ trait Message {
 }
 
 /**
- * Reports are the base messages exchanged between PowerAPI components.
+ * Main types definition.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Report extends Message {
-  /**
-   * A report is associated with a monitor unique identifier (MUID), which is at the origin of the report flow.
-   */
-  def muid: UUID
-}
-
 trait EventBus extends akka.event.EventBus {
   type Event = Message
   type Classifier = String
@@ -57,6 +51,9 @@ trait EventBus extends akka.event.EventBus {
 
 /**
  * Common event bus used by PowerAPI components to communicate.
+ *
+ * @author Loic Huertas <loic.huertas@inria.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class MessageBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
@@ -80,19 +77,22 @@ class MessageBus extends EventBus with LookupClassification {
 
 /**
  * Used to specify the channels used by the components.
+ *
+ * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Channel {
   type M <: Message
 
-  def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
+  protected def subscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
     bus.subscribe(subscriber, topic)
   }
 
-  def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
+  protected def unsubscribe(topic: String)(bus: EventBus)(subscriber: ActorRef): Unit = {
     bus.unsubscribe(subscriber, topic)
   }
 
-  def publish(message: M)(bus: EventBus): Unit = {
+  protected def publish(message: M)(bus: EventBus): Unit = {
     bus.publish(message)
   }
 }

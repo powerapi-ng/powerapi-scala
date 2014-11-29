@@ -20,7 +20,6 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
@@ -28,15 +27,15 @@ import akka.actor.{ActorRef, ActorSystem, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.powerapi.test.UnitTest
+import org.powerapi.UnitTest
 
-class TestComponent extends Component {
+class TestActorComponent extends ActorComponent {
   def receive = LoggingReceive {
     case "msg" => sender ! "ok"
   } orElse default
 }
 
-class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends Component with Supervisor {
+class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends ActorComponent with Supervisor {
   def handleFailure: PartialFunction[Throwable, Directive] = f
 
   def receive = {
@@ -45,7 +44,7 @@ class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends Component
   }
 }
 
-class TestChild extends Component {
+class TestChild extends ActorComponent {
   var state = 0
 
   def receive = {
@@ -63,8 +62,12 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
+  trait Bus {
+    val eventBus = new MessageBus
+  }
+
   "A component" should "have a default behavior and a processing one" in {
-    val component = TestActorRef(Props(classOf[TestComponent]))(system)
+    val component = TestActorRef(Props(classOf[TestActorComponent]))(system)
     component ! "msg"
     expectMsg("ok")
     intercept[UnsupportedOperationException] { component.receive(new Exception("oups")) }
@@ -101,7 +104,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
     EventFilter[IllegalArgumentException](occurrences = 1, source = child.path.toString).intercept({      
       watch(child)
       child ! new IllegalArgumentException("bad argument")
-      expectMsgPF() { case Terminated(child) => () }
+      expectMsgPF() { case Terminated(_) => () }
     })(system)
 
     EventFilter[Exception]("crash", occurrences = 1, source = supervisor.path.toString).intercept({
@@ -112,7 +115,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       child ! "state"
       expectMsg(42)
       child ! new Exception("crash")
-      expectMsgPF() { case t @ Terminated(child) if t.existenceConfirmed => () }
+      expectMsgPF() { case t @ Terminated(_) if t.existenceConfirmed => () }
     })(system)
   }
 

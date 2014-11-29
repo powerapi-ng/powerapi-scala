@@ -23,25 +23,25 @@
 package org.powerapi.core
 
 import java.util.UUID
-
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, PoisonPill, Props}
 import akka.event.LoggingReceive
-
+import org.powerapi.core.ClockChannel.ClockTick
 import scala.concurrent.duration.FiniteDuration
-
 
 /**
  * One child represents one monitor.
  * Allows to publish messages in the right topics depending of the targets.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
-                   targets: List[Target]) extends Component {
+                   targets: List[Target]) extends ActorComponent {
 
-  import org.powerapi.core.ClockChannel.{ClockTick, startClock, stopClock, subscribeClock, unsubscribeClock}
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishTarget}
+  import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
@@ -51,7 +51,7 @@ class MonitorChild(eventBus: MessageBus,
    * Running state.
    */
   def running: Actor.Receive = LoggingReceive {
-    case _: ClockTick => produceMessages()
+    case tick: ClockTick => produceMessages(tick)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -61,16 +61,16 @@ class MonitorChild(eventBus: MessageBus,
    */
   def start(): Unit = {
     startClock(frequency)(eventBus)
-    subscribeClock(frequency)(eventBus)(self)
+    subscribeClockTick(frequency)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
     context.become(running)
   }
 
   /**
-   * Handle ticks for publishing the targets in the right topics.
+   * Handle ticks for publishing the targets in the right topic.
    */
-  def produceMessages(): Unit = {
-    targets.foreach(target => publishTarget(muid, target)(eventBus))
+  def produceMessages(tick: ClockTick): Unit = {
+    targets.foreach(target => publishMonitorTick(muid, target, tick)(eventBus))
   }
 
   /**
@@ -79,7 +79,7 @@ class MonitorChild(eventBus: MessageBus,
    */
   def stop(): Unit = {
     stopClock(frequency)(eventBus)
-    unsubscribeClock(frequency)(eventBus)(self)
+    unsubscribeClockTick(frequency)(eventBus)(self)
     log.info("monitor is stopped, muid: {}", muid)
     self ! PoisonPill
   }
@@ -88,12 +88,14 @@ class MonitorChild(eventBus: MessageBus,
 /**
  * This actor listens the bus on a given topic and reacts on the received messages.
  * It is responsible to handle a pool of child actors which represent all monitors.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class Monitors(eventBus: MessageBus) extends Component with Supervisor {
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeHandlingMonitor}
+class Monitors(eventBus: MessageBus) extends Supervisor {
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
 
   override def preStart(): Unit = {
-    subscribeHandlingMonitor(eventBus)(self)
+    subscribeMonitorsChannel(eventBus)(self)
   }
 
   override def postStop(): Unit = {

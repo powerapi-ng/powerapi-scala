@@ -2,9 +2,9 @@
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
- * 
+ *
  * Copyright (C) 2011-2014 Inria, University of Lille 1.
- * 
+ *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
@@ -20,16 +20,28 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
+package org.powerapi.module
 
-package org.powerapi.test
 
-import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import akka.event.LoggingReceive
+import org.powerapi.core.{APIComponent, MessageBus}
 
-abstract class UnitTest(system: ActorSystem)
-  extends TestKit(system)
-  with ImplicitSender
-  with FlatSpecLike
-  with Matchers
-  with BeforeAndAfterAll
+/**
+ * Base trait for each PowerAPI sensor.
+ * Each of them should react to a MonitorTick, sense informations and then publish a SensorReport.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
+  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+
+  override def preStart(): Unit = {
+    subscribeMonitorTick(eventBus)(self)
+  }
+
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: MonitorTick => sense(msg)
+  } orElse default
+
+  def sense(monitorTick: MonitorTick): Unit
+}

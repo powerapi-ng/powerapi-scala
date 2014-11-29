@@ -20,16 +20,11 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
-
-import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.powerapi.test.UnitTest
-
-case class MessageReport(muid: UUID, topic: String) extends Report
+import org.powerapi.UnitTest
 
 class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -41,16 +36,15 @@ class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The MessageBus" should "handle messages by topic" in {
     val eventBus = new MessageBus
-    val muid = UUID.randomUUID()
-    val report = MessageReport(muid, "topic1")
-    val report2 = MessageReport(muid, "topic2")
+    val msg1 = new Message { val topic = "topic1" }
+    val msg2 = new Message { val topic = "topic2" }
 
     eventBus.subscribe(testActor, "topic1")
-    eventBus.publish(report)
-    eventBus.publish(report2)
-    expectMsg(report)
+    eventBus.publish(msg1)
+    eventBus.publish(msg2)
+    expectMsg(msg1)
     eventBus.unsubscribe(testActor)
-    eventBus.publish(report)
+    eventBus.publish(msg2)
     expectNoMsg()
   }
 }

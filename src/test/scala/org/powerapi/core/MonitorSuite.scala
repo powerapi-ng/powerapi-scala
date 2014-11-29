@@ -1,28 +1,48 @@
+/**
+ * This software is licensed under the GNU Affero General Public License, quoted below.
+ *
+ * This file is a part of PowerAPI.
+ *
+ * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ *
+ * PowerAPI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version.
+ *
+ * PowerAPI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with PowerAPI.
+
+ * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
+ */
 package org.powerapi.core
 
 import java.util.UUID
-
 import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
 import akka.pattern.gracefulStop
 import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.powerapi.test.UnitTest
-
+import org.powerapi.UnitTest
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt}
 
 class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
-  import org.powerapi.core.MonitorChannel.{MonitorTarget, subscribeTarget}
+  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
 
   override def preStart() = {
-    subscribeTarget(eventBus)(self)
+    subscribeMonitorTick(eventBus)(self)
   }
 
   def receive = active(0)
 
   def active(acc: Int): Actor.Receive = {
-    case _: MonitorTarget => context become active(acc + 1)
+    case _: MonitorTick => context become active(acc + 1)
     case "reset" => context become active(0)
     case "get" => sender ! acc
   }
@@ -87,6 +107,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A MonitorChild actor" should "start to listen ticks for its frequency and produce messages" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest2", eventListener)
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks2")
 
@@ -121,7 +143,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
+    expectMsgClass(classOf[Int]) should be >= (targets.size * (10 * 0.9)).toInt
 
     Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -132,6 +154,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "handle a large number of targets" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest3")
 
     val frequency = 25.milliseconds
@@ -164,7 +188,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscriber ! "get"
     // We assume a service quality of 90% (regarding the number of processed messages).
-    expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
+    expectMsgClass(classOf[Int]) should be >= (targets.size * (10 * 0.9)).toInt
 
     Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
@@ -175,7 +199,10 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Monitors actor" should "handle its MonitorChild actors and subscribers have to receive messages" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest4")
+
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks4")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors4")
 
@@ -208,7 +235,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 0 until 100) {
       subscribers(i) ! "get"
       // We assume a service quality of 90% (regarding the number of processed messages).
-      expectMsgClass(classOf[Int]) should be >= (targets.size * 10 * 0.9).toInt
+      expectMsgClass(classOf[Int]) should be >= (targets.size * (10 * 0.9)).toInt
       Await.result(gracefulStop(subscribers(i), timeout.duration), timeout.duration)
     }
     
@@ -219,6 +246,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle a large number of monitors" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("MonitorSuiteTest5")
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")

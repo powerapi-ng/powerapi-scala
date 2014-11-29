@@ -20,7 +20,6 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
@@ -28,16 +27,15 @@ import akka.pattern.gracefulStop
 import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.powerapi.test.UnitTest
-
+import org.powerapi.UnitTest
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
 class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) extends Actor {
-  import org.powerapi.core.ClockChannel.{ClockTick, subscribeClock}
+  import org.powerapi.core.ClockChannel.{ClockTick, subscribeClockTick}
 
   override def preStart() = {
-    subscribeClock(frequency)(eventBus)(self)
+    subscribeClockTick(frequency)(eventBus)(self)
   }
 
   def receive = active(0)
@@ -50,7 +48,7 @@ class ClockMockSubscriber(eventBus: MessageBus, frequency: FiniteDuration) exten
 }
 
 class ClockSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, formatClockChildName, startClock, stopClock, unsubscribeClock}
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, formatClockChildName, startClock, stopClock, unsubscribeClockTick}
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("ClockSuite"))
@@ -108,6 +106,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A ClockChild actor" should "produce Ticks, stop its own timer if needed and thus stop to publish Ticks" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest2", eventListener)
 
     val frequency = 25.milliseconds
@@ -141,6 +141,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle only one timer and stop it if there is no subscription" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest3", eventListener)
 
     val frequency = 25.milliseconds
@@ -181,6 +183,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Clocks actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
@@ -250,7 +254,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val testSubscriber = subscribersF1.head
-    unsubscribeClock(frequency1)(eventBus)(testSubscriber)
+    unsubscribeClockTick(frequency1)(eventBus)(testSubscriber)
     startClock(frequency1)(eventBus)
     Thread.sleep(250)
     stopClock(frequency1)(eventBus)
@@ -290,6 +294,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in new Bus {
+    import java.lang.Thread
+
     val _system = ActorSystem("ClockSuiteTest5")
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")

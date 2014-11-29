@@ -20,18 +20,19 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
+import akka.actor.{OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator, ActorLogging, Actor}
 import akka.actor.SupervisorStrategy.{Directive, Resume}
-import akka.actor.{Actor, ActorLogging, OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator}
-
+import akka.event.LoggingReceive
 import scala.concurrent.duration.DurationInt
 
 /**
  * Base trait for components which use Actor.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Component extends Actor with ActorLogging {
+trait ActorComponent extends Actor with ActorLogging {
   /**
    * Default behavior when a received message is unknown.
    */
@@ -41,9 +42,18 @@ trait Component extends Actor with ActorLogging {
 }
 
 /**
- * Supervisor strategy.
+ * Base trait for API component.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait Supervisor extends Component {
+trait APIComponent extends ActorComponent
+
+/**
+ * Supervisor strategy.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+trait Supervisor extends ActorComponent {
   def handleFailure: PartialFunction[Throwable, Directive]
 
   override def supervisorStrategy: SupervisorStrategy =
@@ -53,6 +63,8 @@ trait Supervisor extends Component {
 /**
  * This class is used for defining a default supervisor strategy for the Guardian Actor.
  * The Guardian Actor is the main actor used when system.actorOf(...) is used.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
   def handleFailure: PartialFunction[Throwable, Directive] = {

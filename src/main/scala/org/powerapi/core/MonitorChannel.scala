@@ -20,17 +20,17 @@
 
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-
 package org.powerapi.core
 
 import java.util.UUID
-
 import akka.actor.ActorRef
-
+import org.powerapi.core.ClockChannel.ClockTick
 import scala.concurrent.duration.FiniteDuration
 
 /**
  * Monitor channel and messages.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object MonitorChannel extends Channel {
   
@@ -39,15 +39,17 @@ object MonitorChannel extends Channel {
   trait MonitorMessage extends Message
 
   /**
-   * MonitorTarget is represented as a dedicated type of message.
+   * MonitorTick is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
+   * @param tick: tick origin.
    */
-  case class MonitorTarget(topic: String,
-                           muid: UUID,
-                           target: Target) extends MonitorMessage with Report
+  case class MonitorTick(topic: String,
+                         muid: UUID,
+                         target: Target,
+                         tick: ClockTick) extends MonitorMessage
 
   /**
    * MonitorStart is represented as a dedicated type of message.
@@ -90,7 +92,7 @@ object MonitorChannel extends Channel {
   /**
    * External methods used by the Sensor actors for interacting with the bus.
    */
-  def subscribeTarget: MessageBus => ActorRef => Unit = {
+  def subscribeMonitorTick: MessageBus => ActorRef => Unit = {
     subscribe(topicToPublish)
   }
 
@@ -108,7 +110,7 @@ object MonitorChannel extends Channel {
   /**
    * Internal methods used by the Monitors actor for interacting with the bus.
    */
-  def subscribeHandlingMonitor: MessageBus => ActorRef => Unit = {
+  def subscribeMonitorsChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
@@ -117,8 +119,8 @@ object MonitorChannel extends Channel {
   /**
    * Internal methods used by the MonitorChild actors for interacting with the bus.
    */
-  def publishTarget(muid: UUID, target: Target): MessageBus => Unit = {
-    publish(MonitorTarget(topicToPublish, muid, target))
+  def publishMonitorTick(muid: UUID, target: Target, tick: ClockTick): MessageBus => Unit = {
+    publish(MonitorTick(topicToPublish, muid, target, tick))
   }
 
   /**
