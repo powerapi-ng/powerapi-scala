@@ -62,8 +62,6 @@ class OSHelperMock extends OSHelper {
 
   def getThreads(process: Process): List[Thread] = List()
 
-  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = TargetUsageRatio(0.0)
-
   def getProcessCpuTime(process: Process): Option[Long] = {
     process match {
       case Process(2) => Some(10 + 5)

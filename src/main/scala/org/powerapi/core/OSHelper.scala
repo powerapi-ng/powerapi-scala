@@ -69,7 +69,28 @@ trait OSHelper {
    *
    * @param target: target to use for getting its cpu time.
    */
-  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio
+  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = {
+    lazy val globalTime = getGlobalCpuTime() match {
+      case Some(time) => time
+      case _ => 1 // we cannot divide by 0
+    }
+
+    lazy val targetTime = target match {
+      case process: Process => getProcessCpuTime(process) match {
+        case Some(time) => time
+        case _ => 0l
+      }
+      case application: Application => getProcesses(application).foldLeft(0l) { (acc, process) =>
+        getProcessCpuTime(process) match {
+          case Some(time) => acc + time
+          case _ => acc + 0l
+        }
+      }
+      case _ => 0l
+    }
+
+    TargetUsageRatio(targetTime.doubleValue / globalTime)
+  }
 
   /**
    * Get the process execution time on the cpu.
@@ -178,29 +199,6 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
       pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").toList.map(dir => Thread(dir.getName.toLong))
     }
     else List()
-  }
-
-  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = {
-    lazy val globalTime = getGlobalCpuTime() match {
-      case Some(time) => time
-      case _ => 1 // we cannot divide by 0
-    }
-
-    lazy val targetTime = target match {
-      case process: Process => getProcessCpuTime(process) match {
-        case Some(time) => time
-        case _ => 0l
-      }
-      case application: Application => getProcesses(application).foldLeft(0l) { (acc, process) =>
-        getProcessCpuTime(process) match {
-          case Some(time) => acc + time
-          case _ => acc + 0l
-        }
-      }
-      case _ => 0l
-    }
-
-    TargetUsageRatio(targetTime.doubleValue / globalTime)
   }
 
   def getProcessCpuTime(process: Process): Option[Long] = {
