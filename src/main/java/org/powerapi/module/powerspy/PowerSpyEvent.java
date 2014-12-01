@@ -20,31 +20,28 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.module.powerspy;
 
-import java.util.UUID
+public class PowerSpyEvent {
+  private final Double currentRMS;
+  private final Float uScale;
+  private final Float iScale;
 
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
+  public PowerSpyEvent(Double currentRMS, Float uScale, Float iScale) {
+    this.currentRMS = currentRMS;
+    this.uScale = uScale;
+    this.iScale = iScale;
+  }
 
-/**
- * Main sensor message.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
+  public Double getCurrentRMS() {
+    return currentRMS;
+  }
 
-/**
- * Base channel for the Sensor components.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorChannel extends Channel {
+  public Float getUScale() {
+    return uScale;
+  }
 
-  type M = SensorReport
+  public Float getIScale() {
+    return iScale;
+  }
 }

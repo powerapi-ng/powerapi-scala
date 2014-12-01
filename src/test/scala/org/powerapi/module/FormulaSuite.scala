@@ -27,20 +27,23 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
-import org.powerapi.core.{Channel, MessageBus}
+import org.powerapi.core.MessageBus
 import org.powerapi.module.SensorMockChannel.SensorMockReport
 
 object SensorMockChannel extends SensorChannel {
+  import org.powerapi.core.ClockChannel.ClockTick
+  import org.powerapi.core.Target
+
   private val topic = "test"
 
-  case class SensorMockReport(topic: String, muid: UUID, power: Double) extends SensorReport
+  case class SensorMockReport(topic: String, muid: UUID, target: Target, power: Double, tick: ClockTick) extends SensorReport
 
   def subscribeMockMessage: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
-  def publishSensorMockReport(muid: UUID, power: Double): MessageBus => Unit = {
-    publish(SensorMockReport(topic, muid, power))
+  def publishSensorMockReport(muid: UUID, target: Target, power: Double, tick: ClockTick): MessageBus => Unit = {
+    publish(SensorMockReport(topic, muid, target, power, tick))
   }
 }
 
@@ -69,15 +72,20 @@ class FormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Formula" should "process SensorReport messages" in new Bus {
+    import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.Process
     import org.powerapi.module.SensorMockChannel.publishSensorMockReport
+    import scala.concurrent.duration.DurationInt
 
     val coeff = 10d
     val formulaMock = TestActorRef(Props(classOf[FormulaMock], eventBus, testActor, coeff))(system)
 
     val muid = UUID.randomUUID()
     val power = 2.2d
+    val target = Process(1)
+    val tick = ClockTick("test", 25.milliseconds)
 
-    publishSensorMockReport(muid, power)(eventBus)
+    publishSensorMockReport(muid, target, power, tick)(eventBus)
     expectMsgClass(classOf[Double]) should equal(power * coeff)
   }
 }

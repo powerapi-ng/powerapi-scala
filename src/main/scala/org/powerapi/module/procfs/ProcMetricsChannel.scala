@@ -26,7 +26,7 @@ import java.util.UUID
 
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{MessageBus, Target, TimeInStates}
+import org.powerapi.core.{TargetUsageRatio, MessageBus, Target, TimeInStates}
 import org.powerapi.module.{SensorReport, SensorChannel}
 
 /**
@@ -36,10 +36,6 @@ import org.powerapi.module.{SensorReport, SensorChannel}
  */
 object ProcMetricsChannel extends SensorChannel {
 
-  /**
-   * Wrapper classes.
-   */
-  case class TargetUsageRatio(ratio: Double = 0)
   case class CacheKey(muid: UUID, target: Target)
 
   /**

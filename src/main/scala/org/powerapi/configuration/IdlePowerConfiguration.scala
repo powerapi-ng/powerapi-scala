@@ -20,31 +20,22 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.configuration
 
-import java.util.UUID
-
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
+import org.powerapi.core.Configuration
 
 /**
- * Main sensor message.
+ * Ilde power / Configuration.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
+trait IdlePowerConfiguration {
+  self: Configuration =>
 
-/**
- * Base channel for the Sensor components.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorChannel extends Channel {
+  import org.powerapi.core.ConfigValue
 
-  type M = SensorReport
+  lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
+    case ConfigValue(idlePower) => idlePower
+    case _ => 0d
+  }
 }

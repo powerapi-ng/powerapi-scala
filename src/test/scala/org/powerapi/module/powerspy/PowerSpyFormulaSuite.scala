@@ -20,9 +20,10 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.simple
+package org.powerapi.module.powerspy
 
 import java.util.UUID
+
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
@@ -30,46 +31,50 @@ import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import scala.concurrent.duration.DurationInt
 
-trait SimpleCpuFormulaConfigurationMock extends FormulaConfiguration {
-  override lazy val tdp = 220
-  override lazy val tdpFactor = 0.7
+class PowerSpyFormulaMock(eventBus: MessageBus) extends PowerSpyFormula(eventBus) {
+  override lazy val idlePower = 87.50
 }
 
-class SimpleCpuFormulaMock(messageBus: MessageBus)
-  extends CpuFormula(messageBus)
-  with SimpleCpuFormulaConfigurationMock
-
-class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
+class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("SimpleCpuFormulaSuite"))
+  def this() = this(ActorSystem("PowerSpyFormulaSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
   val eventBus = new MessageBus
-  val formulaMock = TestActorRef(Props(classOf[SimpleCpuFormulaMock], eventBus), "simple-cpuFormula")(system)
+  val formulaMock = TestActorRef(Props(classOf[PowerSpyFormulaMock], eventBus), "powerspyFormula")(system)
 
-  "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.{Process, TargetUsageRatio}
+  "A PowerSpyFormula" should "compute the power when receiving a PspyDataReport" in {
+    import org.powerapi.core.{All, Process, TargetUsageRatio}
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.module.procfs.ProcMetricsChannel.publishUsageReport
     import org.powerapi.module.PowerUnit
+    import PSpyMetricsChannel.publishPSpyDataReport
 
     val muid = UUID.randomUUID()
-    val target = Process(1)
-    val targetRatio = TargetUsageRatio(0.4)
-    val tickMock = ClockTick("test", 25.milliseconds)
-    val power = 220 * 0.7 * targetRatio.ratio
+    val rms = 2000000d
+    val u = 0.080f
+    val i = 5.7E-4f
+    val ratio = TargetUsageRatio(0.80)
+    val allPower = rms * u * i
+    val processPower = (rms * u * i - 87.50) * ratio.ratio
+    val tickMock = ClockTick("test", 1.seconds)
 
     subscribePowerReport(muid)(eventBus)(testActor)
-    publishUsageReport(muid, target, targetRatio, tickMock)(eventBus)
 
+    publishPSpyDataReport(muid, All, rms, u, i, tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)
+      case PowerReport(_, id, All, pow, PowerUnit.W, "powerspy", tic) if muid == id && allPower == pow && tickMock == tic => assert(true)
+      case _ => assert(false)
+    }
+
+    publishPSpyDataReport(muid, Process(1), ratio, rms, u, i, tickMock)(eventBus)
+    expectMsgClass(classOf[PowerReport]) match {
+      case PowerReport(_, id, pr, pow, PowerUnit.W, "powerspy", tic) if muid == id && Process(1) == pr && processPower == pow && tickMock == tic => assert(true)
       case _ => assert(false)
     }
   }

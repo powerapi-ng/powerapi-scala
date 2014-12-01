@@ -20,31 +20,27 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.module.powerspy;
 
-import java.util.UUID
+import java.nio.ByteOrder;
 
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
+public class IEEE754Utils {
+  public static Float fromString(String bits) throws NumberFormatException {
+    if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
+      char[] bitsCharArray = bits.toCharArray();
 
-/**
- * Main sensor message.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
+      for (int i = 0; i < bitsCharArray.length / 2; i += 2) {
+        char first = bitsCharArray[i];
+        char second = bitsCharArray[i + 1];
+        bitsCharArray[i] = bitsCharArray[bitsCharArray.length - i - 2];
+        bitsCharArray[i + 1] = bitsCharArray[bitsCharArray.length - i - 1];
+        bitsCharArray[bitsCharArray.length - i - 2] = first;
+        bitsCharArray[bitsCharArray.length - i - 1] = second;
+      }
 
-/**
- * Base channel for the Sensor components.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorChannel extends Channel {
+      bits = String.valueOf(bitsCharArray);
+    }
 
-  type M = SensorReport
+    return Float.intBitsToFloat(Integer.valueOf(bits, 16));
+  }
 }

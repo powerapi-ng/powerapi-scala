@@ -20,31 +20,8 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.module.powerspy;
 
-import java.util.UUID
-
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
-
-/**
- * Main sensor message.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
-
-/**
- * Base channel for the Sensor components.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorChannel extends Channel {
-
-  type M = SensorReport
+public interface PowerSpyListener {
+  void dataUpdated(PowerSpyEvent event);
 }

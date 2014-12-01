@@ -30,7 +30,6 @@ import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel
-import org.powerapi.module.procfs.ProcMetricsChannel
 import scala.concurrent.duration.DurationInt
 
 trait DvfsCpuFormulaConfigurationMock extends FormulaConfiguration {
@@ -73,9 +72,9 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "compute correctly the process' power" in {
-    import org.powerapi.core.{Process,TimeInStates}
+    import org.powerapi.core.{Process, TargetUsageRatio, TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
-    import ProcMetricsChannel.{UsageReport, TargetUsageRatio}
+    import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
 
     val topic = "test"
     val muid = UUID.randomUUID()
@@ -98,10 +97,10 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.{Process,TimeInStates}
+    import org.powerapi.core.{Process, TargetUsageRatio, TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
     import PowerChannel.{PowerReport, subscribePowerReport}
-    import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio}
+    import org.powerapi.module.procfs.ProcMetricsChannel.publishUsageReport
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()

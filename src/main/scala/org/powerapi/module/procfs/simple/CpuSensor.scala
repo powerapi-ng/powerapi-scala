@@ -44,7 +44,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
    * and providing the target CPU ratio usage.
    */
   class TargetRatio {
-    import org.powerapi.core.{All, Application, Process}
+    import org.powerapi.core.{All, Application, Process, TargetUsageRatio}
     import ProcMetricsChannel.CacheKey
 
     /**
@@ -80,12 +80,12 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
       }
       lazy val globalTime: Long = osHelper.getGlobalCpuTime() match {
         case Some(value) => value
-        case _ => 0l
+        case _ => 1 // we cannot divide by 0
       }
       (processTime, globalTime)
     }
 
-    def handleMonitorTick(tick: MonitorTick): ProcMetricsChannel.TargetUsageRatio = {
+    def handleMonitorTick(tick: MonitorTick): TargetUsageRatio = {
       val now = tick.target match {
         case process: Process => handleProcessTarget(process)
         case application: Application => handleApplicationTarget(application)
@@ -98,10 +98,10 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
 
       val globalDiff = now._2 - old._2
       if (globalDiff <= 0) {
-        ProcMetricsChannel.TargetUsageRatio(0)
+        TargetUsageRatio(0)
       }
       else {
-        ProcMetricsChannel.TargetUsageRatio((now._1 - old._1).doubleValue / globalDiff)
+        TargetUsageRatio((now._1 - old._1).doubleValue / globalDiff)
       }
     }
   }

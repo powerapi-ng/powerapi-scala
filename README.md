@@ -1,8 +1,11 @@
 # PowerAPI
-PowerAPI is a middleware toolkit for building software-defined power meters. Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time. PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including file system, network, web, graphical). As a middleware toolkit, PowerAPI offers the capability of assembling power meters *«à la carte»* to accommodate user requirements.
+PowerAPI is a middleware toolkit for building software-defined power meters.
+Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
+PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including file system, network, web, graphical).
+As a middleware toolkit, PowerAPI offers the capability of assembling power meters *«à la carte»* to accommodate user requirements.
 
 # About
-PowerAPI is an open-source project developed by the [Spirals research group](https://team.inria.fr/spirals) (University of Lille 1 and Inria).
+PowerAPI is an open-source project developed by the [Spirals research group](https://team.inria.fr/spirals) (University of Lille 1 and Inria) and fully managed with [sbt](http://www.scala-sbt.org/).
 
 ## Mailing list
 You can follow the latest news and asks questions by subscribing to our [mailing list](https://sympa.inria.fr/sympa/info/powerapi).
@@ -17,6 +20,8 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Akka](http://akka.io) (version 2.3.6 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
 * [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 * [Apache log4j2](http://logging.apache.org/log4j/2.x/) (version 2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
+* [Bluecove](http://bluecove.org/) (version 2.1.0 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for interfacing the Bluetooth stack in Java (PowerSpy).
+* [Bluecove-gpl](http://bluecove.org/bluecove-gpl/) (version 2.1.0 under [GPL licence](http://www.gnu.org/licenses/gpl.html)), for supporting Bluecove on Linux (PowerSpy).
 
 # Licence
 This software is licensed under the *GNU Affero General Public License*, quoted below.

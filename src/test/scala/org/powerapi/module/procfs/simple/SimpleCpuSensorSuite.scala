@@ -54,10 +54,10 @@ class OSHelperMock extends OSHelper {
 }
 
 class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
+  import org.powerapi.core.{All, Application, Process, TargetUsageRatio}
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.core.{All, Application, Process}
-  import org.powerapi.module.procfs.ProcMetricsChannel.{CacheKey, UsageReport, TargetUsageRatio}
+  import org.powerapi.module.procfs.ProcMetricsChannel.{CacheKey, UsageReport}
 
   implicit val timeout = Timeout(1.seconds)
 

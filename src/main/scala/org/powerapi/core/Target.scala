@@ -51,6 +51,15 @@ case class Process(pid: Long) extends Target
 case class Application(name: String) extends Target
 
 /**
+ * Target usage ratio.
+ *
+ * @param ratio: usage ratio.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+case class TargetUsageRatio(ratio: Double)
+
+/**
  * Monitoring target for the whole system.
  *
  * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
