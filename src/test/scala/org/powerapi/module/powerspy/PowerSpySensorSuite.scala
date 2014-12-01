@@ -28,7 +28,7 @@ import akka.actor.{Actor, Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.{OSHelper, MessageBus}
+import org.powerapi.core.{LinuxHelper, OSHelper, MessageBus}
 import scala.concurrent.duration.DurationInt
 
 class PSpyDataListener(eventBus: MessageBus, muid: UUID) extends Actor {
@@ -51,20 +51,18 @@ class PowerSpySensorMock(eventBus: MessageBus, osHelper: OSHelper, timeout: Time
   override lazy val version = PowerSpyVersion.POWERSPY_V1
 }
 
-class OSHelperMock extends OSHelper {
+class OSHelperMock extends LinuxHelper {
   import org.powerapi.core.{Application, Process, Thread, Target, TargetUsageRatio, TimeInStates}
 
-  def getProcesses(application: Application): List[Process] = {
+  override def getProcesses(application: Application): List[Process] = {
     application match {
       case Application("app") => List(Process(2), Process(3))
     }
   }
 
-  def getThreads(process: Process): List[Thread] = List()
+  override def getThreads(process: Process): List[Thread] = List()
 
-  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = TargetUsageRatio(0.0)
-
-  def getProcessCpuTime(process: Process): Option[Long] = {
+  override def getProcessCpuTime(process: Process): Option[Long] = {
     process match {
       case Process(2) => Some(10 + 5)
       case Process(3) => Some(3 + 5)
@@ -72,9 +70,9 @@ class OSHelperMock extends OSHelper {
     }
   }
 
-  def getGlobalCpuTime(): Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
+  override def getGlobalCpuTime(): Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
 
-  def getTimeInStates(): TimeInStates = TimeInStates(Map())
+  override def getTimeInStates(): TimeInStates = TimeInStates(Map())
 }
 
 class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
