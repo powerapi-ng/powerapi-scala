@@ -45,7 +45,7 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
   import akka.event.LoggingReceive
   import akka.pattern.gracefulStop
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.core.{Process, TargetUsageRatio}
+  import org.powerapi.core.{All, Application, Process, Target, TargetUsageRatio}
   import org.powerapi.module.powerspy.PSpyMetricsChannel.{PSpyChildMessage, PSpyStart, publishPSpyDataReport}
 
   override def postStop() = {
@@ -82,16 +82,13 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
       case Some(avg) => {
         monitorTick.target match {
           case process: Process => {
-            lazy val processTime = osHelper.getProcessCpuTime(process) match {
-              case Some(time) => time
-              case _ => 0
-            }
-            lazy val globalTime = osHelper.getGlobalCpuTime() match {
-              case Some(time) => time
-              case _ => 1 // we cannot divide by 0
-            }
-            lazy val processUsage = TargetUsageRatio(processTime / globalTime)
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, processUsage, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
+            publishPSpyDataReport(monitorTick.muid, monitorTick.target, getCpuUsage(process), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
+          }
+          case application: Application => {
+            publishPSpyDataReport(monitorTick.muid, monitorTick.target, getCpuUsage(application), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
+          }
+          case All => {
+            publishPSpyDataReport(monitorTick.muid, monitorTick.target, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
           }
         }
 
@@ -99,6 +96,29 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
       }
       case _ => log.debug("no powerspy messages received")
     }
+  }
+
+  private def getCpuUsage(target: Target): TargetUsageRatio = {
+    lazy val globalTime = osHelper.getGlobalCpuTime() match {
+      case Some(time) => time
+      case _ => 1 // we cannot divide by 0
+    }
+
+    lazy val targetTime = target match {
+      case process: Process => osHelper.getProcessCpuTime(process) match {
+        case Some(time) => time
+        case _ => 0l
+      }
+      case application: Application => osHelper.getProcesses(application).foldLeft(0l) { (acc, process) =>
+        osHelper.getProcessCpuTime(process) match {
+          case Some(time) => time
+          case _ => 0l
+        }
+      }
+      case _ => 0l
+    }
+
+    TargetUsageRatio(targetTime / globalTime)
   }
 
   /**

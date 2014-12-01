@@ -119,7 +119,7 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     TestActorRef(Props(classOf[Clocks], eventBus), "clocks")(system)
     TestActorRef(Props(classOf[Monitors], eventBus), "monitors")(system)
-    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, new OSHelperMock, 20.seconds), "pspySensor")(system)
+    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, new OSHelperMock, Timeout(20.seconds)), "pspySensor")(system)
     TestActorRef(Props(classOf[PSpyDataListener], eventBus, muid), "pspyListener")(system)
 
     startMonitor(muid, 1.seconds, List(Application("app")))(eventBus)
@@ -137,7 +137,7 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     TestActorRef(Props(classOf[Clocks], eventBus), "clocks")(system)
     TestActorRef(Props(classOf[Monitors], eventBus), "monitors")(system)
-    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, new OSHelperMock, 20.seconds), "pspySensor")(system)
+    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, new OSHelperMock, Timeout(20.seconds)), "pspySensor")(system)
     TestActorRef(Props(classOf[PSpyDataListener], eventBus, muid), "pspyListener")(system)
 
     startMonitor(muid, 1.seconds, List(All))(eventBus)
