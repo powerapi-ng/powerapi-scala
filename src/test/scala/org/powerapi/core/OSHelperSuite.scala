@@ -48,18 +48,30 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     helper.getThreads(Process(1)) should equal(List(Thread(1000), Thread(1001)))
   }
 
-  "The method getTargetCpuUsageRatio in the LinuxHelper" should "return the cpu usage of the target" in {
-    val helper = new LinuxHelper {
-      override def getProcesses(application: Application) = application match {
+  "The method getTargetCpuUsageRatio in the OSHelper" should "return the cpu usage of the target" in {
+    val helper = new OSHelper {
+      override def getProcesses(application: Application): List[Process] = application match {
         case Application("app") => List(Process(2), Process(3))
         case Application("bad-app") => List(Process(-1), Process(2))
+        case _ => List()
       }
-      override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
-      override lazy val globalStatPath = s"${basepath}/proc/stat"
+
+      override def getProcessCpuTime(process: org.powerapi.core.Process): Option[Long] = process match {
+        case Process(1) => Some(33 + 2)
+        case Process(2) => Some(10 + 5)
+        case Process(3) => Some(3 + 5)
+        case _ => None
+      }
+
+      override def getGlobalCpuTime(): Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
+
+      override def getThreads(process: Process): List[Thread] = List()
+
+      override def getTimeInStates(): TimeInStates = TimeInStates(Map())
     }
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val p1Ratio = (33.doubleValue + 2) / globalTime
+    val p1Ratio = (33 + 2).doubleValue / globalTime
     val goodAppRatio = (10 + 5 + 3 + 5).doubleValue / globalTime
     val badAppRatio = (10 + 5).doubleValue / globalTime
     val allRatio = 0d
