@@ -118,7 +118,7 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
       case _ => 0l
     }
 
-    TargetUsageRatio(targetTime / globalTime)
+    TargetUsageRatio(targetTime.doubleValue / globalTime)
   }
 
   /**
