@@ -28,16 +28,18 @@ import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.{ MessageBus, OSHelper}
+import org.powerapi.core.{MessageBus, OSHelper}
 
 import scala.concurrent.duration.DurationInt
 
 class OSHelperMock extends OSHelper {
-  import org.powerapi.core.{Application, Process, Thread, TimeInStates}
+  import org.powerapi.core.{Application, Process, Target, TargetUsageRatio, Thread, TimeInStates}
 
   def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
 
   def getThreads(process: Process): List[Thread] = List()
+
+  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = TargetUsageRatio(0.0)
 
   def getProcessCpuTime(process: Process): Option[Long] = {
     process match {

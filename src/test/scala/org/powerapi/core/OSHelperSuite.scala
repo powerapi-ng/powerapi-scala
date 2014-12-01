@@ -48,6 +48,43 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     helper.getThreads(Process(1)) should equal(List(Thread(1000), Thread(1001)))
   }
 
+  "The method getTargetCpuUsageRatio in the LinuxHelper" should "return the cpu usage of the target" in {
+    val helper = new LinuxHelper {
+      override def getProcesses(application: Application) = application match {
+        case Application("app") => List(Process(2), Process(3))
+        case Application("bad-app") => List(Process(-1), Process(2))
+      }
+      override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
+      override lazy val globalStatPath = s"${basepath}/proc/stat"
+    }
+
+    val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val p1Ratio = (33.doubleValue + 2) / globalTime
+    val goodAppRatio = (10 + 5 + 3 + 5).doubleValue / globalTime
+    val badAppRatio = (10 + 5).doubleValue / globalTime
+    val allRatio = 0d
+
+    helper.getTargetCpuUsageRatio(Process(1)) match {
+      case TargetUsageRatio(ratio) if p1Ratio == ratio => assert(true)
+      case _ => assert(false)
+    }
+
+    helper.getTargetCpuUsageRatio(Application("app")) match {
+      case TargetUsageRatio(ratio) if goodAppRatio == ratio => assert(true)
+      case _ => assert(false)
+    }
+
+    helper.getTargetCpuUsageRatio(Application("bad-app")) match {
+      case TargetUsageRatio(ratio) if badAppRatio == ratio => assert(true)
+      case _ => assert(false)
+    }
+
+    helper.getTargetCpuUsageRatio(All) match {
+      case TargetUsageRatio(ratio) if allRatio == ratio => assert(true)
+      case _ => assert(false)
+    }
+  }
+
   "The method getProcessCpuTime in the LinuxHelper" should "return the process cpu time of a given process" in {
     val helper = new LinuxHelper {
       override lazy val processStatPath = s"${basepath}proc/%?pid/stat"

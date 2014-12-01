@@ -53,8 +53,8 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
     super.postStop()
   }
 
-  lazy val childProps = PowerSpyChild.props(sppUrl, version)
-  lazy val pspyChild: ActorRef = childProps match {
+  val childProps = PowerSpyChild.props(sppUrl, version)
+  val pspyChild: ActorRef = childProps match {
     case Some(props) => context.actorOf(props, "pspy-child")
     case _ => log.error("the PowerSpy ({}) is not reachable", sppUrl); null
   }
@@ -82,10 +82,10 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
       case Some(avg) => {
         monitorTick.target match {
           case process: Process => {
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, getCpuUsage(process), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
+            publishPSpyDataReport(monitorTick.muid, monitorTick.target, osHelper.getTargetCpuUsageRatio(process), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
           }
           case application: Application => {
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, getCpuUsage(application), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
+            publishPSpyDataReport(monitorTick.muid, monitorTick.target, osHelper.getTargetCpuUsageRatio(application), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
           }
           case All => {
             publishPSpyDataReport(monitorTick.muid, monitorTick.target, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
@@ -96,29 +96,6 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
       }
       case _ => log.debug("no powerspy messages received")
     }
-  }
-
-  private def getCpuUsage(target: Target): TargetUsageRatio = {
-    lazy val globalTime = osHelper.getGlobalCpuTime() match {
-      case Some(time) => time
-      case _ => 1 // we cannot divide by 0
-    }
-
-    lazy val targetTime = target match {
-      case process: Process => osHelper.getProcessCpuTime(process) match {
-        case Some(time) => time
-        case _ => 0l
-      }
-      case application: Application => osHelper.getProcesses(application).foldLeft(0l) { (acc, process) =>
-        osHelper.getProcessCpuTime(process) match {
-          case Some(time) => time
-          case _ => 0l
-        }
-      }
-      case _ => 0l
-    }
-
-    TargetUsageRatio(targetTime.doubleValue / globalTime)
   }
 
   /**

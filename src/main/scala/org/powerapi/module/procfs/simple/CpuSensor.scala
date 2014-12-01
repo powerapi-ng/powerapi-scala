@@ -96,12 +96,14 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
       val old = cache.getOrElse(key, now)
       refreshCache(key, now)
 
-      val globalDiff = now._2 - old._2
-      if (globalDiff <= 0) {
+      lazy val targetTimeDiff = (now._1 - old._1).doubleValue
+      lazy val globalTimeDiff = (now._2 - old._2).doubleValue
+
+      if(globalTimeDiff <= 0 || targetTimeDiff <= 0) {
         TargetUsageRatio(0)
       }
       else {
-        TargetUsageRatio((now._1 - old._1).doubleValue / globalDiff)
+        TargetUsageRatio(targetTimeDiff / globalTimeDiff)
       }
     }
   }

@@ -28,16 +28,18 @@ import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.{TimeInStates, MessageBus, OSHelper}
+import org.powerapi.core.{MessageBus, OSHelper}
 
 import scala.concurrent.duration.DurationInt
 
 class OSHelperMock extends OSHelper {
-  import org.powerapi.core.{Application, Process, Thread}
+  import org.powerapi.core.{Application, Process, Target, TargetUsageRatio, Thread, TimeInStates}
 
   def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
 
   def getThreads(process: Process): List[Thread] = List()
+
+  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = TargetUsageRatio(0.0)
 
   def getProcessCpuTime(process: Process): Option[Long] = {
     process match {
@@ -72,6 +74,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelperMock()), "dvfs-CpuSensor")(system)
 
   "Frequencies' cache" should "be correctly updated during process phase" in {
+    import org.powerapi.core.TimeInStates
+
     val muid = UUID.randomUUID()
     val processTarget = Process(1)
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequencies.cache should have size 0
@@ -83,6 +87,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A dvfs CpuSensor" should "process a MonitorTicks message and then publish a UsageReport" in {
     import org.powerapi.core.MonitorChannel.publishMonitorTick
+    import org.powerapi.core.TimeInStates
     import org.powerapi.module.procfs.ProcMetricsChannel.subscribeDvfsUsageReport
 
     val muid = UUID.randomUUID()

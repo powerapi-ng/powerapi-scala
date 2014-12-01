@@ -52,11 +52,17 @@ class PowerSpySensorMock(eventBus: MessageBus, osHelper: OSHelper, timeout: Time
 }
 
 class OSHelperMock extends OSHelper {
-  import org.powerapi.core.{Application, Process, Thread, TimeInStates}
+  import org.powerapi.core.{Application, Process, Thread, Target, TargetUsageRatio, TimeInStates}
 
-  def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
+  def getProcesses(application: Application): List[Process] = {
+    application match {
+      case Application("app") => List(Process(2), Process(3))
+    }
+  }
 
   def getThreads(process: Process): List[Thread] = List()
+
+  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = TargetUsageRatio(0.0)
 
   def getProcessCpuTime(process: Process): Option[Long] = {
     process match {
