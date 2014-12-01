@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.core
@@ -37,6 +37,7 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 
   override def preStart() = {
     subscribeMonitorTick(eventBus)(self)
+    super.preStart()
   }
 
   def receive = active(0)
@@ -206,9 +207,9 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks4")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors4")
 
-    val monitor = new Monitor(eventBus)
-    val frequency = 25.milliseconds
     val targets = List(Process(1), Application("java"))
+    val monitor = new Monitor(eventBus, targets)
+    val frequency = 25.milliseconds
 
     val subscribers = scala.collection.mutable.ListBuffer[ActorRef]()
 
@@ -255,7 +256,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val targets = List(All)
 
     for(frequency <- 50 to 100) {
-      val monitor = new Monitor(eventBus)
+      val monitor = new Monitor(eventBus, targets)
       startMonitor(monitor.muid, frequency.milliseconds, targets)(eventBus)
     }
 

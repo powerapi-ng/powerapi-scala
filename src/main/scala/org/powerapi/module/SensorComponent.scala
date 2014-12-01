@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,11 +17,10 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module
-
 
 import akka.event.LoggingReceive
 import org.powerapi.core.{APIComponent, MessageBus}
@@ -37,6 +36,7 @@ abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
 
   override def preStart(): Unit = {
     subscribeMonitorTick(eventBus)(self)
+    super.preStart()
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {

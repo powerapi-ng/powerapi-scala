@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,13 +17,14 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module
 
 import akka.event.LoggingReceive
 import org.powerapi.core.{APIComponent, MessageBus}
+import scala.reflect.ClassTag
 
 /**
  * Base trait for each PowerAPI formula.
@@ -31,16 +32,16 @@ import org.powerapi.core.{APIComponent, MessageBus}
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-abstract class FormulaComponent(eventBus: MessageBus) extends APIComponent {
-
-  type SR <: SensorReport
+abstract class FormulaComponent[SR <: SensorReport : ClassTag](eventBus: MessageBus) extends APIComponent {
 
   override def preStart(): Unit = {
     subscribeSensorReport()
+    super.preStart()
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: SR => compute(msg)
+    // To avoid the abstract type pattern eliminated by erasure.
+    case msg: SR if implicitly[ClassTag[SR]].runtimeClass.isInstance(msg) => compute(msg)
   } orElse default
 
   def subscribeSensorReport(): Unit

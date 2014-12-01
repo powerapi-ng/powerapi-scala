@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,12 +17,13 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.MessageBus
+import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
 import org.powerapi.module.{PowerChannel, FormulaComponent}
 import org.powerapi.module.procfs.ProcMetricsChannel
 
@@ -65,19 +66,17 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuFormula(eventBus: MessageBus) extends FormulaComponent(eventBus) with FormulaConfiguration {
-  import ProcMetricsChannel.{UsageReport, subscribeSimpleUsageReport}
+class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with FormulaConfiguration {
+  import ProcMetricsChannel.subscribeSimpleUsageReport
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
-
-  override type SR = UsageReport
 
   def subscribeSensorReport(): Unit = {
     subscribeSimpleUsageReport(eventBus)(self)
   }
 
   def compute(sensorReport: UsageReport): Unit = {
-    lazy val power = (tdp * tdpFactor) * sensorReport.targetRatio.percent
+    lazy val power = (tdp * tdpFactor) * sensorReport.targetRatio.ratio
     publishPowerReport(sensorReport.muid, sensorReport.target, power, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
   }
 }

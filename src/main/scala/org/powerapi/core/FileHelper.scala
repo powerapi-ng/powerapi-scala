@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,10 +17,12 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.core
+
+import scala.io.Source
 
 /**
  * Implement the Loan's pattern for closing automatically a resource.
@@ -30,7 +32,9 @@ package org.powerapi.core
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object FileHelper {
-  def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B = {
+  def using[A](filepath: String)(f: Source => A): A = {
+    lazy val resource = Source.fromFile(filepath)
+
     try {
       f(resource)
     }

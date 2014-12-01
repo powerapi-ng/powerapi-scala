@@ -1,6 +1,6 @@
 name := """powerapi"""
 
-version := "1.0"
+version := "3.0"
 
 scalaVersion := "2.11.4"
 
@@ -11,6 +11,11 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-core" % "2.1",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
   "org.scalatest" %% "scalatest" % "2.2.2" % "test"
+)
+
+scalacOptions ++= Seq(
+  "-feature",
+  "-deprecation"
 )
 
 parallelExecution in Test := false

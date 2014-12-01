@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,13 +17,14 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module.procfs.dvfs
 
 import com.typesafe.config.Config
 import org.powerapi.core.MessageBus
+import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
 import org.powerapi.module.{PowerChannel, FormulaComponent}
 import org.powerapi.module.procfs.ProcMetricsChannel
 
@@ -64,12 +65,10 @@ trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConf
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuFormula(eventBus: MessageBus) extends FormulaComponent(eventBus) with FormulaConfiguration {
-  import ProcMetricsChannel.{UsageReport, subscribeDvfsUsageReport}
+class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with FormulaConfiguration {
+  import ProcMetricsChannel.subscribeDvfsUsageReport
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
-
-  override type SR = UsageReport
 
   def subscribeSensorReport(): Unit = {
     subscribeDvfsUsageReport(eventBus)(self)

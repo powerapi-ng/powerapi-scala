@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module.procfs.simple
@@ -41,7 +41,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
 
   /**
    * Delegate class collecting time information contained into both globalStatPath and processStatPath files
-   * and providing the target CPU percent usage.
+   * and providing the target CPU ratio usage.
    */
   class TargetRatio {
     import org.powerapi.core.{All, Application, Process}

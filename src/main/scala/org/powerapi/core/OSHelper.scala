@@ -155,7 +155,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
 
   def getProcessCpuTime(process: Process): Option[Long] = {
     try {
-      using(Source.fromFile(processStatPath.replace("%?pid", s"${process.pid}")))(source => {
+      using(processStatPath.replace("%?pid", s"${process.pid}"))(source => {
         log.debug("using {} as a procfs process stat path", processStatPath)
 
         val statLine = source.getLines.toIndexedSeq(0).split("\\s")
@@ -170,7 +170,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
 
   def getGlobalCpuTime(): Option[Long] = {
     try {
-      using(Source.fromFile(globalStatPath))(source => {
+      using(globalStatPath)(source => {
         log.debug("using {} as a procfs global stat path", globalStatPath)
 
         val time = source.getLines.toIndexedSeq(0) match {
@@ -200,7 +200,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
 
     for(core <- 0 until cores) {
       try {
-        using(Source.fromFile(timeInStatePath.replace("%?index", s"$core")))(source => {
+        using(timeInStatePath.replace("%?index", s"$core"))(source => {
           log.debug("using {} as a sysfs timeinstates path", timeInStatePath)
 
           for(line <- source.getLines) {

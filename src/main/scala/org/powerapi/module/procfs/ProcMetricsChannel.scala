@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module.procfs
@@ -39,7 +39,7 @@ object ProcMetricsChannel extends SensorChannel {
   /**
    * Wrapper classes.
    */
-  case class TargetUsageRatio(percent: Double = 0)
+  case class TargetUsageRatio(ratio: Double = 0)
   case class CacheKey(muid: UUID, target: Target)
 
   /**
@@ -48,7 +48,7 @@ object ProcMetricsChannel extends SensorChannel {
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
-   * @param targetRatio: target cpu percent usage.
+   * @param targetRatio: target cpu ratio usage.
    * @param timeInStates: time spent by the CPU in its frequencies.
    * @param tick: tick origin.
    */

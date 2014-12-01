@@ -1,4 +1,4 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.module
@@ -28,6 +28,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
 import org.powerapi.core.{Channel, MessageBus}
+import org.powerapi.module.SensorMockChannel.SensorMockReport
 
 object SensorMockChannel extends SensorChannel {
   private val topic = "test"
@@ -43,10 +44,8 @@ object SensorMockChannel extends SensorChannel {
   }
 }
 
-class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends FormulaComponent(eventBus) {
-  import org.powerapi.module.SensorMockChannel.{SensorMockReport, subscribeMockMessage}
-
-  type SR = SensorMockReport
+class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends FormulaComponent[SensorMockReport](eventBus) {
+  import org.powerapi.module.SensorMockChannel.subscribeMockMessage
 
   def subscribeSensorReport(): Unit = {
     subscribeMockMessage(eventBus)(self)
