@@ -45,29 +45,29 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val taskPath =  s"${basepath}proc/%?pid/task"
     }
 
-    helper.getThreads(Process(1)) should equal(List(Thread(1000), Thread(1001)))
+    helper.getThreads(Process(1)) should contain allOf(Thread(1000), Thread(1001))
   }
 
   "The method getTargetCpuTime in the OSHelper" should "return the cpu usage of the target" in {
     val helper = new OSHelper {
-      override def getProcesses(application: Application): List[Process] = application match {
+      def getProcesses(application: Application): List[Process] = application match {
         case Application("app") => List(Process(2), Process(3))
         case Application("bad-app") => List(Process(-1), Process(2))
         case _ => List()
       }
 
-      override def getProcessCpuTime(process: org.powerapi.core.Process): Option[Long] = process match {
+      def getProcessCpuTime(process: org.powerapi.core.Process): Option[Long] = process match {
         case Process(1) => Some(33 + 2)
         case Process(2) => Some(10 + 5)
         case Process(3) => Some(3 + 5)
         case _ => None
       }
 
-      override def getGlobalCpuTime: Option[Long] = None
+      def getGlobalCpuTime: Option[Long] = None
 
-      override def getThreads(process: Process): List[Thread] = List()
+      def getThreads(process: Process): List[Thread] = List()
 
-      override def getTimeInStates: TimeInStates = TimeInStates(Map())
+      def getTimeInStates: TimeInStates = TimeInStates(Map())
     }
 
     val p1Time = 33 + 2
@@ -100,8 +100,15 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
 
-    helper.getGlobalCpuTime should equal(Some(globalTime))
-    badHelper.getGlobalCpuTime should equal(None)
+    helper.getGlobalCpuTime() match {
+      case Some(globalTime) => assert(true)
+      case _ => assert(false)
+    }
+
+    badHelper.getGlobalCpuTime() match {
+      case None => assert(true)
+      case _ => assert(false)
+    }
   }
 
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
