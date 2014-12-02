@@ -65,34 +65,6 @@ trait OSHelper {
   def getThreads(process: Process): List[Thread]
 
   /**
-   * Get the target cpu ratio.
-   *
-   * @param target: target to use for getting its cpu time.
-   */
-  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = {
-    lazy val globalTime = getGlobalCpuTime() match {
-      case Some(time) => time
-      case _ => 1 // we cannot divide by 0
-    }
-
-    lazy val targetTime = target match {
-      case process: Process => getProcessCpuTime(process) match {
-        case Some(time) => time
-        case _ => 0l
-      }
-      case application: Application => getProcesses(application).foldLeft(0l) { (acc, process) =>
-        getProcessCpuTime(process) match {
-          case Some(time) => acc + time
-          case _ => acc + 0l
-        }
-      }
-      case _ => 0l
-    }
-
-    TargetUsageRatio(targetTime.doubleValue / globalTime)
-  }
-
-  /**
    * Get the process execution time on the cpu.
    *
    * @param process: targeted process
