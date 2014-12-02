@@ -100,12 +100,12 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
 
-    helper.getGlobalCpuTime() match {
+    helper.getGlobalCpuTime match {
       case Some(globalTime) => assert(true)
       case _ => assert(false)
     }
 
-    badHelper.getGlobalCpuTime() match {
+    badHelper.getGlobalCpuTime match {
       case None => assert(true)
       case _ => assert(false)
     }
