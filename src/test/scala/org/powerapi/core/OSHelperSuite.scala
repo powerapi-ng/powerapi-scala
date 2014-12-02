@@ -45,7 +45,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val taskPath =  s"${basepath}proc/%?pid/task"
     }
 
-    helper.getThreads(Process(1)) should equal(List(Thread(1000), Thread(1001)))
+    helper.getThreads(Process(1)) should contain allOf(Thread(1000), Thread(1001))
   }
 
   "The method getProcessCpuTime in the LinuxHelper" should "return the process cpu time of a given process" in {
@@ -53,15 +53,9 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
     }
 
-    helper.getProcessCpuTime(Process(1)) match {
-      case Some(35) => assert(true)
-      case _ => assert(false)
-    }
+    helper.getProcessCpuTime(Process(1)) should equal(Some(35))
 
-    helper.getProcessCpuTime(Process(10)) match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    helper.getProcessCpuTime(Process(10)) should equal(None)
   }
 
   "The method getGlobalCpuTime in the LinuxHelper" should "return the global cpu time" in {
@@ -75,15 +69,9 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
 
-    helper.getGlobalCpuTime() match {
-      case Some(globalTime) => assert(true)
-      case _ => assert(false)
-    }
+    helper.getGlobalCpuTime() should equal(Some(globalTime))
 
-    badHelper.getGlobalCpuTime() match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    badHelper.getGlobalCpuTime() should equal(None)
   }
 
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
