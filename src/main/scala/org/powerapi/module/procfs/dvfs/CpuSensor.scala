@@ -22,8 +22,8 @@
  */
 package org.powerapi.module.procfs.dvfs
 
-import org.powerapi.core.{MessageBus, OSHelper}
-import org.powerapi.module.procfs.ProcMetricsChannel
+import org.powerapi.core.{TimeInStates, MessageBus, OSHelper}
+import org.powerapi.module.Cache
 
 /**
  * CPU sensor component that collects data from a /proc and /sys directories
@@ -35,34 +35,39 @@ import org.powerapi.module.procfs.ProcMetricsChannel
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.procfs.simple.CpuSensor(eventBus, osHelper) {
+  import org.powerapi.core.{Application,Process}
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import ProcMetricsChannel.publishUsageReport
+  import org.powerapi.module.CacheKey
+  import org.powerapi.module.procfs.ProcMetricsChannel.publishUsageReport
+  import scala.reflect.ClassTag
 
-  /**
-   * Delegate class to deal with time spent within each CPU frequencies.
-   */
-  class Frequencies {
-    import org.powerapi.core.TimeInStates
-    import ProcMetricsChannel.CacheKey
+  lazy val frequenciesCache = new Cache[TimeInStates]
 
-    lazy val cache = collection.mutable.Map[CacheKey, TimeInStates]()
+  def timeInStates(monitorTick: MonitorTick): TimeInStates = {
+    val key = CacheKey(monitorTick.muid, monitorTick.target)
 
-    def refreshCache(key: CacheKey, now: TimeInStates): Unit = {
-      cache += (key -> now)
-    }
+    val processClaz = implicitly[ClassTag[Process]].runtimeClass
+    val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
-    def handleMonitorTick(tick: MonitorTick): TimeInStates = {
-      val now = osHelper.getTimeInStates()
-      val key = CacheKey(tick.muid, tick.target)
-      val old = cache.getOrElse(key, now)
-      refreshCache(key, now)
-      now - old
+    monitorTick.target match {
+      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+        val now = osHelper.getTimeInStates
+        val old = frequenciesCache.getOrElse(key, now)
+        val diffTimeInStates = now - old
+
+        if(diffTimeInStates.times.count(_._2 < 0) == 0) {
+          frequenciesCache.update(key, now)
+          diffTimeInStates
+        }
+        else TimeInStates(Map())
+      }
     }
   }
 
-  lazy val frequencies = new Frequencies
-
   override def sense(monitorTick: MonitorTick): Unit = {
-    publishUsageReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    monitorTick.target match {
+      case Process(_) | Application(_) => publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), timeInStates(monitorTick), monitorTick.tick)(eventBus)
+      case _ => log.debug("{}", "this target is not handled by this sensor")
+    }
   }
 }

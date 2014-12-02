@@ -24,7 +24,6 @@ package org.powerapi.module.procfs.simple
 
 import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.SensorComponent
-import org.powerapi.module.procfs.ProcMetricsChannel
 
 /**
  * CPU sensor component that collects data from a /proc and /sys directories
@@ -36,81 +35,51 @@ import org.powerapi.module.procfs.ProcMetricsChannel
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) {
+  import org.powerapi.core.{Application, Process, TargetUsageRatio}
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import ProcMetricsChannel.publishUsageReport
+  import org.powerapi.module.{Cache, CacheKey}
+  import org.powerapi.module.procfs.ProcMetricsChannel.publishUsageReport
+  import scala.reflect.ClassTag
 
-  /**
-   * Delegate class collecting time information contained into both globalStatPath and processStatPath files
-   * and providing the target CPU ratio usage.
-   */
-  class TargetRatio {
-    import org.powerapi.core.{All, Application, Process, TargetUsageRatio}
-    import ProcMetricsChannel.CacheKey
+  lazy val cpuTimesCache = new Cache[(Double, Double)]
 
-    /**
-     * Internal cache, used to get the diff between two ClockTick.
-     */
-    lazy val cache = collection.mutable.Map[CacheKey, (Long, Long)]()
+  def targetCpuUsageRatio(monitorTick: MonitorTick): TargetUsageRatio = {
+    val key = CacheKey(monitorTick.muid, monitorTick.target)
 
-    def refreshCache(key: CacheKey, now: (Long, Long)): Unit = {
-      cache += (key -> now)
+    lazy val globalCpuTime = osHelper.getGlobalCpuTime match {
+      case Some(time) => time.toDouble
+      case _ => 1d // we cannot divide by 0
     }
 
-    def handleProcessTarget(process: Process): (Long, Long) = {
-      lazy val processTime: Long = osHelper.getProcessCpuTime(process) match {
-        case Some(value) => value
-        case _ => 0l
-      }
-      lazy val globalTime: Long = osHelper.getGlobalCpuTime() match {
-        case Some(value) => value
-        case _ => 0l
-      }
+    val processClaz = implicitly[ClassTag[Process]].runtimeClass
+    val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
-      (processTime, globalTime)
-    }
-
-    def handleApplicationTarget(application: Application): (Long, Long) = {
-      lazy val processTime: Long = osHelper.getProcesses(application).foldLeft(0: Long) {
-        (acc, process: Process) => {
-          osHelper.getProcessCpuTime(process) match {
-            case Some(value) => acc + value
-            case _ => acc
-          }
+    monitorTick.target match {
+      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+        lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
+          case Some(time) => time.toDouble
+          case _ => 0d
         }
-      }
-      lazy val globalTime: Long = osHelper.getGlobalCpuTime() match {
-        case Some(value) => value
-        case _ => 1 // we cannot divide by 0
-      }
-      (processTime, globalTime)
-    }
 
-    def handleMonitorTick(tick: MonitorTick): TargetUsageRatio = {
-      val now = tick.target match {
-        case process: Process => handleProcessTarget(process)
-        case application: Application => handleApplicationTarget(application)
-        case All => (0l, 0l)
-      }
+        val now = (targetCpuTime, globalCpuTime)
+        val old = cpuTimesCache.getOrElse(key, now)
+        val diffTimes = (now._1 - old._1, now._2 - old._2)
 
-      val key = CacheKey(tick.muid, tick.target)
-      val old = cache.getOrElse(key, now)
-      refreshCache(key, now)
-
-      lazy val targetTimeDiff = (now._1 - old._1).doubleValue
-      lazy val globalTimeDiff = (now._2 - old._2).doubleValue
-
-      if(globalTimeDiff <= 0 || targetTimeDiff <= 0) {
-        TargetUsageRatio(0)
-      }
-      else {
-        TargetUsageRatio(targetTimeDiff / globalTimeDiff)
+        diffTimes match {
+          case diff: (Double, Double) if diff._1 > 0 && diff._2 > 0 && diff._1 < diff._2 => {
+            cpuTimesCache.update(key, now)
+            TargetUsageRatio(diff._1 / diff._2)
+          }
+          case _ => TargetUsageRatio(0.0)
+        }
       }
     }
   }
 
-  lazy val targetRatio = new TargetRatio
-
   def sense(monitorTick: MonitorTick): Unit = {
-    publishUsageReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    monitorTick.target match {
+      case Process(_) | Application(_) => publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), monitorTick.tick)(eventBus)
+      case _ => log.debug("{}", "this target is not handled by this sensor")
+    }
   }
 }

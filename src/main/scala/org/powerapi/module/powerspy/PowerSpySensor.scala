@@ -47,6 +47,8 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.core.{All, Application, Process, Target, TargetUsageRatio}
   import org.powerapi.module.powerspy.PSpyMetricsChannel.{PSpyChildMessage, PSpyStart, publishPSpyDataReport}
+  import org.powerapi.module.{Cache, CacheKey}
+  import scala.reflect.ClassTag
 
   override def postStop() = {
     gracefulStop(pspyChild, timeout.duration)
@@ -58,6 +60,8 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
     case Some(props) => context.actorOf(props, "pspy-child")
     case _ => log.error("the PowerSpy ({}) is not reachable", sppUrl); null
   }
+
+  lazy val cpuTimesCache = new Cache[(Double, Double)]
 
   /**
    * The default behavior is overridden because this sensor handles other messages
@@ -80,12 +84,35 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
   def sense(monitorTick: MonitorTick, messages: List[PSpyChildMessage]): Unit = {
     PSpyChildMessage.avg(messages) match {
       case Some(avg) => {
+        lazy val globalCpuTime = osHelper.getGlobalCpuTime match {
+          case Some(time) => time.toDouble
+          case _ => 1d // we cannot divide by 0
+        }
+
+        val processClaz = implicitly[ClassTag[Process]].runtimeClass
+        val appClaz = implicitly[ClassTag[Application]].runtimeClass
+
         monitorTick.target match {
-          case process: Process => {
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, osHelper.getTargetCpuUsageRatio(process), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
-          }
-          case application: Application => {
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, osHelper.getTargetCpuUsageRatio(application), avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
+          case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+            lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
+              case Some(time) => time.toDouble
+              case _ => 0d
+            }
+
+            val key = CacheKey(monitorTick.muid, monitorTick.target)
+            val now = (targetCpuTime, globalCpuTime)
+            val old = cpuTimesCache.getOrElse(key, now)
+            val diffTimes = (now._1 - old._1, now._2 - old._2)
+
+            val usage = diffTimes match {
+              case diff: (Double, Double) if diff._1 > 0 && diff._2 > 0 && diff._1 < diff._2 => {
+                cpuTimesCache.update(key, now)
+                TargetUsageRatio(diff._1 / diff._2)
+              }
+              case _ => TargetUsageRatio(0.0)
+            }
+
+            publishPSpyDataReport(monitorTick.muid, monitorTick.target, usage, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
           }
           case All => {
             publishPSpyDataReport(monitorTick.muid, monitorTick.target, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)

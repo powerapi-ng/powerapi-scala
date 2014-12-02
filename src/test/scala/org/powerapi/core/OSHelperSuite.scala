@@ -32,7 +32,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("SimpleCpuSensorSuite"))
+  def this() = this(ActorSystem("OSHelperSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
@@ -48,7 +48,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     helper.getThreads(Process(1)) should equal(List(Thread(1000), Thread(1001)))
   }
 
-  "The method getTargetCpuUsageRatio in the OSHelper" should "return the cpu usage of the target" in {
+  "The method getTargetCpuTime in the OSHelper" should "return the cpu usage of the target" in {
     val helper = new OSHelper {
       override def getProcesses(application: Application): List[Process] = application match {
         case Application("app") => List(Process(2), Process(3))
@@ -63,38 +63,21 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
         case _ => None
       }
 
-      override def getGlobalCpuTime(): Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
+      override def getGlobalCpuTime: Option[Long] = None
 
       override def getThreads(process: Process): List[Thread] = List()
 
-      override def getTimeInStates(): TimeInStates = TimeInStates(Map())
+      override def getTimeInStates: TimeInStates = TimeInStates(Map())
     }
 
-    val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val p1Ratio = (33 + 2).doubleValue / globalTime
-    val goodAppRatio = (10 + 5 + 3 + 5).doubleValue / globalTime
-    val badAppRatio = (10 + 5).doubleValue / globalTime
-    val allRatio = 0d
+    val p1Time = 33 + 2
+    val goodAppTime = 10 + 5 + 3 + 5
+    val badAppTime = 10 + 5
 
-    helper.getTargetCpuUsageRatio(Process(1)) match {
-      case TargetUsageRatio(ratio) if p1Ratio == ratio => assert(true)
-      case _ => assert(false)
-    }
-
-    helper.getTargetCpuUsageRatio(Application("app")) match {
-      case TargetUsageRatio(ratio) if goodAppRatio == ratio => assert(true)
-      case _ => assert(false)
-    }
-
-    helper.getTargetCpuUsageRatio(Application("bad-app")) match {
-      case TargetUsageRatio(ratio) if badAppRatio == ratio => assert(true)
-      case _ => assert(false)
-    }
-
-    helper.getTargetCpuUsageRatio(All) match {
-      case TargetUsageRatio(ratio) if allRatio == ratio => assert(true)
-      case _ => assert(false)
-    }
+    helper.getTargetCpuTime(Process(1)) should equal(Some(p1Time))
+    helper.getTargetCpuTime(Application("app")) should equal(Some(goodAppTime))
+    helper.getTargetCpuTime(Application("bad-app")) should equal(Some(badAppTime))
+    helper.getTargetCpuTime(All) should equal(None)
   }
 
   "The method getProcessCpuTime in the LinuxHelper" should "return the process cpu time of a given process" in {
@@ -102,37 +85,23 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
     }
 
-    helper.getProcessCpuTime(Process(1)) match {
-      case Some(35) => assert(true)
-      case _ => assert(false)
-    }
-
-    helper.getProcessCpuTime(Process(10)) match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    helper.getProcessCpuTime(Process(1)) should equal(Some(35))
+    helper.getProcessCpuTime(Process(10)) should equal(None)
   }
 
   "The method getGlobalCpuTime in the LinuxHelper" should "return the global cpu time" in {
     val helper = new LinuxHelper {
-      override lazy val globalStatPath = s"${basepath}/proc/stat"
+      override lazy val globalStatPath = s"${basepath}proc/stat"
     }
 
     val badHelper = new LinuxHelper {
-      override lazy val globalStatPath = s"${basepath}/proc/stats"
+      override lazy val globalStatPath = s"${basepath}proc/stats"
     }
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
 
-    helper.getGlobalCpuTime() match {
-      case Some(globalTime) => assert(true)
-      case _ => assert(false)
-    }
-
-    badHelper.getGlobalCpuTime() match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    helper.getGlobalCpuTime should equal(Some(globalTime))
+    badHelper.getGlobalCpuTime should equal(None)
   }
 
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
@@ -142,15 +111,15 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val badHelper = new LinuxHelper {
-      override lazy val timeInStatePath = s"${basepath}/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_states"
+      override lazy val timeInStatePath = s"${basepath}sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_states"
       override lazy val cores = 4
     }
 
-    helper.getTimeInStates() should equal(
+    helper.getTimeInStates should equal(
       TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
     )
 
-    badHelper.getTimeInStates() should equal(TimeInStates(Map()))
+    badHelper.getTimeInStates should equal(TimeInStates(Map()))
   }
 
   "A TimeInStates case class" should "compute the difference with another one" in {

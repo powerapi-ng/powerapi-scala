@@ -65,34 +65,6 @@ trait OSHelper {
   def getThreads(process: Process): List[Thread]
 
   /**
-   * Get the target cpu ratio.
-   *
-   * @param target: target to use for getting its cpu time.
-   */
-  def getTargetCpuUsageRatio(target: Target): TargetUsageRatio = {
-    lazy val globalTime = getGlobalCpuTime() match {
-      case Some(time) => time
-      case _ => 1 // we cannot divide by 0
-    }
-
-    lazy val targetTime = target match {
-      case process: Process => getProcessCpuTime(process) match {
-        case Some(time) => time
-        case _ => 0l
-      }
-      case application: Application => getProcesses(application).foldLeft(0l) { (acc, process) =>
-        getProcessCpuTime(process) match {
-          case Some(time) => acc + time
-          case _ => acc + 0l
-        }
-      }
-      case _ => 0l
-    }
-
-    TargetUsageRatio(targetTime.doubleValue / globalTime)
-  }
-
-  /**
    * Get the process execution time on the cpu.
    *
    * @param process: targeted process
@@ -102,12 +74,33 @@ trait OSHelper {
   /**
    * Get the global execution time for the cpu.
    */
-  def getGlobalCpuTime(): Option[Long]
+  def getGlobalCpuTime: Option[Long]
 
   /**
    * Get how many time CPU spent under each frequency.
    */
-  def getTimeInStates(): TimeInStates
+  def getTimeInStates: TimeInStates
+
+
+  /**
+   * Get the target cpu time.
+   */
+  def getTargetCpuTime(target: Target): Option[Long] = {
+    target match {
+      case process: Process => getProcessCpuTime(process)
+      case application: Application => Some(
+        getProcesses(application).foldLeft(0: Long) {
+          (acc, process: Process) => {
+            getProcessCpuTime(process) match {
+              case Some(value) => acc + value
+              case _ => acc
+            }
+          }
+        }
+      )
+      case _ => None
+    }
+  }
 }
 
 /**
@@ -195,7 +188,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
     }
   }
 
-  def getGlobalCpuTime(): Option[Long] = {
+  def getGlobalCpuTime: Option[Long] = {
     try {
       using(globalStatPath)(source => {
         log.debug("using {} as a procfs global stat path", globalStatPath)
@@ -222,7 +215,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
     }
   }
 
-  def getTimeInStates(): TimeInStates = {
+  def getTimeInStates: TimeInStates = {
     val result = collection.mutable.HashMap[Long, Long]()
 
     for(core <- 0 until cores) {

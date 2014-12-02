@@ -35,9 +35,7 @@ import org.powerapi.module.{SensorReport, SensorChannel}
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object ProcMetricsChannel extends SensorChannel {
-
-  case class CacheKey(muid: UUID, target: Target)
-
+  
   /**
    * UsageReport is represented as a dedicated type of message.
    *
