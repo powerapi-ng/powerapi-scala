@@ -50,31 +50,36 @@ class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout)
   import org.powerapi.module.{Cache, CacheKey}
   import scala.reflect.ClassTag
 
-  override def postStop() = {
-    gracefulStop(pspyChild, timeout.duration)
-    super.postStop()
+  var pspyChild: Option[ActorRef] = None
+
+  override def preStart() = {
+    pspyChild = PowerSpyChild.props(sppUrl, version) match {
+      case Some(props) => Some(context.actorOf(props, "pspy-child"))
+      case _ => log.error("the PowerSpy ({}) is not reachable", sppUrl); None
+    }
+
+    pspyChild match {
+      case Some(actorRef) => actorRef ! PSpyStart
+      case _ => {}
+    }
+    super.preStart()
   }
 
-  val childProps = PowerSpyChild.props(sppUrl, version)
-  val pspyChild: ActorRef = childProps match {
-    case Some(props) => context.actorOf(props, "pspy-child")
-    case _ => log.error("the PowerSpy ({}) is not reachable", sppUrl); null
+  override def postStop() = {
+    pspyChild match {
+      case Some(actorRef) => gracefulStop(actorRef, timeout.duration)
+      case _ => {}
+    }
+
+    super.postStop()
   }
 
   lazy val cpuTimesCache = new Cache[(Double, Double)]
 
   /**
-   * The default behavior is overridden because this sensor handles other messages
-   * and it has different states.
+   * The default behavior is overridden because this sensor handles other messages.
    */
-  override def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: MonitorTick => start()
-  } orElse default
-
-  def start(): Unit = {
-    pspyChild ! PSpyStart
-    context.become(running(List()))
-  }
+  override def receive: Actor.Receive = running(List())
 
   def running(messages: List[PSpyChildMessage]): Actor.Receive = LoggingReceive {
     case msg: MonitorTick => sense(msg, messages)

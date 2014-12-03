@@ -68,14 +68,12 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
     publishPSpyDataReport(muid, All, rms, u, i, tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, All, pow, PowerUnit.W, "powerspy", tic) if muid == id && allPower == pow && tickMock == tic => assert(true)
-      case _ => assert(false)
+      case PowerReport(_, id, All, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); pow should equal(allPower); tic should equal(tickMock)
     }
 
     publishPSpyDataReport(muid, Process(1), ratio, rms, u, i, tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, pr, pow, PowerUnit.W, "powerspy", tic) if muid == id && Process(1) == pr && processPower == pow && tickMock == tic => assert(true)
-      case _ => assert(false)
+      case PowerReport(_, id, pr, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); pr should equal(Process(1)); tic should equal(tickMock)
     }
   }
 }

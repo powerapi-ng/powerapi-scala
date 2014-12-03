@@ -39,7 +39,7 @@ class PSpyDataListener(eventBus: MessageBus, muid: UUID) extends Actor {
     subscribePSpyRatioDataReport(eventBus)(self)
   }
 
-  def receive() = {
+  def receive = {
     case msg: PSpyDataReport => println(msg)
   }
 }
@@ -52,7 +52,7 @@ class PowerSpySensorMock(eventBus: MessageBus, osHelper: OSHelper, timeout: Time
 }
 
 class OSHelperMock extends OSHelper {
-  import org.powerapi.core.{Application, Process, Thread, Target, TargetUsageRatio, TimeInStates}
+  import org.powerapi.core.{Application, Process, Thread, TimeInStates}
 
   def getProcesses(application: Application): List[Process] = {
     application match {
@@ -64,15 +64,16 @@ class OSHelperMock extends OSHelper {
 
   def getProcessCpuTime(process: Process): Option[Long] = {
     process match {
+      case Process(1) => Some(33 + 2)
       case Process(2) => Some(10 + 5)
       case Process(3) => Some(3 + 5)
       case _ => None
     }
   }
 
-  def getGlobalCpuTime(): Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
+  def getGlobalCpuTime: Option[Long] = Some(43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0)
 
-  def getTimeInStates(): TimeInStates = TimeInStates(Map())
+  def getTimeInStates: TimeInStates = TimeInStates(Map())
 }
 
 class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
@@ -91,30 +92,178 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "be divided with another one" in {
-    PSpyChildMessage(3.0, 6.0f, 9.0f) / 2 match {
-      case Some(msg) if PSpyChildMessage(3.0 / 2, 6.0f / 2, 9.0f / 2) == msg => assert(true)
-      case _ => assert(false)
-    }
-
-    PSpyChildMessage(3.0, 3.0f, 3.0f) / 0 match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    PSpyChildMessage(3.0, 6.0f, 9.0f) / 2 should equal(Some(PSpyChildMessage(3.0 / 2, 6.0f / 2, 9.0f / 2)))
+    PSpyChildMessage(3.0, 3.0f, 3.0f) / 0 should equal(None)
   }
 
   "An average of a PSpyChildMessage messages" can "be computed" in {
-    PSpyChildMessage.avg(List(PSpyChildMessage(3.0, 6.0f, 9.0f), PSpyChildMessage(1.0, 4.0F, 8.0f))) match {
-      case Some(msg) if PSpyChildMessage(4.0 / 2, 10.0f / 2, 17.0f / 2) == msg => assert(true)
-      case _ => assert(false)
-    }
-
-    PSpyChildMessage.avg(List()) match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    PSpyChildMessage.avg(List(PSpyChildMessage(3.0, 6.0f, 9.0f), PSpyChildMessage(1.0, 4.0F, 8.0f))) should equal(
+      Some(PSpyChildMessage(4.0 / 2, 10.0f / 2, 17.0f / 2))
+    )
+    PSpyChildMessage.avg(List()) should equal(None)
   }
 
-  "A PowerSpySensor" should "open the connection with the power meter, collect the data and then produce PSpyRatioDataReport messages when the target is Process/Application" ignore {
+  "A PowerSpySensor" should "produce a PSpyRatioDataReport/PSpyAllDataReport message if it collected PowerSpy data" in {
+    import akka.pattern.gracefulStop
+    import org.powerapi.core.{Application, All, Process, TargetUsageRatio}
+    import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.MonitorChannel.publishMonitorTick
+    import org.powerapi.module.CacheKey
+    import org.powerapi.module.powerspy.PSpyMetricsChannel.{PSpyAllDataReport, PSpyRatioDataReport, subscribePSpyAllDataReport, subscribePSpyRatioDataReport}
+
+    val eventBus = new MessageBus
+    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, new OSHelperMock, Timeout(20.seconds)), "pspySensor")(system)
+    val muid1 = UUID.randomUUID()
+    val muid2 = UUID.randomUUID()
+    val tickMock = ClockTick("test", 25.milliseconds)
+
+    val globalElapsedTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val p1ElapsedTime = 33 + 2
+    val p2ElapsedTime = 10 + 5
+    val p3ElapsedTime = 3 + 5
+    val appElapsedTime = p2ElapsedTime + p3ElapsedTime
+
+    val oldP1ElapsedTime = p1ElapsedTime / 2
+    val oldAppElapsedTime = appElapsedTime / 2
+    val oldGlobalElapsedTime = globalElapsedTime / 2
+
+    val processRatio = TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+    val appRatio = TargetUsageRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
+
+    val rms = 3.0
+    val uScale = 6.0f
+    val iScale = 9.0f
+
+    subscribePSpyRatioDataReport(eventBus)(testActor)
+    subscribePSpyAllDataReport(eventBus)(testActor)
+
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.update(CacheKey(muid1, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.update(CacheKey(muid2, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.update(CacheKey(muid2, Application("app")), (oldAppElapsedTime, oldGlobalElapsedTime))
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    publishMonitorTick(muid1, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyRatioDataReport]) match {
+      case pr: PSpyRatioDataReport => {
+        pr.muid should equal(muid1)
+        pr.target should equal(Process(1)); pr.targetRatio should equal(processRatio)
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid1, Process(1)), (0, 0)) match {
+      case times => times should equal(p1ElapsedTime, globalElapsedTime)
+    }
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    publishMonitorTick(muid2, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyRatioDataReport]) match {
+      case pr: PSpyRatioDataReport => {
+        pr.muid should equal(muid2)
+        pr.target should equal(Process(1)); pr.targetRatio should equal(processRatio)
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid2, Process(1)), (0, 0)) match {
+      case times => times should equal(p1ElapsedTime, globalElapsedTime)
+    }
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    publishMonitorTick(muid2, Application("app"), tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyRatioDataReport]) match {
+      case pr: PSpyRatioDataReport => {
+        pr.muid should equal(muid2)
+        pr.target should equal(Application("app")); pr.targetRatio should equal(appRatio)
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid2, Application("app")), (0, 0)) match {
+      case times => times should equal(appElapsedTime, globalElapsedTime)
+    }
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    publishMonitorTick(muid1, All, tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyAllDataReport]) match {
+      case pr: PSpyAllDataReport => {
+        pr.muid should equal(muid1)
+        pr.target should equal(All)
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid2, Application("app")), (0, 0)) match {
+      case times => times should equal(appElapsedTime, globalElapsedTime)
+    }
+
+    gracefulStop(pspySensor, 20.seconds)
+  }
+
+  it should "handle correctly the time differences for computing the TargetUsageRatio" in {
+    import akka.pattern.gracefulStop
+    import org.powerapi.core.{Application, All, Process, TargetUsageRatio}
+    import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.MonitorChannel.publishMonitorTick
+    import org.powerapi.module.CacheKey
+    import org.powerapi.module.powerspy.PSpyMetricsChannel.{PSpyAllDataReport, PSpyRatioDataReport, subscribePSpyAllDataReport, subscribePSpyRatioDataReport}
+
+    val eventBus = new MessageBus
+    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, new OSHelperMock, Timeout(20.seconds)), "pspySensor")(system)
+    val muid = UUID.randomUUID()
+    val tickMock = ClockTick("test", 25.milliseconds)
+
+    val globalElapsedTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val p1ElapsedTime = 33 + 2
+
+    val rms = 3.0
+    val uScale = 6.0f
+    val iScale = 9.0f
+
+    subscribePSpyRatioDataReport(eventBus)(testActor)
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.update(CacheKey(muid, Process(1)), (p1ElapsedTime + 10, globalElapsedTime))
+    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyRatioDataReport]) match {
+      case pr: PSpyRatioDataReport => {
+        pr.muid should equal(muid)
+        pr.target should equal(Process(1)); pr.targetRatio should equal(TargetUsageRatio(0.0))
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid, Process(1)), (0, 0)) match {
+      case times => times should equal(p1ElapsedTime + 10, globalElapsedTime)
+    }
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.update(CacheKey(muid, Process(1)), (p1ElapsedTime , globalElapsedTime + 10))
+    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyRatioDataReport]) match {
+      case pr: PSpyRatioDataReport => {
+        pr.muid should equal(muid)
+        pr.target should equal(Process(1)); pr.targetRatio should equal(TargetUsageRatio(0.0))
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid, Process(1)), (0, 0)) match {
+      case times => times should equal(p1ElapsedTime , globalElapsedTime + 10)
+    }
+
+    pspySensor ! PSpyChildMessage(rms, uScale, iScale)
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.update(CacheKey(muid, Process(1)), (globalElapsedTime, p1ElapsedTime))
+    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    expectMsgClass(classOf[PSpyRatioDataReport]) match {
+      case pr: PSpyRatioDataReport => {
+        pr.muid should equal(muid)
+        pr.target should equal(Process(1)); pr.targetRatio should equal(TargetUsageRatio(0.0))
+        pr.rms should equal(rms); pr.uScale should equal(uScale); pr.iScale should equal(iScale)
+      }
+    }
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].cpuTimesCache.getOrElse(CacheKey(muid, Process(1)), (0, 0)) match {
+      case times => times should equal(globalElapsedTime, p1ElapsedTime)
+    }
+
+    gracefulStop(pspySensor, 20.seconds)
+  }
+
+  it should "open the connection with the power meter, collect the data and then produce PSpyRatioDataReport messages when the target is Process/Application" ignore {
     import org.powerapi.core.{Application, Clocks, Monitors}
     import org.powerapi.core.MonitorChannel.startMonitor
     import akka.pattern.gracefulStop
