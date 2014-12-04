@@ -29,7 +29,7 @@ import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import scala.concurrent.duration.DurationInt
 
-class PowerSpySensorMock(eventBus: MessageBus) extends PowerSpySensor(eventBus) {
+class PowerSpySensorMock(eventBus: MessageBus, timeout: Timeout) extends PowerSpySensor(eventBus, timeout) {
   override lazy val sppUrl = "btspp://000BCE071E9B:1;authenticate=false;encrypt=false;master=false"
   override lazy val version = PowerSpyVersion.POWERSPY_V1
 }
@@ -56,11 +56,20 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  "A PowerSpySensor" should "open the connection with the power meter, compute the power and publish PowerReports at its own frequency" ignore {
+  "A PowerSpySensor" should "open the connection with the power meter, compute the power and publish OverallPowerReports at its own frequency" ignore {
     import akka.pattern.gracefulStop
+    import org.powerapi.module.PowerUnit
+    import org.powerapi.module.OverallPowerChannel.{OverallPower, subscribeOverallPower}
 
     val eventBus = new MessageBus
-    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus), "pSpySensor")(system)
+    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, Timeout(15.seconds)), "pSpySensor")(system)
+    subscribeOverallPower(eventBus)(testActor)
+
+    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].receive(PSpyData(3.0, 2.0f, 3.0f))
+    expectMsgClass(classOf[OverallPower]) match {
+      case OverallPower(_, power, PowerUnit.W, "powerspy") => power should equal(3.0 * 2.0f * 3.0f)
+    }
+
     TestActorRef(Props(classOf[OverallPowerListener], eventBus), "listener")(system)
     Thread.sleep(20.seconds.toMillis)
     gracefulStop(pspySensor, 15.seconds)
