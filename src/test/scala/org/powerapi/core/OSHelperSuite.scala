@@ -100,15 +100,8 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
 
-    helper.getGlobalCpuTime match {
-      case Some(globalTime) => assert(true)
-      case _ => assert(false)
-    }
-
-    badHelper.getGlobalCpuTime match {
-      case None => assert(true)
-      case _ => assert(false)
-    }
+    helper.getGlobalCpuTime should equal(Some(globalTime))
+    badHelper.getGlobalCpuTime should equal(None)
   }
 
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {

@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs
+package org.powerapi.module.cpu
 
 import java.util.UUID
 
@@ -30,11 +30,11 @@ import org.powerapi.core.{TargetUsageRatio, MessageBus, Target, TimeInStates}
 import org.powerapi.module.{SensorReport, SensorChannel}
 
 /**
- * ProcMetricsChannel channel and messages.
+ * UsageMetricsChannel channel and messages.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object ProcMetricsChannel extends SensorChannel {
+object UsageMetricsChannel extends SensorChannel {
   
   /**
    * UsageReport is represented as a dedicated type of message.
@@ -56,8 +56,8 @@ object ProcMetricsChannel extends SensorChannel {
   /**
    * Topic for communicating with the Formula actors.
    */
-  private val topicSimpleUsageReport = "sensor:cpu-procfs-simple"
-  private val topicDvfsUsageReport = "sensor:cpu-procfs-dvfs"
+  private val topicSimpleUsageReport = "sensor:cpu-simple"
+  private val topicDvfsUsageReport = "sensor:cpu-dvfs"
 
   /**
    * Publish a UsageReport in the event bus.

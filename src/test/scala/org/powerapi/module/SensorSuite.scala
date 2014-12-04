@@ -63,8 +63,7 @@ class SensorSuite(system: ActorSystem) extends UnitTest(system) {
     publishMonitorTick(muid, target, clockTick)(eventBus)
 
     expectMsgClass(classOf[MonitorTick]) match {
-      case MonitorTick(_, id, targ, tick) if muid == id && target == targ && clockTick == tick => assert(true)
-      case _ => assert(false)
+      case MonitorTick(_, id, targ, tick) => id should equal(muid); targ should equal(target); tick should equal(clockTick)
     }
   }
 }

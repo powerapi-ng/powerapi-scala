@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.simple
+package org.powerapi.module.cpu.simple
 
 import java.util.UUID
 
@@ -42,16 +42,16 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  val eventBus = new MessageBus
-
-  "A simple CpuSensor" should "process a MonitorTick message if the target is a Process or an Application and then publish a UsageReport" in {
+  "A simple CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
     import akka.pattern.gracefulStop
     import org.powerapi.core.{All, Application, OSHelper, Process, TargetUsageRatio, Thread, TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.module.CacheKey
-    import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
-    import org.powerapi.module.procfs.ProcMetricsChannel.subscribeSimpleUsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
+
+    val eventBus = new MessageBus
 
     val globalElapsedTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
     val p1ElapsedTime = 33 + 2
@@ -84,6 +84,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
+    val muid3 = UUID.randomUUID()
     val tickMock = ClockTick("test", 25.milliseconds)
 
     val processRatio = TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (globalElapsedTime - oldGlobalElapsedTime))
@@ -94,8 +95,9 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache.update(CacheKey(muid1, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache.update(CacheKey(muid2, Process(1)), (oldP1ElapsedTime, oldGlobalElapsedTime))
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache.update(CacheKey(muid2, Application("app")), (oldAppElapsedTime, oldGlobalElapsedTime))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache.update(CacheKey(muid3, All), (oldGlobalElapsedTime, oldGlobalElapsedTime))
 
-    publishMonitorTick(muid1, Process(1), tickMock)(eventBus)
+   publishMonitorTick(muid1, Process(1), tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid1); ur.target should equal(Process(1)); ur.targetRatio should equal(processRatio)
     }
@@ -119,19 +121,26 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       case times => times should equal(appElapsedTime, globalElapsedTime)
     }
 
-    publishMonitorTick(muid1, All, tickMock)(eventBus)
-    expectNoMsg()
+    publishMonitorTick(muid3, All, tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(TargetUsageRatio(1.0))
+    }
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache.getOrElse(CacheKey(muid3, All), (0, 0)) match {
+      case times => times should equal(globalElapsedTime, globalElapsedTime)
+    }
     gracefulStop(cpuSensor, 1.seconds)
   }
 
   it should "handle correctly the time differences for computing the TargetUsageRatio" in {
     import akka.pattern.gracefulStop
-    import org.powerapi.core.{Application, OSHelper, Process, TargetUsageRatio, Thread, TimeInStates}
+    import org.powerapi.core.{All, Application, OSHelper, Process, TargetUsageRatio, Thread, TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.module.CacheKey
-    import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
-    import org.powerapi.module.procfs.ProcMetricsChannel.subscribeSimpleUsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
+
+    val eventBus = new MessageBus
 
     val globalElapsedTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
     val p1ElapsedTime = 33 + 2

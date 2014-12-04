@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.dvfs
+package org.powerapi.module.cpu.dvfs
 
 import java.util.UUID
 
@@ -44,15 +44,15 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   val eventBus = new MessageBus
 
-  "A dvfs CpuSensor" should "process a MonitorTick message if the target is a Process or an Application and then publish a UsageReport" in {
+  "A dvfs CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
     import akka.pattern.gracefulStop
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{All, Application, OSHelper, Process, Thread}
+    import org.powerapi.core.{All, Application, OSHelper, Process, TargetUsageRatio, Thread}
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.core.TimeInStates
     import org.powerapi.module.CacheKey
-    import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
-    import org.powerapi.module.procfs.ProcMetricsChannel.subscribeDvfsUsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeDvfsUsageReport
 
     val timeInStates = TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
 
@@ -77,6 +77,9 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.update(CacheKey(muid, Application("app")),
       TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
     )
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.update(CacheKey(muid, All),
+      TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
+    )
 
     subscribeDvfsUsageReport(eventBus)(testActor)
 
@@ -97,8 +100,9 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     publishMonitorTick(muid, All, tickMock)(eventBus)
-    expectNoMsg()
-
+    expectMsgClass(classOf[UsageReport]) match {
+      case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(All); ur.timeInStates should equal(TimeInStates(Map(4000000l -> 6l, 3000000l -> 2l, 2000000l -> 2l, 1000000l -> 2l)))
+    }
     gracefulStop(cpuSensor, 1.seconds)
   }
 
@@ -109,8 +113,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.core.TimeInStates
     import org.powerapi.module.CacheKey
-    import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
-    import org.powerapi.module.procfs.ProcMetricsChannel.subscribeDvfsUsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeDvfsUsageReport
 
     val timeInStates = TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
 

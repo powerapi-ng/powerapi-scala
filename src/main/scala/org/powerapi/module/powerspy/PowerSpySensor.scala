@@ -22,10 +22,13 @@
  */
 package org.powerapi.module.powerspy
 
-import akka.util.Timeout
-import org.powerapi.core.{OSHelper, MessageBus}
-import org.powerapi.module.SensorComponent
+import org.powerapi.core.{ActorComponent, MessageBus}
 
+/**
+ * PSpySensor configuration.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
 trait Configuration extends org.powerapi.core.Configuration {
   import org.powerapi.core.ConfigValue
 
@@ -40,98 +43,55 @@ trait Configuration extends org.powerapi.core.Configuration {
   }
 }
 
-class PowerSpySensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout) extends SensorComponent(eventBus) with Configuration {
-  import akka.actor.{Actor, ActorRef}
-  import akka.event.LoggingReceive
-  import akka.pattern.gracefulStop
-  import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.core.{All, Application, Process, Target, TargetUsageRatio}
-  import org.powerapi.module.powerspy.PSpyMetricsChannel.{PSpyChildMessage, PSpyStart, publishPSpyDataReport}
-  import org.powerapi.module.{Cache, CacheKey}
-  import scala.reflect.ClassTag
+/**
+ * This actor does not handle messages.
+ * This choice was made to keep the coherency for all component which can be attached to the API.
+ * Its aim is to react to the data produced by the power meter and then to publish an OverallPower msg in the event bus.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+class PowerSpySensor(eventBus: MessageBus) extends ActorComponent with Configuration {
+  import java.io.{BufferedReader,InputStreamReader,PrintWriter}
+  import javax.microedition.io.{Connector, StreamConnection}
+  import org.powerapi.module.OverallPowerChannel.publishOverallPower
+  import org.powerapi.module.PowerUnit
 
-  var pspyChild: Option[ActorRef] = None
+  var pSpyMeter: Option[SimplePowerSpy] = {
+    try {
+      val connection = Connector.open(sppUrl).asInstanceOf[StreamConnection]
+      val in = new BufferedReader(new InputStreamReader(connection.openInputStream()))
+      val out = new PrintWriter(connection.openOutputStream())
 
-  override def preStart() = {
-    pspyChild = PowerSpyChild.props(sppUrl, version) match {
-      case Some(props) => Some(context.actorOf(props, "pspy-child"))
-      case _ => log.error("the PowerSpy ({}) is not reachable", sppUrl); None
-    }
+      Some(
+        new SimplePowerSpy(connection, version) {
+          setInput(in)
+          setOutput(out)
 
-    pspyChild match {
-      case Some(actorRef) => actorRef ! PSpyStart
-      case _ => {}
-    }
-    super.preStart()
-  }
-
-  override def postStop() = {
-    pspyChild match {
-      case Some(actorRef) => gracefulStop(actorRef, timeout.duration)
-      case _ => {}
-    }
-
-    super.postStop()
-  }
-
-  lazy val cpuTimesCache = new Cache[(Double, Double)]
-
-  /**
-   * The default behavior is overridden because this sensor handles other messages.
-   */
-  override def receive: Actor.Receive = running(List())
-
-  def running(messages: List[PSpyChildMessage]): Actor.Receive = LoggingReceive {
-    case msg: MonitorTick => sense(msg, messages)
-    case msg: PSpyChildMessage => context.become(running(messages :+ msg))
-  } orElse default
-
-  def sense(monitorTick: MonitorTick, messages: List[PSpyChildMessage]): Unit = {
-    PSpyChildMessage.avg(messages) match {
-      case Some(avg) => {
-        lazy val globalCpuTime = osHelper.getGlobalCpuTime match {
-          case Some(time) => time.toDouble
-          case _ => 1d // we cannot divide by 0
-        }
-
-        val processClaz = implicitly[ClassTag[Process]].runtimeClass
-        val appClaz = implicitly[ClassTag[Application]].runtimeClass
-
-        monitorTick.target match {
-          case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
-            lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
-              case Some(time) => time.toDouble
-              case _ => 0d
+          override def fireDataUpdated(data: PowerSpyEvent): Unit = {
+            if (data != null) {
+              publishOverallPower(data.getCurrentRMS * data.getIScale * data.getUScale, PowerUnit.W, "powerspy")(eventBus)
             }
-
-            val key = CacheKey(monitorTick.muid, monitorTick.target)
-            val now = (targetCpuTime, globalCpuTime)
-            val old = cpuTimesCache.getOrElse(key, now)
-            val diffTimes = (now._1 - old._1, now._2 - old._2)
-
-            val usage = diffTimes match {
-              case diff: (Double, Double) if diff._1 > 0 && diff._2 > 0 && diff._1 < diff._2 => {
-                cpuTimesCache.update(key, now)
-                TargetUsageRatio(diff._1 / diff._2)
-              }
-              case _ => TargetUsageRatio(0.0)
-            }
-
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, usage, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
-          }
-          case All => {
-            publishPSpyDataReport(monitorTick.muid, monitorTick.target, avg.rms, avg.uScale, avg.iScale, monitorTick.tick)(eventBus)
           }
         }
+      )
+    }
+    catch {
+      case _: Throwable => log.error("the PowerSpy ({}) is not reachable", sppUrl); None
+    }
+  }
 
-        context.become(running(List()))
+  override def postStop(): Unit = {
+    pSpyMeter match {
+      case Some(pSpy) => {
+        pSpy.stopPowerMonitoring()
+        pSpy.close()
+        log.debug("{}", "the connexion with the PowerSpy power meter is correctly closed")
       }
-      case _ => log.debug("no powerspy messages received")
+      case _ => log.debug("{}", "the PowerSpy power meter is not started")
     }
   }
 
-  /**
-   * Not used here, the default behavior is overridden.
-   */
-  def sense(monitorTick: MonitorTick): Unit = {}
+  def receive: PartialFunction[Any, Unit] = {
+    case _ => log.debug("{}", "the PowerSpy power meter cannot handled message")
+  }
 }

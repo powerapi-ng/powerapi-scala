@@ -124,7 +124,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
   /**
    * This file allows to get all threads associated to one PID with the help of the procfs.
    */
-  lazy val taskPath = load { _.getString("powerapi.procfs.process-task-task") } match {
+  lazy val taskPath = load { _.getString("powerapi.procfs.process-task-path") } match {
     case ConfigValue(path) if path.contains("%?pid") => path
     case _ => "/proc/%?pid/task"
   }

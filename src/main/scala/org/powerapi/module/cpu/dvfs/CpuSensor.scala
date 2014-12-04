@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.dvfs
+package org.powerapi.module.cpu.dvfs
 
 import org.powerapi.core.{TimeInStates, MessageBus, OSHelper}
 import org.powerapi.module.Cache
@@ -34,11 +34,11 @@ import org.powerapi.module.Cache
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.procfs.simple.CpuSensor(eventBus, osHelper) {
-  import org.powerapi.core.{Application,Process}
+class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.cpu.simple.CpuSensor(eventBus, osHelper) {
+  import org.powerapi.core.{All,Application,Process, TargetUsageRatio}
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.module.CacheKey
-  import org.powerapi.module.procfs.ProcMetricsChannel.publishUsageReport
+  import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
   import scala.reflect.ClassTag
 
   lazy val frequenciesCache = new Cache[TimeInStates]
@@ -49,25 +49,18 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.m
     val processClaz = implicitly[ClassTag[Process]].runtimeClass
     val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
-    monitorTick.target match {
-      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
-        val now = osHelper.getTimeInStates
-        val old = frequenciesCache.getOrElse(key, now)
-        val diffTimeInStates = now - old
+    val now = osHelper.getTimeInStates
+    val old = frequenciesCache.getOrElse(key, now)
+    val diffTimeInStates = now - old
 
-        if(diffTimeInStates.times.count(_._2 < 0) == 0) {
-          frequenciesCache.update(key, now)
-          diffTimeInStates
-        }
-        else TimeInStates(Map())
-      }
+    if(diffTimeInStates.times.count(_._2 < 0) == 0) {
+      frequenciesCache.update(key, now)
+      diffTimeInStates
     }
+    else TimeInStates(Map())
   }
 
   override def sense(monitorTick: MonitorTick): Unit = {
-    monitorTick.target match {
-      case Process(_) | Application(_) => publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), timeInStates(monitorTick), monitorTick.tick)(eventBus)
-      case _ => log.debug("{}", "this target is not handled by this sensor")
-    }
+    publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), timeInStates(monitorTick), monitorTick.tick)(eventBus)
   }
 }

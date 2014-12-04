@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.dvfs
+package org.powerapi.module.cpu.dvfs
 
 import java.util.UUID
 
@@ -74,7 +74,7 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   it should "compute correctly the process' power" in {
     import org.powerapi.core.{Process, TargetUsageRatio, TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 
     val topic = "test"
     val muid = UUID.randomUUID()
@@ -100,7 +100,7 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.{Process, TargetUsageRatio, TimeInStates}
     import org.powerapi.core.ClockChannel.ClockTick
     import PowerChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.module.procfs.ProcMetricsChannel.publishUsageReport
+    import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
@@ -118,8 +118,7 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     publishUsageReport(muid, target, targetRatio, timeInStates, tickMock)(eventBus)
 
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)
-      case _ => assert(false)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) => id should equal(muid); targ should equal(target); pow should equal(power); tic should equal(tickMock)
     }
   }
 }
