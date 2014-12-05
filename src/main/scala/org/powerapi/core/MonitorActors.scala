@@ -160,7 +160,7 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
 /**
  * This class is an interface for interacting directly with a MonitorChild actor.
  */
-class Monitor(eventBus: MessageBus, targets: List[Target]) {
+class Monitor(eventBus: MessageBus, val targets: List[Target]) {
   val muid = UUID.randomUUID()
 
   def cancel(): Unit = {
