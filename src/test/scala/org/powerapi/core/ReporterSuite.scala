@@ -147,7 +147,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
-    val nbTargets = 10
+    val nbTargets = 5
     val aggFunction = (l: List[PowerReport]) => l.foldLeft(0.0){ (acc, r) => acc + r.power }
 
     val reporter = _system.actorOf(Props(classOf[ReporterChild], eventBus, muid, nbTargets, aggFunction), "reporter3")
@@ -157,7 +157,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
 
     reporter ! ReporterStart("test", muid, nbTargets, aggFunction)
     
-    for(i <- 1 to 30) {
+    for(i <- 1 to 15) {
       publishPowerReport(muid, Process(i), i*3.0, PowerUnit.W, device, tickMock)(eventBus)
     }
     
@@ -167,9 +167,9 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(reporter)
     }, 20.seconds)
     
-    expectMsgClass(classOf[AggPowerReport]).power should equal(165.0)
-    expectMsgClass(classOf[AggPowerReport]).power should equal(465.0)
-    expectMsgClass(classOf[AggPowerReport]).power should equal(765.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(45.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(120.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(195.0)
 
     Await.result(gracefulStop(reporter, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -193,7 +193,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
 
     val attachedMonitors = scala.collection.mutable.ListBuffer[Monitor]()
 
-    for(i <- 0 until 500) {
+    for(i <- 0 until 250) {
       val monitor = new Monitor(eventBus, targets)
       attachedMonitors += monitor
       reporter.attach(monitor)
@@ -201,13 +201,13 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(250)
     
-    for(i <- 0 until 500) {
+    for(i <- 0 until 250) {
       publishPowerReport(attachedMonitors(i).muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    receiveN(500)
+    receiveN(250)
     
-    for(i <- 0 until 500) {
+    for(i <- 0 until 250) {
       reporter.detach(attachedMonitors(i))
     }
     
@@ -232,7 +232,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
 
     val attachedMonitors = scala.collection.mutable.ListBuffer[(Monitor, Reporter)]()
 
-    for(i <- 0 until 500) {
+    for(i <- 0 until 250) {
       val monitor = new Monitor(eventBus, targets)
       val reporter = new Reporter(eventBus, _system, aggFunction, classOf[ReporterComponentMock], List(testActor))
       attachedMonitors += ((monitor, reporter))
@@ -241,13 +241,13 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(250)
     
-    for(i <- 0 until 500) {
+    for(i <- 0 until 250) {
       publishPowerReport(attachedMonitors(i)._1.muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    receiveN(500)
+    receiveN(250)
     
-    for(i <- 0 until 500) {
+    for(i <- 0 until 250) {
       attachedMonitors(i)._2.detach(attachedMonitors(i)._1)
       attachedMonitors(i)._2.cancel()
     }
