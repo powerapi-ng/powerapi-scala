@@ -147,7 +147,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
-    val nbTargets = 50
+    val nbTargets = 25
     val aggFunction = (l: List[PowerReport]) => l.foldLeft(0.0){ (acc, r) => acc + r.power }
 
     val reporter = _system.actorOf(Props(classOf[ReporterChild], eventBus, muid, nbTargets, aggFunction), "reporter3")
@@ -157,7 +157,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
 
     reporter ! ReporterStart("test", muid, nbTargets, aggFunction)
     
-    for(i <- 1 to 150) {
+    for(i <- 1 to 75) {
       publishPowerReport(muid, Process(i), i*3.0, PowerUnit.W, device, tickMock)(eventBus)
     }
     
@@ -167,9 +167,9 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(reporter)
     }, 20.seconds)
     
-    expectMsgClass(classOf[AggPowerReport]).power should equal(3825.0)
-    expectMsgClass(classOf[AggPowerReport]).power should equal(11325.0)
-    expectMsgClass(classOf[AggPowerReport]).power should equal(18825.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(975.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(2850.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(4725.0)
 
     Await.result(gracefulStop(reporter, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -199,7 +199,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    Thread.sleep(250)
+    Thread.sleep(500)
     
     for(i <- 0 until 1000) {
       publishPowerReport(attachedMonitors(i).muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
@@ -239,7 +239,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    Thread.sleep(250)
+    Thread.sleep(500)
     
     for(i <- 0 until 1000) {
       publishPowerReport(attachedMonitors(i)._1.muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
