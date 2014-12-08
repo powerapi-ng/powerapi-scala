@@ -215,7 +215,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(1000)
     
-    receiveN(100, 10.minute)
+    receiveN(100, 1.minute)
     
     Thread.sleep(1000)
     
@@ -259,7 +259,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(1000)
     
-    receiveN(100, 10.minute)
+    receiveN(100, 1.minute)
     
     Thread.sleep(1000)
     
