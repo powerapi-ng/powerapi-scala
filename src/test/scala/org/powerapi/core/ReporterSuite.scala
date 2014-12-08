@@ -163,7 +163,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       publishPowerReport(muid, Process(i), i*3.0, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
     reporter ! ReporterStop("test", muid)
 
@@ -171,9 +171,9 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(reporter)
     }, 20.seconds)
     
-    expectMsgClass(10.seconds, classOf[AggPowerReport]).power should equal(3825.0)
-    expectMsgClass(10.seconds, classOf[AggPowerReport]).power should equal(11325.0)
-    expectMsgClass(10.seconds, classOf[AggPowerReport]).power should equal(18825.0)
+    expectMsgClass(1.minute, classOf[AggPowerReport]).power should equal(3825.0)
+    expectMsgClass(1.minute, classOf[AggPowerReport]).power should equal(11325.0)
+    expectMsgClass(1.minute, classOf[AggPowerReport]).power should equal(18825.0)
 
     Await.result(gracefulStop(reporter, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -203,17 +203,17 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
     for(i <- 0 until 100) {
       publishPowerReport(attachedMonitors(i).muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
-    receiveN(100, 10.seconds)
+    receiveN(100, 1.minute)
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
     for(i <- 0 until 100) {
       reporter.detach(attachedMonitors(i))
@@ -247,17 +247,17 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
     for(i <- 0 until 100) {
       publishPowerReport(attachedMonitors(i)._1.muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
-    receiveN(100, 10.seconds)
+    receiveN(100, 1.minute)
     
-    Thread.sleep(500)
+    Thread.sleep(1000)
     
     for(i <- 0 until 100) {
       attachedMonitors(i)._2.detach(attachedMonitors(i)._1)
