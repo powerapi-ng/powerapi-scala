@@ -171,9 +171,9 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(reporter)
     }, 20.seconds)
     
-    expectMsgClass(1.minute, classOf[AggPowerReport]).power should equal(3825.0)
-    expectMsgClass(1.minute, classOf[AggPowerReport]).power should equal(11325.0)
-    expectMsgClass(1.minute, classOf[AggPowerReport]).power should equal(18825.0)
+    expectMsgClass(10.minute, classOf[AggPowerReport]).power should equal(3825.0)
+    expectMsgClass(10.minute, classOf[AggPowerReport]).power should equal(11325.0)
+    expectMsgClass(10.minute, classOf[AggPowerReport]).power should equal(18825.0)
 
     Await.result(gracefulStop(reporter, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -211,7 +211,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(1000)
     
-    receiveN(100, 1.minute)
+    receiveN(100, 10.minute)
     
     Thread.sleep(1000)
     
@@ -255,7 +255,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(1000)
     
-    receiveN(100, 1.minute)
+    receiveN(100, 10.minute)
     
     Thread.sleep(1000)
     
