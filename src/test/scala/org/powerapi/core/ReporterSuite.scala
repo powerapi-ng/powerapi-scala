@@ -144,7 +144,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
   it can "handle a large number of power reports" in new Bus {
     import java.lang.Thread
   
-    val _system = ActorSystem("ReporterSuiteTest3")
+    val _system = ActorSystem("ReporterSuiteTest3", eventListener)
 
     val muid = UUID.randomUUID()
     val device = "mock"
@@ -157,23 +157,27 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     watcher.watch(reporter)
     subscribeAggPowerReport(muid)(eventBus)(testActor)
 
-    reporter ! ReporterStart("test", muid, nbTargets, aggFunction)
+    EventFilter.info(occurrences = 1, source = reporter.path.toString).intercept({
+      reporter ! ReporterStart("test", muid, nbTargets, aggFunction)
+    })(_system)
     
     for(i <- 1 to 150) {
       publishPowerReport(muid, Process(i), i*3.0, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    Thread.sleep(1000)
+    //Thread.sleep(1000)
     
-    reporter ! ReporterStop("test", muid)
+    EventFilter.info(occurrences = 1, source = reporter.path.toString).intercept({
+      reporter ! ReporterStop("test", muid)
+    })(_system)
 
     awaitAssert({
       watcher.expectTerminated(reporter)
     }, 20.seconds)
     
-    expectMsgClass(10.minute, classOf[AggPowerReport]).power should equal(3825.0)
-    expectMsgClass(10.minute, classOf[AggPowerReport]).power should equal(11325.0)
-    expectMsgClass(10.minute, classOf[AggPowerReport]).power should equal(18825.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(3825.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(11325.0)
+    expectMsgClass(classOf[AggPowerReport]).power should equal(18825.0)
 
     Await.result(gracefulStop(reporter, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
