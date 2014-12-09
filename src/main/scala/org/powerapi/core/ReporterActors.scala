@@ -136,7 +136,6 @@ class Reporters(eventBus: MessageBus) extends Supervisor {
     val name = formatReporterChildName(msg.muid)
     val child = context.actorOf(Props(classOf[ReporterChild], 
                                       eventBus, msg.muid, msg.nbTarget, msg.aggFunction), name)
-    println("[TEST] " + child)
     child ! msg
     context.become(running)
   }
@@ -181,6 +180,7 @@ class Reporter(eventBus: MessageBus, _system: ActorSystem,
     import org.powerapi.reporter.AggPowerChannel.subscribeAggPowerReport
   
     startReporter(monitor.muid, monitor.targets.size, aggFunction)(eventBus)
+    println("[TEST] " + reporterCompRef)
     subscribeAggPowerReport(monitor.muid)(eventBus)(reporterCompRef)
     this
   }
