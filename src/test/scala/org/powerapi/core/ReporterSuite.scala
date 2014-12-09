@@ -203,23 +203,18 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    Thread.sleep(1000)
+    Thread.sleep(250)
     
     for(i <- 0 until 100) {
       publishPowerReport(attachedMonitors(i).muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    Thread.sleep(1000)
+    Thread.sleep(250)
     
     for(i <- 0 until 100) {
       reporter.detach(attachedMonitors(i))
     }
-    
-    Thread.sleep(1000)
-    
     reporter.cancel()
-    
-    Thread.sleep(1000)
     
     for(i <- 0 until 100) {
       awaitAssert({
@@ -258,22 +253,28 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    Thread.sleep(1000)
+    Thread.sleep(250)
     
     for(i <- 0 until 100) {
       publishPowerReport(attachedMonitors(i)._1.muid, targets(0), power, PowerUnit.W, device, tickMock)(eventBus)
     }
     
-    Thread.sleep(1000)
-    
-    receiveN(100, 1.minute)
-    
-    Thread.sleep(1000)
+    Thread.sleep(250)
     
     for(i <- 0 until 100) {
       attachedMonitors(i)._2.detach(attachedMonitors(i)._1)
       attachedMonitors(i)._2.cancel()
     }
+    
+    for(i <- 0 until 100) {
+      awaitAssert({
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(formatReporterChildName(attachedMonitors(i)._1.muid)).resolveOne(), timeout.duration)
+        }
+      }, 20.seconds)
+    }
+    
+    receiveN(100, 1.minute)
     
     Await.result(gracefulStop(reporters, timeout.duration), timeout.duration)
     _system.shutdown()
