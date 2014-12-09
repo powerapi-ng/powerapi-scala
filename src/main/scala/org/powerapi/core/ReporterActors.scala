@@ -191,7 +191,7 @@ class Reporter(eventBus: MessageBus, _system: ActorSystem,
     import org.powerapi.reporter.AggPowerChannel.unsubscribeAggPowerReport
   
     stopReporter(monitor.muid)(eventBus)
-    println("[ATTACH] " + monitor.muid)
+    println("[DETACH] " + monitor.muid)
     unsubscribeAggPowerReport(monitor.muid)(eventBus)(reporterCompRef)
     this
   }
