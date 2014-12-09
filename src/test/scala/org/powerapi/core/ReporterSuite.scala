@@ -184,7 +184,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
   "A Reporters actor" should "handle its ReporterChild actors and the reporter component have to receive messages from attached monitors" in new Bus {
     import java.lang.Thread
     
-    val _system = ActorSystem("ReporterSuiteTest4", eventListener)
+    val _system = ActorSystem("ReporterSuiteTest4")
 
     val reporters = _system.actorOf(Props(classOf[Reporters], eventBus), "reporters4")
 
@@ -215,14 +215,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     }
     reporter.cancel()
     
-    for(i <- 0 until 100) {
-      awaitAssert({
-        intercept[ActorNotFound] {
-          Await.result(_system.actorSelection(formatReporterChildName(attachedMonitors(i).muid)).resolveOne(), timeout.duration)
-        }
-      }, 20.seconds)
-    }
-    
     receiveN(100)
     
     Await.result(gracefulStop(reporters, timeout.duration), timeout.duration)
@@ -233,7 +225,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
   it should "handle a large number of reporters and reporter components" in new Bus {
     import java.lang.Thread
     
-    val _system = ActorSystem("ReporterSuiteTest5", eventListener)
+    val _system = ActorSystem("ReporterSuiteTest5")
 
     val reporters = _system.actorOf(Props(classOf[Reporters], eventBus), "reporters5")
 
@@ -262,14 +254,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 0 until 100) {
       attachedMonitors(i)._2.detach(attachedMonitors(i)._1)
       attachedMonitors(i)._2.cancel()
-    }
-    
-    for(i <- 0 until 100) {
-      awaitAssert({
-        intercept[ActorNotFound] {
-          Await.result(_system.actorSelection(formatReporterChildName(attachedMonitors(i)._1.muid)).resolveOne(), timeout.duration)
-        }
-      }, 20.seconds)
     }
     
     receiveN(100)
