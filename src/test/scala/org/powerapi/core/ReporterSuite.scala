@@ -211,15 +211,26 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     Thread.sleep(1000)
     
-    receiveN(100, 1.minute)
-    
-    Thread.sleep(1000)
-    
     for(i <- 0 until 100) {
       reporter.detach(attachedMonitors(i))
     }
     
+    Thread.sleep(1000)
+    
     reporter.cancel()
+    
+    Thread.sleep(1000)
+    
+    for(i <- 0 until 100) {
+      awaitAssert({
+        intercept[ActorNotFound] {
+          Await.result(_system.actorSelection(formatReporterChildName(attachedMonitors(i).muid)).resolveOne(), timeout.duration)
+        }
+      }, 20.seconds)
+    }
+    
+    receiveN(100, 1.minute)
+    
     Await.result(gracefulStop(reporters, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)

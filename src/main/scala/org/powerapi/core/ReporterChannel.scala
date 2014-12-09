@@ -72,7 +72,6 @@ object ReporterChannel extends Channel {
    * External Methods used by the API (or a Reporter object) for interacting with the bus.
    */
   def startReporter(muid: UUID, nbTarget: Int, aggFunction: List[PowerReport] => Double): MessageBus => Unit = {
-    println("[START]" + muid)
     publish(ReporterStart(topic, muid, nbTarget, aggFunction))
   }
 
