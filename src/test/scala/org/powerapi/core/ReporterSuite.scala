@@ -197,6 +197,8 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
 
     val attachedMonitors = scala.collection.mutable.ListBuffer[Monitor]()
 
+    Thread.sleep(250)
+
     for(i <- 0 until 100) {
       val monitor = new Monitor(eventBus, targets)
       attachedMonitors += monitor
@@ -242,6 +244,8 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     val aggFunction = (l: List[PowerReport]) => l.foldLeft(0.0){ (acc, r) => acc + r.power }
 
     val attachedMonitors = scala.collection.mutable.ListBuffer[(Monitor, Reporter)]()
+
+    Thread.sleep(250)
 
     for(i <- 0 until 100) {
       val monitor = new Monitor(eventBus, targets)
