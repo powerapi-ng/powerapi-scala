@@ -136,6 +136,7 @@ class Reporters(eventBus: MessageBus) extends Supervisor {
     val name = formatReporterChildName(msg.muid)
     val child = context.actorOf(Props(classOf[ReporterChild], 
                                       eventBus, msg.muid, msg.nbTarget, msg.aggFunction), name)
+    println("[TEST] " + child)
     child ! msg
     context.become(running)
   }

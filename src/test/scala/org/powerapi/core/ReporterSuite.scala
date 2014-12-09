@@ -203,9 +203,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       reporter.attach(monitor)
     }
     
-    println("[TEST] " + attachedMonitors)
-    println("[TEST] " + attachedMonitors.size)
-    
     Thread.sleep(1000)
     
     for(i <- 0 until 100) {
