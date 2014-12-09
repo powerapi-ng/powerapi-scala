@@ -201,6 +201,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       val monitor = new Monitor(eventBus, targets)
       attachedMonitors += monitor
       reporter.attach(monitor)
+      Thread.sleep(50)
     }
     
     Thread.sleep(250)
@@ -251,6 +252,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
       val reporter = new Reporter(eventBus, _system, aggFunction, classOf[ReporterComponentMock], List(testActor))
       attachedMonitors += ((monitor, reporter))
       reporter.attach(monitor)
+      Thread.sleep(50)
     }
     
     Thread.sleep(250)
