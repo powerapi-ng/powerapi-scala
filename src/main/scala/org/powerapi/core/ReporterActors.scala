@@ -180,7 +180,6 @@ class Reporter(eventBus: MessageBus, _system: ActorSystem,
     import org.powerapi.reporter.AggPowerChannel.subscribeAggPowerReport
   
     startReporter(monitor.muid, monitor.targets.size, aggFunction)(eventBus)
-    println("[ATTACH] " + monitor.muid)
     subscribeAggPowerReport(monitor.muid)(eventBus)(reporterCompRef)
     this
   }
@@ -191,7 +190,6 @@ class Reporter(eventBus: MessageBus, _system: ActorSystem,
     import org.powerapi.reporter.AggPowerChannel.unsubscribeAggPowerReport
   
     stopReporter(monitor.muid)(eventBus)
-    println("[DETACH] " + monitor.muid)
     unsubscribeAggPowerReport(monitor.muid)(eventBus)(reporterCompRef)
     this
   }
