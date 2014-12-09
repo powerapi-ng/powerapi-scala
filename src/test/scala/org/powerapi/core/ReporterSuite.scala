@@ -142,8 +142,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it can "handle a large number of power reports" in new Bus {
-    import java.lang.Thread
-  
     val _system = ActorSystem("ReporterSuiteTest3", eventListener)
 
     val muid = UUID.randomUUID()
@@ -164,8 +162,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 1 to 150) {
       publishPowerReport(muid, Process(i), i*3.0, PowerUnit.W, device, tickMock)(eventBus)
     }
-    
-    //Thread.sleep(1000)
     
     EventFilter.info(occurrences = 1, source = reporter.path.toString).intercept({
       reporter ! ReporterStop("test", muid)
@@ -188,7 +184,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
   "A Reporters actor" should "handle its ReporterChild actors and the reporter component have to receive messages from attached monitors" in new Bus {
     import java.lang.Thread
     
-    val _system = ActorSystem("ReporterSuiteTest4")
+    val _system = ActorSystem("ReporterSuiteTest4", eventListener)
 
     val reporters = _system.actorOf(Props(classOf[Reporters], eventBus), "reporters4")
 
@@ -232,7 +228,7 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
   it should "handle a large number of reporters and reporter components" in new Bus {
     import java.lang.Thread
     
-    val _system = ActorSystem("ReporterSuiteTest5")
+    val _system = ActorSystem("ReporterSuiteTest5", eventListener)
 
     val reporters = _system.actorOf(Props(classOf[Reporters], eventBus), "reporters5")
 
