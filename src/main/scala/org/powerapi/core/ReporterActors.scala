@@ -40,7 +40,11 @@ import org.powerapi.reporter.ReporterComponent
  *
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-class ReporterChild(eventBus: MessageBus, muid: UUID, nbTarget: Int, aggFunction: List[PowerReport] => Double) extends ActorComponent {
+class ReporterChild(eventBus: MessageBus,
+                    muid: UUID,
+                    nbTarget: Int,
+                    aggFunction: List[PowerReport] => Double) extends ActorComponent {
+                    
   import org.powerapi.module.PowerChannel.{ subscribePowerReport, unsubscribePowerReport }
   import org.powerapi.core.ReporterChannel.{ ReporterStart, ReporterStop, ReporterStopAll }
   import org.powerapi.reporter.AggPowerChannel.publishAggPowerReport
@@ -101,10 +105,12 @@ class Reporters(eventBus: MessageBus) extends Supervisor {
 
   override def preStart(): Unit = {
     subscribeReportersChannel(eventBus)(self)
+    super.preStart()
   }
 
   override def postStop(): Unit = {
     context.actorSelection("*") ! stopAllReporter
+    super.postStop()
   }
 
   /**
@@ -134,8 +140,16 @@ class Reporters(eventBus: MessageBus) extends Supervisor {
    */
   def start(msg: ReporterStart): Unit = {
     val name = formatReporterChildName(msg.muid)
-    val child = context.actorOf(Props(classOf[ReporterChild], 
-                                      eventBus, msg.muid, msg.nbTarget, msg.aggFunction), name)
+    
+    val child = context.child(name) match {
+      case Some(actorRef) => {
+        log.info("this monitor is already attached to a reporter, muid: {}", msg.muid)
+        actorRef
+      }
+      case None => context.actorOf(Props(classOf[ReporterChild], 
+                                         eventBus, msg.muid, msg.nbTarget, msg.aggFunction), name)
+    }
+    
     child ! msg
     context.become(running)
   }
@@ -175,7 +189,6 @@ class Reporter(eventBus: MessageBus, _system: ActorSystem,
   private val reporterCompRef = _system.actorOf(Props(reporterComponent, args: _*))
 
   def attach(monitor: Monitor): Reporter = {
-    //TODO check duplication of muid
     import org.powerapi.core.ReporterChannel.startReporter
     import org.powerapi.reporter.AggPowerChannel.subscribeAggPowerReport
   
@@ -185,18 +198,12 @@ class Reporter(eventBus: MessageBus, _system: ActorSystem,
   }
   
   def detach(monitor: Monitor): Reporter = {
-    //TODO check existence of muid
     import org.powerapi.core.ReporterChannel.stopReporter
     import org.powerapi.reporter.AggPowerChannel.unsubscribeAggPowerReport
   
     stopReporter(monitor.muid)(eventBus)
     unsubscribeAggPowerReport(monitor.muid)(eventBus)(reporterCompRef)
     this
-  }
-  
-  def cancel(): Unit = {
-    //TODO list of all attached muid
-    gracefulStop(reporterCompRef, 1.second)
   }
 }
 

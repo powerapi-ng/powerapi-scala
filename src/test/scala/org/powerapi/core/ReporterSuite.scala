@@ -23,15 +23,18 @@
 package org.powerapi.core
 
 import java.util.UUID
-import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
-import akka.pattern.gracefulStop
-import akka.testkit.{EventFilter, TestKit, TestProbe}
-import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
-import org.powerapi.UnitTest
-import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, DurationInt}
 
+import akka.actor.{ ActorRef, ActorSystem, Props }
+import akka.pattern.gracefulStop
+import akka.testkit.{ EventFilter, TestKit, TestProbe }
+import akka.util.Timeout
+
+import com.typesafe.config.ConfigFactory
+
+import scala.concurrent.Await
+import scala.concurrent.duration.{ Duration, DurationInt }
+
+import org.powerapi.UnitTest
 import org.powerapi.reporter.AggPowerChannel.AggPowerReport
 import org.powerapi.reporter.ReporterComponent
 
@@ -213,7 +216,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     for(i <- 0 until 100) {
       reporter.detach(attachedMonitors(i))
     }
-    reporter.cancel()
     
     receiveN(100)
     
@@ -253,7 +255,6 @@ class ReporterSuite(system: ActorSystem) extends UnitTest(system) {
     
     for(i <- 0 until 100) {
       attachedMonitors(i)._2.detach(attachedMonitors(i)._1)
-      attachedMonitors(i)._2.cancel()
     }
     
     receiveN(100)
