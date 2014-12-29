@@ -71,6 +71,7 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A PowerSpySensor" should "listen PowerSpyPower messages, build a new message and then publish it" in new EventBus {
+    import akka.pattern.gracefulStop
     import org.powerapi.module.PowerUnit
     import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
 
@@ -86,9 +87,11 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[PowerSpyPower]) match {
       case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(14.0)
     }
+
+    gracefulStop(pSpySensor, 15.seconds)
   }
 
-  it should "open the connection with the power meter, build new messages and then publish them" ignore new EventBus {
+  it should "open the connection with the power meter, build new messages and then publish them" in new EventBus {
     import akka.pattern.gracefulStop
 
     val listener = TestActorRef(Props(classOf[PowerSpyPowerListener], eventBus), "listener")(system)

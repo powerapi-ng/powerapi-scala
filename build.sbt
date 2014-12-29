@@ -31,3 +31,16 @@ scalacOptions ++= Seq(
 parallelExecution in Test := false
 
 instrumentSettings
+
+// Use this task for testing the PowerSpy powermeter in the test suite
+val downloadBluecoveLibs = TaskKey[Seq[File]]("download-bluecove")
+
+downloadBluecoveLibs := {
+  val locationBluecove = baseDirectory.value / "lib" / "bluecove-2.1.0.jar"
+  val locationBluecoveGpl = baseDirectory.value / "lib" / "bluecove-gpl-2.1.0.jar"
+  locationBluecove.getParentFile.mkdirs()
+  locationBluecoveGpl.getParentFile.mkdirs()
+  IO.download(url("https://bluecove.googlecode.com/files/bluecove-2.1.0.jar"), locationBluecove)
+  IO.download(url("https://bluecove.googlecode.com/files/bluecove-gpl-2.1.0.jar"), locationBluecoveGpl)
+  Seq(locationBluecove, locationBluecoveGpl)
+}
