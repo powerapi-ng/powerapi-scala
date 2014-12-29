@@ -91,7 +91,7 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
     gracefulStop(pSpySensor, 15.seconds)
   }
 
-  it should "open the connection with the power meter, build new messages and then publish them" in new EventBus {
+  it should "open the connection with the power meter, build new messages and then publish them" ignore new EventBus {
     import akka.pattern.gracefulStop
 
     val listener = TestActorRef(Props(classOf[PowerSpyPowerListener], eventBus), "listener")(system)
