@@ -20,31 +20,32 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.module.powerspy
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
+import org.powerapi.module.PowerUnit
 
-class OverallFormulaSuite(system: ActorSystem) extends UnitTest(system) {
+class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
-  def this() = this(ActorSystem("OverallFormulaSuite"))
+  def this() = this(ActorSystem("PowerSpyFormulaSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
-  "An OverallFormula" should "listen OverallPower/UsageReport messages and produce PowerReport messages" in {
+  "A PowerSpyFormula" should "listen PowerSpyPower/UsageReport messages and produce PowerReport messages" in {
     import java.util.UUID
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.{MessageBus, Process, TargetUsageRatio}
-    import org.powerapi.module.OverallPowerChannel.publishOverallPower
     import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
     import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
+    import org.powerapi.module.powerspy.PowerSpyChannel.publishSensorPower
     import scala.concurrent.duration.DurationInt
 
     val eventBus = new MessageBus
-    TestActorRef(Props(classOf[OverallFormula], eventBus))(system)
+    TestActorRef(Props(classOf[PowerSpyFormula], eventBus))(system)
     val muid = UUID.randomUUID()
     val tickMock = ClockTick("test", 25.milliseconds)
     subscribePowerReport(muid)(eventBus)(testActor)
@@ -52,22 +53,22 @@ class OverallFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     publishUsageReport(muid, Process(1), TargetUsageRatio(0.5), tickMock)(eventBus)
     expectNoMsg(3.seconds)
 
-    publishOverallPower(90.0, PowerUnit.W, "test")(eventBus)
-    publishOverallPower(92.0, PowerUnit.W, "test")(eventBus)
-    publishOverallPower(150.0, PowerUnit.W, "test")(eventBus)
+    publishSensorPower(90.0, PowerUnit.W)(eventBus)
+    publishSensorPower(92.0, PowerUnit.W)(eventBus)
+    publishSensorPower(150.0, PowerUnit.W)(eventBus)
     publishUsageReport(muid, Process(1), TargetUsageRatio(0.5), tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "test", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(150 * 0.5); tic should equal(tickMock)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(150 * 0.5); tic should equal(tickMock)
     }
 
-    publishOverallPower(140.0, PowerUnit.W, "test")(eventBus)
+    publishSensorPower(140.0, PowerUnit.W)(eventBus)
     publishUsageReport(muid, Process(1), TargetUsageRatio(0.25), tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "test", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(140 * 0.25); tic should equal(tickMock)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(140 * 0.25); tic should equal(tickMock)
     }
     publishUsageReport(muid, Process(2), TargetUsageRatio(0.25), tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "test", tic) => id should equal(muid); targ should equal(Process(2)); pow should equal(140 * 0.25); tic should equal(tickMock)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(2)); pow should equal(140 * 0.25); tic should equal(tickMock)
     }
   }
 }

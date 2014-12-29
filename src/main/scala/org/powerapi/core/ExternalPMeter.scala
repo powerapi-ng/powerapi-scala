@@ -20,11 +20,13 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy;
+package org.powerapi.core
 
-import java.io.Closeable;
-
-public interface BluetoothDevice extends Closeable {
-  public void send(String message);
-  public String recv(long timeout, boolean errorOnTimeout);
+/**
+ * Base trait for implementing external power meters.
+ */
+trait ExternalPMeter {
+  def init(): Unit
+  def start(): Unit
+  def stop(): Unit
 }

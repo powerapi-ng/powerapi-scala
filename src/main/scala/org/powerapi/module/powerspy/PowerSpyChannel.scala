@@ -20,51 +20,63 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.module.powerspy
 
 import org.powerapi.core.Channel
 
 /**
- * OverallPowerChannel channel and messages.
+ * PowerSpyChannel channel and messages.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object OverallPowerChannel extends Channel {
+object PowerSpyChannel extends Channel {
   import akka.actor.ActorRef
   import org.powerapi.core.{Message, MessageBus}
   import org.powerapi.module.PowerUnit.PowerUnit
 
-  type M = OverallPower
+  type M = PowerSpyPower
 
   /**
-   * OverallPower is represented as a dedicated type of message.
+   * PowerSpyPower is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
-   * @param power: overall power consumption.
+   * @param power: power consumption got by an external device.
    * @param unit: power unit.
-   * @param source: origin of the overall power.
    */
-  case class OverallPower(topic: String,
-                          power: Double,
-                          unit: PowerUnit,
-                          source: String) extends Message
+  case class PowerSpyPower(topic: String,
+                         power: Double,
+                         unit: PowerUnit,
+                         source: String = "powerspy") extends Message
 
   /**
-   * Topic for communicating with the OverallFormula actors.
+   * Topic for communicating with the Sensor actor.
    */
-  private val topic = "power:overall"
+  private val topic = "powerspy:power"
 
   /**
-   * Publish an OverallPower in the event bus.
+   * Topic for communicating with the Formula actor.
    */
-  def publishOverallPower(power: Double, unit: PowerUnit, source: String): MessageBus => Unit = {
-    publish(OverallPower(topic, power, unit, source))
+  private val topicToPublish = "sensor:powerspy"
+
+  /**
+   * Publish a PowerSpyPower in the event bus.
+   */
+  def publishPowerSpyPower(power: Double, unit: PowerUnit): MessageBus => Unit = {
+    publish(PowerSpyPower(topic, power, unit))
+  }
+
+  def publishSensorPower(power: Double, unit: PowerUnit): MessageBus => Unit = {
+    publish(PowerSpyPower(topicToPublish, power, unit))
   }
 
   /**
-   * External method used by the OverallFormula for interacting with the bus.
+   * External methods used for interacting with the bus.
    */
-  def subscribeOverallPower: MessageBus => ActorRef => Unit = {
+  def subscribePowerSpyPower: MessageBus => ActorRef => Unit = {
     subscribe(topic)
+  }
+
+  def subscribeSensorPower: MessageBus => ActorRef => Unit = {
+    subscribe(topicToPublish)
   }
 }

@@ -22,31 +22,41 @@
  */
 package org.powerapi.module.powerspy
 
-import akka.actor.{Actor, Props, ActorSystem}
-import akka.testkit.{TestActorRef, TestKit}
+import akka.actor.{Actor, ActorSystem}
+import akka.testkit.TestKit
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
+import org.powerapi.core.{MessageBus, ExternalPMeter}
 import scala.concurrent.duration.DurationInt
 
-class PowerSpySensorMock(eventBus: MessageBus, timeout: Timeout) extends PowerSpySensor(eventBus, timeout) {
-  override lazy val sppUrl = "btspp://000BCE071E9B:1;authenticate=false;encrypt=false;master=false"
-  override lazy val version = PowerSpyVersion.POWERSPY_V1
+class MockPMeter(eventBus: MessageBus) extends ExternalPMeter {
+  import org.powerapi.module.PowerUnit
+  import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
+
+  def init(): Unit = {}
+  def start(): Unit = {
+    publishPowerSpyPower(10.0, PowerUnit.W)(eventBus)
+    publishPowerSpyPower(20.0, PowerUnit.W)(eventBus)
+    publishPowerSpyPower(14.0, PowerUnit.W)(eventBus)
+  }
+  def stop(): Unit = {}
 }
 
-class OverallPowerListener(eventBus: MessageBus) extends Actor {
-  import org.powerapi.module.OverallPowerChannel.{OverallPower, subscribeOverallPower}
+class PowerSpyPowerListener(eventBus: MessageBus) extends Actor {
+  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
 
   override def preStart(): Unit = {
-    subscribeOverallPower(eventBus)(self)
+    subscribeSensorPower(eventBus)(self)
   }
 
   def receive = {
-    case msg: OverallPower => println(msg)
+    case msg: PowerSpyPower => println(msg)
   }
 }
 
 class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
+  import akka.actor.Props
+  import akka.testkit.TestActorRef
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -56,22 +66,39 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  "A PowerSpySensor" should "open the connection with the power meter, compute the power and publish OverallPowerReports at its own frequency" ignore {
-    import akka.pattern.gracefulStop
-    import org.powerapi.module.PowerUnit
-    import org.powerapi.module.OverallPowerChannel.{OverallPower, subscribeOverallPower}
-
+  trait EventBus {
     val eventBus = new MessageBus
-    val pspySensor = TestActorRef(Props(classOf[PowerSpySensorMock], eventBus, Timeout(15.seconds)), "pSpySensor")(system)
-    subscribeOverallPower(eventBus)(testActor)
+  }
 
-    pspySensor.underlyingActor.asInstanceOf[PowerSpySensor].receive(PSpyData(3.0, 2.0f, 3.0f))
-    expectMsgClass(classOf[OverallPower]) match {
-      case OverallPower(_, power, PowerUnit.W, "powerspy") => power should equal(3.0 * 2.0f * 3.0f)
+  "A PowerSpySensor" should "listen PowerSpyPower messages, build a new message and then publish it" in new EventBus {
+    import org.powerapi.module.PowerUnit
+    import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
+
+    subscribeSensorPower(eventBus)(testActor)
+    val pSpySensor = TestActorRef(Props(classOf[PowerSpySensor], eventBus, new MockPMeter(eventBus)), "pSpySensor")(system)
+
+    expectMsgClass(classOf[PowerSpyPower]) match {
+      case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(10.0)
     }
+    expectMsgClass(classOf[PowerSpyPower]) match {
+      case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(20.0)
+    }
+    expectMsgClass(classOf[PowerSpyPower]) match {
+      case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(14.0)
+    }
+  }
 
-    TestActorRef(Props(classOf[OverallPowerListener], eventBus), "listener")(system)
-    Thread.sleep(20.seconds.toMillis)
-    gracefulStop(pspySensor, 15.seconds)
+  it should "open the connection with the power meter, build new messages and then publish them" ignore new EventBus {
+    import akka.pattern.gracefulStop
+
+    val listener = TestActorRef(Props(classOf[PowerSpyPowerListener], eventBus), "listener")(system)
+    val pSpySensor = TestActorRef(Props(classOf[PowerSpySensor], eventBus, new PowerSpyPMeter(eventBus) {
+      override lazy val mac = "00:0b:ce:07:1e:9b"
+    }), "pSpySensor")(system)
+
+    Thread.sleep(15.seconds.toMillis)
+
+    gracefulStop(pSpySensor, 15.seconds)
+    gracefulStop(listener, 15.seconds)
   }
 }
