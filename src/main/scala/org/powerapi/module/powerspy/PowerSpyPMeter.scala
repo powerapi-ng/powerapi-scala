@@ -50,6 +50,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
 
   def init(): Unit = {
     powerspy = PowerSpy.init(mac)
+    running = true
   }
 
   def start(): Unit = {
@@ -96,7 +97,6 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
         pSpy.stop()
         PowerSpy.deinit()
 
-        running = true
         thread = None
         powerspy = None
       }
