@@ -88,7 +88,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
         running = false
 
         thread match {
-          case Some(thr) => thr.join()
+          case Some(thr) => thr.join(1.seconds.toMillis)
           case _ => log.debug("Call the method start() before stopping.")
         }
 
