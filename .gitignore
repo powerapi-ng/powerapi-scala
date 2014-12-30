@@ -32,3 +32,6 @@ target/
 # Scala-IDE specific
 .scala_dependencies
 .worksheet
+
+#bluecove
+lib/bluecove*
