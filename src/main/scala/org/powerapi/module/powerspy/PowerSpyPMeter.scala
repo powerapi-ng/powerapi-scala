@@ -40,7 +40,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
 
   @volatile private var running = true
   @volatile private var thread: Option[java.lang.Thread] = None
-  @volatile private var pSpyOption: Option[PowerSpy] = None
+  @volatile private var powerspy: Option[PowerSpy] = None
 
   private val log = LogManager.getLogger
   lazy val mac = load { _.getString("powerspy.mac") } match {
@@ -49,11 +49,11 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
   }
 
   def init(): Unit = {
-    pSpyOption = PowerSpy(mac, 3.seconds)
+    powerspy = PowerSpy.init(mac)
   }
 
   def start(): Unit = {
-    pSpyOption match {
+    powerspy match {
       case Some(pSpy) => {
         pSpy.start()
 
@@ -83,7 +83,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
   }
 
   def stop(): Unit = {
-    pSpyOption match {
+    powerspy match {
       case Some(pSpy) => {
         running = false
 
@@ -94,11 +94,11 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
 
         pSpy.stopRealTime()
         pSpy.stop()
-        pSpy.connexion.close()
+        PowerSpy.deinit()
 
         running = true
         thread = None
-        pSpyOption = None
+        powerspy = None
       }
       case _ => log.error("Connexion with PowerSpy is not established.")
     }

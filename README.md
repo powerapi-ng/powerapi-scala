@@ -20,8 +20,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Akka](http://akka.io) (version 2.3.6 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
 * [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 * [Apache log4j2](http://logging.apache.org/log4j/2.x/) (version 2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
-* [Bluecove](http://bluecove.org/) (version 2.1.0 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for interfacing the Bluetooth stack in Java (PowerSpy).
-* [Bluecove-gpl](http://bluecove.org/bluecove-gpl/) (version 2.1.0 under [GPL licence](http://www.gnu.org/licenses/gpl.html)), for supporting Bluecove on Linux (PowerSpy).
+* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.0.1 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
 
 # Licence
 This software is licensed under the *GNU Affero General Public License*, quoted below.
