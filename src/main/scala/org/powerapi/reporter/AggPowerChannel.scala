@@ -72,7 +72,7 @@ object AggPowerChannel extends Channel {
   }
   
   /**
-   * Internal methods used by the ReporterChild actors for interacting with the bus.
+   * External method used by the MonitorChild actors for interacting with the bus.
    */
   def render(powerReport: PowerReport): MessageBus => Unit = {
     publish(AggPowerReport(aggPowerReportTopic(powerReport.muid),

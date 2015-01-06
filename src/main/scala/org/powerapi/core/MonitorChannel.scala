@@ -23,9 +23,10 @@
 package org.powerapi.core
 
 import java.util.UUID
-import akka.actor.ActorRef
-import org.powerapi.core.ClockChannel.ClockTick
+
 import scala.concurrent.duration.FiniteDuration
+
+import akka.actor.ActorRef
 
 /**
  * Monitor channel and messages.
@@ -33,6 +34,8 @@ import scala.concurrent.duration.FiniteDuration
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object MonitorChannel extends Channel {
+  import org.powerapi.module.PowerChannel.PowerReport
+  import org.powerapi.core.ClockChannel.ClockTick
   
   type M = MonitorMessage
 
@@ -58,11 +61,13 @@ object MonitorChannel extends Channel {
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param frequency: clock frequency.
    * @param targets: monitor targets.
+   * @param aggFunction: aggregate the PowerReports of a same monitor.
    */
   case class MonitorStart(topic: String,
                           muid: UUID,
                           frequency: FiniteDuration,
-                          targets: List[Target]) extends MonitorMessage
+                          targets: List[Target],
+                          aggFunction: List[PowerReport] => PowerReport) extends MonitorMessage
 
   /**
    * MonitorStop is represented as a dedicated type of message.
@@ -99,8 +104,8 @@ object MonitorChannel extends Channel {
   /**
    * External Methods used by the API (or a Monitor object) for interacting with the bus.
    */
-  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
-    publish(MonitorStart(topic, muid, frequency, targets))
+  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target], aggFunction: List[PowerReport] => PowerReport): MessageBus => Unit = {
+    publish(MonitorStart(topic, muid, frequency, targets, aggFunction))
   }
 
   def stopMonitor(muid: UUID): MessageBus => Unit = {
