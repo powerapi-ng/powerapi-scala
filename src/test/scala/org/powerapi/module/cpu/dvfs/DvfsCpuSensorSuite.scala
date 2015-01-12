@@ -71,15 +71,9 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val tickMock = ClockTick("test", 25.milliseconds)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.update(CacheKey(muid, Process(1)),
-      TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
-    )
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.update(CacheKey(muid, Application("app")),
-      TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
-    )
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.update(CacheKey(muid, All),
-      TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
-    )
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1))) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Application("app"))) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, All)) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
 
     subscribeDvfsUsageReport(eventBus)(testActor)
 
@@ -87,7 +81,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.timeInStates should equal(TimeInStates(Map(4000000l -> 6l, 3000000l -> 2l, 2000000l -> 2l, 1000000l -> 2l)))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.getOrElse(CacheKey(muid, Process(1)), TimeInStates(Map())) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1)))(TimeInStates(Map())) match {
       case t => t should equal(TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l)))
     }
 
@@ -95,7 +89,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Application("app")); ur.timeInStates should equal(TimeInStates(Map(4000000l -> 6l, 3000000l -> 2l, 2000000l -> 2l, 1000000l -> 2l)))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.getOrElse(CacheKey(muid, Application("app")), TimeInStates(Map())) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Application("app")))(TimeInStates(Map())) match {
       case t => t should equal(TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l)))
     }
 
@@ -135,15 +129,13 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscribeDvfsUsageReport(eventBus)(testActor)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.update(CacheKey(muid, Process(1)),
-      TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l))
-    )
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1))) = TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l))
 
     publishMonitorTick(muid, Process(1), tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.timeInStates should equal(TimeInStates(Map()))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache.getOrElse(CacheKey(muid, Process(1)), TimeInStates(Map())) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1)))(TimeInStates(Map())) match {
       case t => t should equal(TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l)))
     }
     gracefulStop(cpuSensor, 1.seconds)

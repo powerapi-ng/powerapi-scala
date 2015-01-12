@@ -66,12 +66,12 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
       case All => (globalCpuTime, globalCpuTime)
     }
 
-    val old = cpuTimesCache.getOrElse(key, now)
+    val old = cpuTimesCache(key)(now)
     val diffTimes = (now._1 - old._1, now._2 - old._2)
 
     diffTimes match {
       case diff: (Double, Double) if diff._1 > 0 && diff._2 > 0 && diff._1 <= diff._2 => {
-        cpuTimesCache.update(key, now)
+        cpuTimesCache(key) = now
         TargetUsageRatio(diff._1 / diff._2)
       }
       case _ => TargetUsageRatio(0.0)

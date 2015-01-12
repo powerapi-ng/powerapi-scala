@@ -50,11 +50,11 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.m
     val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
     val now = osHelper.getTimeInStates
-    val old = frequenciesCache.getOrElse(key, now)
+    val old = frequenciesCache(key)(now)
     val diffTimeInStates = now - old
 
     if(diffTimeInStates.times.count(_._2 < 0) == 0) {
-      frequenciesCache.update(key, now)
+      frequenciesCache(key) = now
       diffTimeInStates
     }
     else TimeInStates(Map())

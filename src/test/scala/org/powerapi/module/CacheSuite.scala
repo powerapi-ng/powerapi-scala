@@ -38,15 +38,15 @@ class CacheSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  "A Cache" should "be parametrized, updated and have a method for getting an entry" in {
+  "A Cache" can "be parametrized, updated" in {
     import java.util.UUID
     import org.powerapi.core.Process
 
     val cache = new Cache[(Double, Double)]
     val muid = UUID.randomUUID()
     val key = CacheKey(muid, Process(1))
-    cache.update(key, (10, 10))
-    cache.getOrElse(key, (0, 0)) should equal(10, 10)
-    cache.getOrElse(CacheKey(UUID.randomUUID(), Process(1)), (0,0)) should equal(0,0)
+    cache(key) = (10, 10)
+    cache(key)(0, 0) should equal(10, 10)
+    cache(CacheKey(UUID.randomUUID(), Process(1)))(0, 0) should equal(0,0)
   }
 }

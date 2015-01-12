@@ -43,7 +43,7 @@ class Cache[T] {
    */
   private lazy val cache = collection.mutable.Map[CacheKey, T]()
 
-  def getOrElse(key: CacheKey, default: T): T = {
+  def apply(key: CacheKey)(default: T): T = {
     cache.getOrElse(key, default)
   }
 
