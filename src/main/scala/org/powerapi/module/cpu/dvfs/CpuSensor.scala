@@ -20,10 +20,10 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.dvfs
+package org.powerapi.module.cpu.dvfs
 
-import org.powerapi.core.{MessageBus, OSHelper}
-import org.powerapi.module.procfs.ProcMetricsChannel
+import org.powerapi.core.{TimeInStates, MessageBus, OSHelper}
+import org.powerapi.module.Cache
 
 /**
  * CPU sensor component that collects data from a /proc and /sys directories
@@ -34,35 +34,33 @@ import org.powerapi.module.procfs.ProcMetricsChannel
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.procfs.simple.CpuSensor(eventBus, osHelper) {
+class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.cpu.simple.CpuSensor(eventBus, osHelper) {
+  import org.powerapi.core.{All,Application,Process, TargetUsageRatio}
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import ProcMetricsChannel.publishUsageReport
+  import org.powerapi.module.CacheKey
+  import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
+  import scala.reflect.ClassTag
 
-  /**
-   * Delegate class to deal with time spent within each CPU frequencies.
-   */
-  class Frequencies {
-    import org.powerapi.core.TimeInStates
-    import ProcMetricsChannel.CacheKey
+  lazy val frequenciesCache = new Cache[TimeInStates]
 
-    lazy val cache = collection.mutable.Map[CacheKey, TimeInStates]()
+  def timeInStates(monitorTick: MonitorTick): TimeInStates = {
+    val key = CacheKey(monitorTick.muid, monitorTick.target)
 
-    def refreshCache(key: CacheKey, now: TimeInStates): Unit = {
-      cache += (key -> now)
+    val processClaz = implicitly[ClassTag[Process]].runtimeClass
+    val appClaz = implicitly[ClassTag[Application]].runtimeClass
+
+    val now = osHelper.getTimeInStates
+    val old = frequenciesCache(key)(now)
+    val diffTimeInStates = now - old
+
+    if(diffTimeInStates.times.count(_._2 < 0) == 0) {
+      frequenciesCache(key) = now
+      diffTimeInStates
     }
-
-    def handleMonitorTick(tick: MonitorTick): TimeInStates = {
-      val now = osHelper.getTimeInStates()
-      val key = CacheKey(tick.muid, tick.target)
-      val old = cache.getOrElse(key, now)
-      refreshCache(key, now)
-      now - old
-    }
+    else TimeInStates(Map())
   }
 
-  lazy val frequencies = new Frequencies
-
   override def sense(monitorTick: MonitorTick): Unit = {
-    publishUsageReport(monitorTick.muid, monitorTick.target, targetRatio.handleMonitorTick(monitorTick), frequencies.handleMonitorTick(monitorTick), monitorTick.tick)(eventBus)
+    publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), timeInStates(monitorTick), monitorTick.tick)(eventBus)
   }
 }

@@ -20,49 +20,35 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.core
+package org.powerapi.module
+
+import java.util.UUID
+import org.powerapi.core.Target
 
 /**
- * Targets are system elements that can be monitored by PowerAPI
- *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait Target
-
-/**
- * Monitoring target for a specific Process IDentifier.
- *
- * @param pid: process identifier.
- *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-case class Process(pid: Long) extends Target
-
-/**
- * Monitoring target for a specific application.
- *
- * @param name: name of the application.
- *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-case class Application(name: String) extends Target
-
-/**
- * Target usage ratio.
- *
- * @param ratio: usage ratio.
+ * Cache entry.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-case class TargetUsageRatio(ratio: Double)
+case class CacheKey(muid: UUID, target: Target)
 
 /**
- * Monitoring target for the whole system.
+ * Delegate class used for caching data.
  *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object All extends Target
+class Cache[T] {
+  /**
+   * Internal cache
+   */
+  private lazy val cache = collection.mutable.Map[CacheKey, T]()
+
+  def apply(key: CacheKey)(default: T): T = {
+    cache.getOrElse(key, default)
+  }
+
+  def update(key: CacheKey, now: T): Unit = {
+    val old = cache.getOrElse(key, now)
+    cache += (key -> now)
+  }
+}

@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.simple
+package org.powerapi.module.cpu.simple
 
 import java.util.UUID
 import akka.actor.{Props, ActorSystem}
@@ -28,8 +28,6 @@ import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.module.PowerChannel
-import org.powerapi.module.procfs.ProcMetricsChannel
 import scala.concurrent.duration.DurationInt
 
 trait SimpleCpuFormulaConfigurationMock extends FormulaConfiguration {
@@ -55,10 +53,10 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   val formulaMock = TestActorRef(Props(classOf[SimpleCpuFormulaMock], eventBus), "simple-cpuFormula")(system)
 
   "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.Process
+    import org.powerapi.core.{Process, TargetUsageRatio}
     import org.powerapi.core.ClockChannel.ClockTick
-    import PowerChannel.{PowerReport, subscribePowerReport}
-    import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio}
+    import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+    import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
@@ -71,8 +69,7 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     publishUsageReport(muid, target, targetRatio, tickMock)(eventBus)
 
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)
-      case _ => assert(false)
+      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) => id should equal(muid); targ should equal(target); pow should equal(power); tic should equal(tickMock)
     }
   }
 }

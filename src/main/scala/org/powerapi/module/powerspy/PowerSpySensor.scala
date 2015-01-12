@@ -20,31 +20,31 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.module.powerspy
 
-import java.util.UUID
+import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
 
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
+class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
+  import akka.event.LoggingReceive
+  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishSensorPower, subscribePowerSpyPower}
 
-/**
- * Main sensor message.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
+  override def preStart(): Unit = {
+    subscribePowerSpyPower(eventBus)(self)
+    pMeter.init()
+    pMeter.start()
+    super.preStart()
+  }
 
-/**
- * Base channel for the Sensor components.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorChannel extends Channel {
+  override def postStop(): Unit = {
+    pMeter.stop()
+    super.postStop()
+  }
 
-  type M = SensorReport
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: PowerSpyPower => sense(msg)
+  } orElse default
+
+  def sense(pSpyPower: PowerSpyPower): Unit = {
+    publishSensorPower(pSpyPower.power, pSpyPower.unit)(eventBus)
+  }
 }

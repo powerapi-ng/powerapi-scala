@@ -22,29 +22,31 @@
  */
 package org.powerapi.module
 
-import java.util.UUID
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.powerapi.UnitTest
 
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
+import scala.concurrent.duration.DurationInt
 
-/**
- * Main sensor message.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
+class CacheSuite(system: ActorSystem) extends UnitTest(system) {
+  implicit val timeout = Timeout(1.seconds)
 
-/**
- * Base channel for the Sensor components.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorChannel extends Channel {
+  def this() = this(ActorSystem("CacheSuite"))
 
-  type M = SensorReport
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
+
+  "A Cache" can "be parametrized, updated" in {
+    import java.util.UUID
+    import org.powerapi.core.Process
+
+    val cache = new Cache[(Double, Double)]
+    val muid = UUID.randomUUID()
+    val key = CacheKey(muid, Process(1))
+    cache(key) = (10, 10)
+    cache(key)(0, 0) should equal(10, 10)
+    cache(CacheKey(UUID.randomUUID(), Process(1)))(0, 0) should equal(0,0)
+  }
 }

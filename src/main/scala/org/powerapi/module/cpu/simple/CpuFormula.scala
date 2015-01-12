@@ -20,12 +20,12 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.simple
+package org.powerapi.module.cpu.simple
 
 import org.powerapi.core.MessageBus
-import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
+import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 import org.powerapi.module.{PowerChannel, FormulaComponent}
-import org.powerapi.module.procfs.ProcMetricsChannel
+import org.powerapi.module.cpu.UsageMetricsChannel
 
 /**
  * CPU formula configuration.
@@ -41,7 +41,7 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
    *
    * @see http://en.wikipedia.org/wiki/Thermal_design_power
    */
-  lazy val tdp = load { _.getInt("powerapi.procfs.tdp") } match {
+  lazy val tdp = load { _.getInt("powerapi.cpu.tdp") } match {
     case ConfigValue(value) => value
     case _ => 0
   }
@@ -51,7 +51,7 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
    *
    * @see [1], JouleSort: A Balanced Energy-Efﬁciency Benchmark, by Rivoire et al.
    */
-  lazy val tdpFactor = load { _.getDouble("powerapi.procfs.tdp-factor") } match {
+  lazy val tdpFactor = load { _.getDouble("powerapi.cpu.tdp-factor") } match {
     case ConfigValue(value) => value
     case _ => 0.7
   }
@@ -67,7 +67,7 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with FormulaConfiguration {
-  import ProcMetricsChannel.subscribeSimpleUsageReport
+  import UsageMetricsChannel.subscribeSimpleUsageReport
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
 

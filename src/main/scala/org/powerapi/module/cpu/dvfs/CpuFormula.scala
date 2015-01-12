@@ -20,13 +20,13 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.procfs.dvfs
+package org.powerapi.module.cpu.dvfs
 
 import com.typesafe.config.Config
 import org.powerapi.core.MessageBus
-import org.powerapi.module.procfs.ProcMetricsChannel.UsageReport
+import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 import org.powerapi.module.{PowerChannel, FormulaComponent}
-import org.powerapi.module.procfs.ProcMetricsChannel
+import org.powerapi.module.cpu.UsageMetricsChannel
 
 import scala.collection.JavaConversions
 
@@ -36,14 +36,14 @@ import scala.collection.JavaConversions
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConfiguration {
+trait FormulaConfiguration extends org.powerapi.module.cpu.simple.FormulaConfiguration {
   import org.powerapi.core.ConfigValue
 
   /**
    * Map of frequencies and their associated voltages.
    */
   lazy val frequencies = load { conf =>
-    (for (item <- JavaConversions.asScalaBuffer(conf.getConfigList("powerapi.procfs.frequencies")))
+    (for (item <- JavaConversions.asScalaBuffer(conf.getConfigList("powerapi.cpu.frequencies")))
       yield (item.asInstanceOf[Config].getInt("value"), item.asInstanceOf[Config].getDouble("voltage"))).toMap
   } match {
     case ConfigValue(freqs) => freqs
@@ -66,7 +66,7 @@ trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConf
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with FormulaConfiguration {
-  import ProcMetricsChannel.subscribeDvfsUsageReport
+  import UsageMetricsChannel.subscribeDvfsUsageReport
   import PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
 

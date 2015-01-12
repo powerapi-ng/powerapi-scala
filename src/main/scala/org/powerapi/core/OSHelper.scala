@@ -74,12 +74,33 @@ trait OSHelper {
   /**
    * Get the global execution time for the cpu.
    */
-  def getGlobalCpuTime(): Option[Long]
+  def getGlobalCpuTime: Option[Long]
 
   /**
    * Get how many time CPU spent under each frequency.
    */
-  def getTimeInStates(): TimeInStates
+  def getTimeInStates: TimeInStates
+
+
+  /**
+   * Get the target cpu time.
+   */
+  def getTargetCpuTime(target: Target): Option[Long] = {
+    target match {
+      case process: Process => getProcessCpuTime(process)
+      case application: Application => Some(
+        getProcesses(application).foldLeft(0: Long) {
+          (acc, process: Process) => {
+            getProcessCpuTime(process) match {
+              case Some(value) => acc + value
+              case _ => acc
+            }
+          }
+        }
+      )
+      case _ => None
+    }
+  }
 }
 
 /**
@@ -92,7 +113,6 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
   import java.io.{IOException, File}
   import org.apache.logging.log4j.LogManager
   import org.powerapi.core.FileHelper.using
-  import scala.io.Source
   import scala.sys.process.stringSeqToProcess
 
   private val log = LogManager.getLogger
@@ -104,7 +124,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
   /**
    * This file allows to get all threads associated to one PID with the help of the procfs.
    */
-  lazy val taskPath = load { _.getString("powerapi.procfs.process-task-task") } match {
+  lazy val taskPath = load { _.getString("powerapi.procfs.process-task-path") } match {
     case ConfigValue(path) if path.contains("%?pid") => path
     case _ => "/proc/%?pid/task"
   }
@@ -168,7 +188,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
     }
   }
 
-  def getGlobalCpuTime(): Option[Long] = {
+  def getGlobalCpuTime: Option[Long] = {
     try {
       using(globalStatPath)(source => {
         log.debug("using {} as a procfs global stat path", globalStatPath)
@@ -195,7 +215,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
     }
   }
 
-  def getTimeInStates(): TimeInStates = {
+  def getTimeInStates: TimeInStates = {
     val result = collection.mutable.HashMap[Long, Long]()
 
     for(core <- 0 until cores) {

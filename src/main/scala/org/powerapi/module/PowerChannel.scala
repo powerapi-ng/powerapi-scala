@@ -54,7 +54,7 @@ object PowerChannel extends Channel {
   type M = PowerReport
 
   /**
-   * FormulaReport is represented as a dedicated type of message.
+   * PowerReport is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
