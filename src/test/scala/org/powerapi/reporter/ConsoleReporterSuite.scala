@@ -32,20 +32,23 @@ import akka.util.Timeout
 
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.reporter.AggPowerChannel.AggPowerReport
+import org.powerapi.module.PowerChannel.{ AggregateReport, PowerReport }
 
 class ConsoleReporterMock(testActor: ActorRef) extends ConsoleReporter {
-  override def report(aggPowerReport: AggPowerReport) = {
+  override def report(aggPowerReport: PowerReport) = {
     testActor ! Line(aggPowerReport).toString
   }
 }
 
-case class LineMock(aggPowerReport: AggPowerReport) {
-  override def toString() =
-    "timestamp=" + aggPowerReport.tick.timestamp + ";" +
-    "target=" + aggPowerReport.target + ";" +
-    "device=" + aggPowerReport.device + ";" +
-    "value=" + aggPowerReport.power + aggPowerReport.unit
+case class LineMock(powerReport: PowerReport) {
+  override def toString() = powerReport.asInstanceOf[AggregateReport[PowerReport]].agg match {
+    case Some(aggPowerReport) =>
+      "timestamp=" + aggPowerReport.tick.timestamp + ";" +
+      "target=" + aggPowerReport.target + ";" +
+      "device=" + aggPowerReport.device + ";" +
+      "value=" + aggPowerReport.power + aggPowerReport.unit
+    case None => "N/A"
+  }
 }
 
 class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
@@ -62,25 +65,31 @@ class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
   val reporterMock = TestActorRef(Props(classOf[ConsoleReporterMock], testActor), "consoleReporter")(system)
 
   "A console reporter" should "process a PowerReport and then report energy information in a String format" in {
-    import AggPowerChannel.{ render, subscribeAggPowerReport }
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.module.PowerChannel.PowerReport
+    import org.powerapi.module.PowerChannel.{ initAggPowerReport, render, subscribeAggPowerReport }
     import org.powerapi.module.PowerUnit
     
     val muid = UUID.randomUUID()
     val target = Process(1)
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                  l.last.muid,
+                                                  l.last.target,
+                                                  l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                  l.last.unit,
+                                                  l.last.device,
+                                                  l.last.tick))
   
     subscribeAggPowerReport(muid)(eventBus)(reporterMock)
-    render(PowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock))(eventBus)
-    render(PowerReport("topictest", muid, target, 2.0, PowerUnit.W, device, tickMock))(eventBus)
-    render(PowerReport("topictest", muid, target, 3.0, PowerUnit.W, device, tickMock))(eventBus)
     
-    expectMsgClass(classOf[String]) should equal(LineMock(AggPowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock)).toString)
-    expectMsgClass(classOf[String]) should equal(LineMock(AggPowerReport("topictest", muid, target, 2.0, PowerUnit.W, device, tickMock)).toString)
-    expectMsgClass(classOf[String]) should equal(LineMock(AggPowerReport("topictest", muid, target, 3.0, PowerUnit.W, device, tickMock)).toString)
+    val aggP = initAggPowerReport(muid, aggFunction)
+    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock)
+    
+    render(aggP)(eventBus)
+    
+    expectMsgClass(classOf[String]) should equal(LineMock(aggP).toString)
   }
 }
 

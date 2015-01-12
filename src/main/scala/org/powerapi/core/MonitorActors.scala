@@ -45,12 +45,11 @@ class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
                    targets: List[Target],
-                   aggFunction: List[PowerReport] => PowerReport) extends ActorComponent {
+                   aggFunction: List[PowerReport] => Option[PowerReport]) extends ActorComponent {
 
   import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
-  import org.powerapi.module.PowerChannel.{ subscribePowerReport, unsubscribePowerReport }
-  import org.powerapi.reporter.AggPowerChannel.render
+  import org.powerapi.module.PowerChannel.{ AggregateReport, initAggPowerReport, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case MonitorStart(_, id, freq, targs, agg) if muid == id && frequency == freq && targets == targs && aggFunction == agg => start()
@@ -59,9 +58,9 @@ class MonitorChild(eventBus: MessageBus,
   /**
    * Running state.
    */
-  def running(buffer: List[PowerReport]): Actor.Receive = LoggingReceive {
+  def running(aggPowerReport: PowerReport): Actor.Receive = LoggingReceive {
     case tick: ClockTick => produceMessages(tick)
-    case powerReport: PowerReport => aggregate(buffer, powerReport)
+    case powerReport: PowerReport => aggregate(aggPowerReport, powerReport)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -75,7 +74,7 @@ class MonitorChild(eventBus: MessageBus,
     subscribeClockTick(frequency)(eventBus)(self)
     subscribePowerReport(muid)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
-    context.become(running(List.empty))
+    context.become(running(initAggPowerReport(muid, aggFunction)))
   }
 
   /**
@@ -89,14 +88,14 @@ class MonitorChild(eventBus: MessageBus,
    * Wait to retrieve power reports of all targets from a same monitor to aggregate them
    * into once power report.
    */
-  def aggregate(buffer: List[PowerReport], powerReport: PowerReport): Unit = {
-    val powerReportList = buffer :+ powerReport
-    if (powerReportList.size == targets.size) {
-      render(aggFunction(powerReportList))(eventBus)
-      context.become(running(List.empty))
+  def aggregate(aggPowerReport: PowerReport, powerReport: PowerReport): Unit = {
+    aggPowerReport.asInstanceOf[AggregateReport[PowerReport]] += powerReport
+    if (aggPowerReport.asInstanceOf[AggregateReport[PowerReport]].size == targets.size) {
+      render(aggPowerReport)(eventBus)
+      context.become(running(initAggPowerReport(muid, aggFunction)))
     }
     else
-      context.become(running(powerReportList))
+      context.become(running(aggPowerReport))
   }
 
   /**
@@ -194,7 +193,7 @@ class Monitor(eventBus: MessageBus, _system: ActorSystem) {
     reportTo(_system.actorOf(Props(reporterComponent, args: _*)))
   }
   def reportTo(reporter: ActorRef): Monitor = {
-    import org.powerapi.reporter.AggPowerChannel.subscribeAggPowerReport
+    import org.powerapi.module.PowerChannel.subscribeAggPowerReport
   
     subscribeAggPowerReport(muid)(eventBus)(reporter)
     this

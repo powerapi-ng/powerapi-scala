@@ -32,10 +32,10 @@ import akka.util.Timeout
 
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.reporter.AggPowerChannel.AggPowerReport
+import org.powerapi.module.PowerChannel.PowerReport
 
 class ReporterComponentMock(actorRef: ActorRef) extends ReporterComponent {
-  def report(aggPowerReport: AggPowerReport): Unit = {
+  def report(aggPowerReport: PowerReport): Unit = {
     actorRef ! aggPowerReport
   }
 }
@@ -53,30 +53,40 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A reporter component" should "process PowerReport messages" in new Bus {
-    import AggPowerChannel.{ render, subscribeAggPowerReport }
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.module.PowerChannel.PowerReport
+    import org.powerapi.module.PowerChannel.{ AggregateReport, initAggPowerReport, render, subscribeAggPowerReport }
     import org.powerapi.module.PowerUnit
     
     val reporterMock = TestActorRef(Props(classOf[ReporterComponentMock], testActor))(system)
     
     val muid = UUID.randomUUID()
     val target = Process(1)
-    val power = 1.0
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
   
     subscribeAggPowerReport(muid)(eventBus)(reporterMock)
-    render(PowerReport("topictest", muid, target, power, PowerUnit.W, device, tickMock))(eventBus)
     
-    expectMsgClass(classOf[AggPowerReport]) match {
-      case AggPowerReport(_, id, targ, p, unit, dev, tick) => muid should equal(id)
-                                                              target should equal(targ)
-                                                              power should equal(p)
-                                                              unit should equal(PowerUnit.W)
-                                                              device should equal(dev)
-                                                              tickMock should equal(tick)
+    val aggP = initAggPowerReport(muid, aggFunction)
+    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock)
+    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 2.0, PowerUnit.W, device, tickMock)
+    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 3.0, PowerUnit.W, device, tickMock)
+    
+    render(aggP)(eventBus)
+    
+    expectMsgClass(classOf[PowerReport]) match {
+      case msg: PowerReport => msg.muid should equal(muid)
+                               msg.asInstanceOf[AggregateReport[PowerReport]].agg match {
+                                case Some(aggPowerReport) => aggPowerReport.power should equal(6.0)
+                                case None => false
+                               }
     }
   }
 }

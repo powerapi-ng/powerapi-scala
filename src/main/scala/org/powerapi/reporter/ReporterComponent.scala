@@ -32,12 +32,12 @@ import org.powerapi.core.APIComponent
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
 abstract class ReporterComponent extends APIComponent {
-  import org.powerapi.reporter.AggPowerChannel.AggPowerReport
+  import org.powerapi.module.PowerChannel.PowerReport
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: AggPowerReport => report(msg)
+    case msg: PowerReport => report(msg)
   } orElse default
 
-  def report(aggPowerReport: AggPowerReport): Unit
+  def report(aggPowerReport: PowerReport): Unit
 }
 

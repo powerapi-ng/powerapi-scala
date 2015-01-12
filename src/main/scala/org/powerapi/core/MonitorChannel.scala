@@ -67,7 +67,7 @@ object MonitorChannel extends Channel {
                           muid: UUID,
                           frequency: FiniteDuration,
                           targets: List[Target],
-                          aggFunction: List[PowerReport] => PowerReport) extends MonitorMessage
+                          aggFunction: List[PowerReport] => Option[PowerReport]) extends MonitorMessage
 
   /**
    * MonitorStop is represented as a dedicated type of message.
@@ -104,7 +104,7 @@ object MonitorChannel extends Channel {
   /**
    * External Methods used by the API (or a Monitor object) for interacting with the bus.
    */
-  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target], aggFunction: List[PowerReport] => PowerReport): MessageBus => Unit = {
+  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target], aggFunction: List[PowerReport] => Option[PowerReport]): MessageBus => Unit = {
     publish(MonitorStart(topic, muid, frequency, targets, aggFunction))
   }
 

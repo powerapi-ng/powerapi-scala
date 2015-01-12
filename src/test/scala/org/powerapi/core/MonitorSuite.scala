@@ -23,14 +23,18 @@
 package org.powerapi.core
 
 import java.util.UUID
-import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
-import akka.pattern.gracefulStop
-import akka.testkit.{EventFilter, TestKit, TestProbe}
-import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
-import org.powerapi.UnitTest
+
 import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.{ Duration, DurationInt }
+
+import akka.actor.{ Actor, ActorNotFound, ActorRef, ActorSystem, Props }
+import akka.pattern.gracefulStop
+import akka.testkit.{ EventFilter, TestKit, TestProbe }
+import akka.util.Timeout
+
+import com.typesafe.config.ConfigFactory
+
+import org.powerapi.UnitTest
 
 class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
   import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
@@ -52,9 +56,8 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   import ClockChannel.{ ClockTick, formatClockChildName }
   import MonitorChannel.{ MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopMonitor }
-  import org.powerapi.module.PowerChannel.{ PowerReport, publishPowerReport }
+  import org.powerapi.module.PowerChannel.{ AggregateReport, PowerReport, publishPowerReport, subscribeAggPowerReport }
   import org.powerapi.module.PowerUnit
-  import org.powerapi.reporter.AggPowerChannel.{ AggPowerReport, subscribeAggPowerReport }
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -76,13 +79,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 50.milliseconds
     val targets = List(Process(1))
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
                                                             
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets, aggFunction), "monitor1")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
@@ -127,13 +130,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val frequency = 25.milliseconds
     val muid = UUID.randomUUID()
     val targets = List(Process(1), Application("java"), All)
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
     
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets, aggFunction), "monitor2")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
@@ -180,13 +183,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val frequency = 25.milliseconds
     val muid = UUID.randomUUID()
     val targets = scala.collection.mutable.ListBuffer[Target]()
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
 
     for(i <- 1 to 100) {
       targets += Process(i)
@@ -234,13 +237,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     val frequency = 25.milliseconds
     val targets = List(Process(1), Application("java"))
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
                                                       
     val monitor = new Monitor(eventBus, _system)
 
@@ -287,13 +290,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")
 
     val targets = List(All)
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
 
     for(frequency <- 50 to 100) {
       val monitor = new Monitor(eventBus, _system)
@@ -314,13 +317,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 25.milliseconds
     val targets = List(Process(1), Process(2), Process(3))
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
     
     val device = "mock"
     val tickMock = ClockTick("ticktest", frequency)
@@ -346,7 +349,11 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(monitor)
     }, 20.seconds)
     
-    expectMsgClass(classOf[AggPowerReport]).power should equal(15.0)
+    expectMsgClass(classOf[PowerReport])
+      .asInstanceOf[AggregateReport[PowerReport]].agg match {
+        case Some(aggPowerReport) => aggPowerReport.power should equal(15.0)
+        case None => false
+      }
     
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -360,13 +367,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 25.milliseconds
     val targets = scala.collection.mutable.ListBuffer[Target]()
-    val aggFunction = (l: List[PowerReport]) => PowerReport("Sum",
-                                                            l.last.muid,
-                                                            l.last.target,
-                                                            l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                            l.last.unit,
-                                                            l.last.device,
-                                                            l.last.tick)
+    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
+                                                      l.last.muid,
+                                                      l.last.target,
+                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
+                                                      l.last.unit,
+                                                      l.last.device,
+                                                      l.last.tick))
     
     val device = "mock"
     val tickMock = ClockTick("ticktest", frequency)
@@ -396,9 +403,21 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(monitor)
     }, 20.seconds)
     
-    expectMsgClass(classOf[AggPowerReport]).power should equal(3825.0)
-    expectMsgClass(classOf[AggPowerReport]).power should equal(11325.0)
-    expectMsgClass(classOf[AggPowerReport]).power should equal(18825.0)
+    expectMsgClass(classOf[PowerReport])
+      .asInstanceOf[AggregateReport[PowerReport]].agg match {
+        case Some(aggPowerReport) => aggPowerReport.power should equal(3825.0)
+        case None => false
+      }
+    expectMsgClass(classOf[PowerReport])
+      .asInstanceOf[AggregateReport[PowerReport]].agg match {
+        case Some(aggPowerReport) => aggPowerReport.power should equal(11325.0)
+        case None => false
+      }
+    expectMsgClass(classOf[PowerReport])
+      .asInstanceOf[AggregateReport[PowerReport]].agg match {
+        case Some(aggPowerReport) => aggPowerReport.power should equal(18825.0)
+        case None => false
+      }
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
