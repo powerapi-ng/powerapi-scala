@@ -39,6 +39,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.module.{Cache, CacheKey}
   import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
+  import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
   import scala.reflect.ClassTag
 
   lazy val cpuTimesCache = new Cache[(Double, Double)]
@@ -80,5 +81,13 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
 
   def sense(monitorTick: MonitorTick): Unit = {
     publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), monitorTick.tick)(eventBus)
+  }
+
+  def monitorStopped(msg: MonitorStop): Unit = {
+    cpuTimesCache -= msg.muid
+  }
+
+  def monitorAllStopped(msg: MonitorStopAll): Unit = {
+    cpuTimesCache.clear()
   }
 }

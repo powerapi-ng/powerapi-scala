@@ -33,9 +33,18 @@ import scala.concurrent.duration.DurationInt
 
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends SensorComponent(eventBus) {
   import org.powerapi.core.MonitorChannel.MonitorTick
+  import SensorChannel.{MonitorStop, MonitorStopAll}
 
   def sense(monitorTick: MonitorTick): Unit = {
     actorRef ! monitorTick
+  }
+
+  def monitorStopped(msg: MonitorStop): Unit = {
+    actorRef ! msg
+  }
+
+  def monitorAllStopped(msg: MonitorStopAll): Unit = {
+    actorRef ! msg
   }
 }
 class SensorSuite(system: ActorSystem) extends UnitTest(system) {
@@ -53,6 +62,7 @@ class SensorSuite(system: ActorSystem) extends UnitTest(system) {
   "A Sensor" should "process MonitorTick messages" in new Bus {
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.{MonitorTick, publishMonitorTick}
+    import SensorChannel.{MonitorStop, MonitorStopAll, monitorStopped, monitorAllStopped}
 
     val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
 
@@ -61,9 +71,17 @@ class SensorSuite(system: ActorSystem) extends UnitTest(system) {
     val clockTick = ClockTick("test", 25.milliseconds)
 
     publishMonitorTick(muid, target, clockTick)(eventBus)
+    monitorStopped(muid)(eventBus)
+    monitorAllStopped()(eventBus)
 
     expectMsgClass(classOf[MonitorTick]) match {
       case MonitorTick(_, id, targ, tick) => id should equal(muid); targ should equal(target); tick should equal(clockTick)
     }
+
+    expectMsgClass(classOf[MonitorStop]) match {
+      case MonitorStop(_, id) => id should equal(muid)
+    }
+
+    expectMsgClass(classOf[MonitorStopAll])
   }
 }

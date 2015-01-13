@@ -8,7 +8,8 @@ scalaVersion := "2.11.4"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.6",
   "com.typesafe" % "config" % "1.2.1",
-  "fr.inria.powerspy" %% "powerspy-scala" % "1.0.1"
+  "fr.inria.powerspy" %% "powerspy-scala" % "1.0.1",
+  "com.nativelibs4java" % "bridj" % "0.6.2"
 )
 
 // Logging
@@ -24,6 +25,7 @@ libraryDependencies ++= Seq(
 )
 
 scalacOptions ++= Seq(
+  "-language:implicitConversions",
   "-feature",
   "-deprecation"
 )

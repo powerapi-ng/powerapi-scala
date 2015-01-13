@@ -51,4 +51,20 @@ class Cache[T] {
     val old = cache.getOrElse(key, now)
     cache += (key -> now)
   }
+
+  def clear(): Unit = {
+    cache.clear()
+  }
+
+  def isEmpty: Boolean = {
+    cache.isEmpty
+  }
+
+  def -=(key: CacheKey): Unit = {
+    cache -= key
+  }
+
+  def -=(muid: UUID): Unit = {
+    cache.filter(entry => entry._1.muid == muid).foreach(entry => cache -= entry._1)
+  }
 }

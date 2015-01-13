@@ -22,29 +22,56 @@
  */
 package org.powerapi.module
 
-import java.util.UUID
-
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Target, Channel, Message}
-
-/**
- * Main sensor message.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-trait SensorReport extends Message {
-  def topic: String
-  def muid: UUID
-  def target: Target
-  def tick: ClockTick
-}
+import org.powerapi.core.Channel
 
 /**
  * Base channel for the Sensor components.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait SensorChannel extends Channel {
+object SensorChannel extends Channel {
+  import akka.actor.ActorRef
+  import java.util.UUID
+  import org.powerapi.core.ClockChannel.ClockTick
+  import org.powerapi.core.{Target, Message, MessageBus}
 
-  type M = SensorReport
+  type M = SensorMessage
+
+  /**
+   * Main sensor messages.
+   *
+   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   */
+  trait SensorMessage extends Message
+
+  trait SensorReport extends SensorMessage {
+    def topic: String
+    def muid: UUID
+    def target: Target
+    def tick: ClockTick
+  }
+
+  case class MonitorStop(topic: String, muid: UUID) extends SensorMessage
+  case class MonitorStopAll(topic: String) extends SensorMessage
+
+  private val topic = "sensor:handling"
+
+  /**
+   * Internal method used by the Sensors for reacting when a Monitor is stopped.
+   */
+  def subscribeSensorsChannel: MessageBus => ActorRef => Unit = {
+    subscribe(topic)
+  }
+
+  /**
+   * External methods used by the Monitors when a Monitor is stopped.
+   * Act like callbacks.
+   */
+  def monitorStopped(muid: UUID): MessageBus => Unit = {
+    publish(MonitorStop(topic, muid))
+  }
+
+  def monitorAllStopped(): MessageBus => Unit = {
+    publish(MonitorStopAll(topic))
+  }
 }

@@ -38,7 +38,7 @@ trait Target
  * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-case class Process(pid: Long) extends Target
+case class Process(pid: Int) extends Target
 
 /**
  * Monitoring target for a specific application.

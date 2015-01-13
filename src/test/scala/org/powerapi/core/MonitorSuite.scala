@@ -51,7 +51,7 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.ClockChannel.formatClockChildName
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopMonitor}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -116,7 +116,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val frequency = 25.milliseconds
     val muid = UUID.randomUUID()
     val targets = List(Process(1), Application("java"), All)
-    
+
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor2")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
@@ -242,6 +242,43 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     
     Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)  
+    _system.shutdown()
+    _system.awaitTermination(timeout.duration)
+  }
+
+  it should "publish a message to the sensor actors for let them know that the monitor(s) is/are stopped" in new Bus {
+    import akka.actor.Terminated
+    import akka.testkit.TestActorRef
+    import java.lang.Thread
+    import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
+
+    val _system = ActorSystem("MonitorSuiteTest5")
+
+    val monitors = TestActorRef(Props(classOf[Monitors], eventBus), "monitors5")(_system)
+    val reaper = TestProbe()(system)
+    subscribeSensorsChannel(eventBus)(testActor)
+
+    val monitor = new Monitor(eventBus, List(Process(1)))
+    val monitor2 = new Monitor(eventBus, List(Process(2)))
+
+    startMonitor(monitor.muid, 25.milliseconds, List(Process(1)))(eventBus)
+    startMonitor(monitor2.muid, 50.milliseconds, List(Process(2)))(eventBus)
+    Thread.sleep(250)
+    val children = monitors.children.toArray.clone()
+    children.foreach(child => reaper.watch(child))
+
+    stopMonitor(monitor.muid)(eventBus)
+    stopAllMonitor(eventBus)
+    for(_ <- 0 until children.size) {
+      reaper.expectMsgClass(classOf[Terminated])
+    }
+
+    expectMsgClass(classOf[MonitorStop]) match {
+      case MonitorStop(_, id) => monitor.muid should equal(id)
+    }
+    expectMsgClass(classOf[MonitorStopAll])
+
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
   }

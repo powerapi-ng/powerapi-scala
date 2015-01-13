@@ -92,16 +92,12 @@ class MonitorChild(eventBus: MessageBus,
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Monitors(eventBus: MessageBus) extends Supervisor {
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
+  import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
 
   override def preStart(): Unit = {
     subscribeMonitorsChannel(eventBus)(self)
     super.preStart()
-  }
-
-  override def postStop(): Unit = {
-    context.actorSelection("*") ! stopAllMonitor
-    super.postStop()
   }
 
   /**
@@ -144,6 +140,7 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
   def stop(msg: MonitorStop): Unit = {
     val name = formatMonitorChildName(msg.muid)
     context.actorSelection(name) ! msg
+    monitorStopped(msg.muid)(eventBus)
   }
 
   /**
@@ -153,6 +150,7 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
    */
   def stopAll(msg: MonitorStopAll): Unit = {
     context.actorSelection("*") ! msg
+    monitorAllStopped()(eventBus)
     context.become(receive)
   }
 }

@@ -107,14 +107,16 @@ object MonitorChannel extends Channel {
     publish(MonitorStop(topic, muid))
   }
 
+  def stopAllMonitor: MessageBus => Unit = {
+    publish(MonitorStopAll(topic))
+  }
+
   /**
    * Internal methods used by the Monitors actor for interacting with the bus.
    */
   def subscribeMonitorsChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
-
-  lazy val stopAllMonitor = MonitorStopAll(topic)
 
   /**
    * Internal methods used by the MonitorChild actors for interacting with the bus.

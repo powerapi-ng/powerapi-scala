@@ -27,12 +27,15 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
+import org.powerapi.core.{Channel, MessageBus}
+import org.powerapi.module.SensorChannel.SensorReport
 import org.powerapi.module.SensorMockChannel.SensorMockReport
 
-object SensorMockChannel extends SensorChannel {
+object SensorMockChannel extends Channel {
   import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.Target
+
+  type M = org.powerapi.module.SensorChannel.M
 
   private val topic = "test"
 

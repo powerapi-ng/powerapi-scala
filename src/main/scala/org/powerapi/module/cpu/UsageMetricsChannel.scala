@@ -26,15 +26,17 @@ import java.util.UUID
 
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{TargetUsageRatio, MessageBus, Target, TimeInStates}
-import org.powerapi.module.{SensorReport, SensorChannel}
+import org.powerapi.core.{Channel, TargetUsageRatio, MessageBus, Target, TimeInStates}
+import org.powerapi.module.SensorChannel.SensorReport
 
 /**
  * UsageMetricsChannel channel and messages.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-object UsageMetricsChannel extends SensorChannel {
+object UsageMetricsChannel extends Channel {
+
+  type M = org.powerapi.module.SensorChannel.M
   
   /**
    * UsageReport is represented as a dedicated type of message.
