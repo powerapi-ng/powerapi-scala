@@ -1,20 +1,26 @@
 # PowerAPI
-PowerAPI is a middleware toolkit for building software-defined power meters. Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time. PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including file system, network, web, graphical). As a middleware toolkit, PowerAPI offers the capability of assembling power meters *«à la carte»* to accommodate user requirements.
+PowerAPI is a middleware toolkit for building software-defined power meters.
+Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
+PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including file system, network, web, graphical).
+As a middleware toolkit, PowerAPI offers the capability of assembling power meters *«à la carte»* to accommodate user requirements.
 
 # About
-PowerAPI is an open-source project developed by the [Spirals research group](https://team.inria.fr/spirals) (University of Lille 1 and Inria).
+PowerAPI is an open-source project developed by the [Spirals research group](https://team.inria.fr/spirals) (University of Lille 1 and Inria) and fully managed with [sbt](http://www.scala-sbt.org/).
 
-# Mailing list
+## Mailing list
 You can follow the latest news and asks questions by subscribing to our [mailing list](https://sympa.inria.fr/sympa/info/powerapi).
 
-# Contributing
+## Contributing
 If you would like to contribute code you can do so through GitHub by forking the repository and sending a pull request.
 
 When submitting code, please make every effort to follow existing conventions and style in order to keep the code as readable as possible.
 
-# Acknowledgments
+## Acknowledgments
 We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.4 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
-* [Akka](http://akka.io) (version 2.2.4 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
+* [Akka](http://akka.io) (version 2.3.6 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
+* [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
+* [Apache log4j2](http://logging.apache.org/log4j/2.x/) (version 2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
+* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.0.1 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
 
 # Licence
 This software is licensed under the *GNU Affero General Public License*, quoted below.
