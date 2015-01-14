@@ -23,46 +23,57 @@
 package org.powerapi
 
 import akka.actor.{ActorRefFactory,Props}
-import org.powerapi.core.Target
+import org.powerapi.core.{PowerUnit,Target}
 import scala.concurrent.duration.Duration
 
 /**
- * API of a Software-Defined Power Meter.
+ * Implements the main functionalities for configuring a <i>Software-Defined Power Meter</i>.
  *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 class PowerMeter {
     /**
-     * Start the monitoring of a given target with a predefined sampling rate.
+     * Triggers a new power monitoring for a specific set of targets at a given frequency.
      *
-     * @param frequency: Sampling frequency for estimating the power consumption.
-     * @param targets: System targets to be monitored (and grouped by timestamp).
+     * @param frequency Sampling frequency for estimating the power consumption.
+     * @param targets System targets to be monitored (and grouped by timestamp).
+     * @return the acknowledgment of the triggered power monitoring.
      */
-    def monitor(frequency: Duration)(targets: Target*): PowerSubscription = ???
+    def monitor(frequency: Duration)(targets: Target*): PowerMonitoring = ???
 
     /**
-     * Wait for a specific period before returning.
+     * Blocks and actively waits for a specific duration before returning.
      *
-     * @param duration: period to wait for.
+     * @param duration: duration to wait for.
      * @return the instance of the power meter.
      */
     def waitFor(duration: Duration): this.type = ???
 
     /**
-     * Stop PowerAPI properly
+     * Shuts down the current instance of power meter.
      */
     def shutdown(): Unit = ???
 }
 
 object PowerMeter {
     /**
-     * Load a specific PowerAPI module as a tuple (sensor,formula).
+     * Loads a specific power module as a tuple (sensor,formula).
      *
-     * @param modules: the list of PowerAPI modules to be loaded within the PowerMeter.
+     * Example: `PowerMeter.load(PowerSpyModule)`
+     *
+     * @param modules: the list of power modules to be loaded within the PowerMeter.
      * @return the resulting instance of the requested power meter.
      */
     def load(modules: PowerModule*): PowerMeter = ???
 
+    /**
+     * Loads a specific display to render the power estimations produced by the power meter.
+     *
+     * Example: `PowerMeter.load(ConsoleDisplay.props)`
+     *
+     * @param display: the configuration of the power display to be loaded.
+     * @return the resulting instance of the requested power display.
+     */
     def load(display: Props): PowerDisplay = ???
 }
 
@@ -70,6 +81,7 @@ object PowerMeter {
 /**
  * A PowerModule groups a sets of tightly coupled elements that need to be deployed together.
  *
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 trait PowerModule {
     /**
@@ -84,12 +96,31 @@ trait PowerModule {
 }
 
 /**
- * Acknowledgment of a power monitoring
- *
+ * Defines a power value (to be completed).
  */
-trait PowerSubscription {
-    def apply((aggregator: (Seq[PowerReport])=>Option[PowerReport])): this.type
+final class Power(val value: Double, val unit: PowerUnit) {
+    def toMilliWatts = unit.toMilliWatts(value)
+    def toWatts = unit.toWatts(value)
+    def toKiloWatts = unit.toKiloWatts(value)
+    def toMegaWatts = unit.toMegaWatts(value)
 
+    //...
+}
+
+/**
+ * Defines the interface that can be used to control a power monitoring.
+ *
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+ */
+trait PowerMonitoring {
+    /**
+     * Configures the aggregation function to apply on power estimation per sample.
+     */
+    def apply((aggregator: (Seq[Power])=>Option[Power])): this.type
+
+    /**
+     * Configures the power display to use for rendering power estimations.
+     */
     def to(output:PowerDisplay): this.type
 
     /**
@@ -98,6 +129,14 @@ trait PowerSubscription {
     def cancel()
 }
 
+/**
+ * Defines the interface used by the power meter to configure the power display.
+ *
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+ */
 trait PowerDisplay {
-    def listen(topic:String)
+    /**
+     * Tells the power display to listen on power reports sent to a specific channel.
+     */
+    def listen(channel:String)
 }
