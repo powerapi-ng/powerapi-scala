@@ -55,7 +55,7 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
   "A reporter component" should "process PowerReport messages" in new Bus {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.module.PowerChannel.{ AggregateReport, initAggPowerReport, render, subscribeAggPowerReport }
+    import org.powerapi.module.PowerChannel.{ AggregateReport, aggregatePowerReports, render, subscribeAggPowerReport }
     import org.powerapi.module.PowerUnit
     
     val reporterMock = TestActorRef(Props(classOf[ReporterComponentMock], testActor))(system)
@@ -74,20 +74,14 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
   
     subscribeAggPowerReport(muid)(eventBus)(reporterMock)
     
-    val aggP = initAggPowerReport(muid, aggFunction)
-    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock)
-    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 2.0, PowerUnit.W, device, tickMock)
-    aggP.asInstanceOf[AggregateReport[PowerReport]] += PowerReport("topictest", muid, target, 3.0, PowerUnit.W, device, tickMock)
+    val aggR = aggregatePowerReports(muid, aggFunction)
+    aggR += PowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock)
+    aggR += PowerReport("topictest", muid, target, 2.0, PowerUnit.W, device, tickMock)
+    aggR += PowerReport("topictest", muid, target, 3.0, PowerUnit.W, device, tickMock)
     
-    render(aggP)(eventBus)
+    render(aggR)(eventBus)
     
-    expectMsgClass(classOf[PowerReport]) match {
-      case msg: PowerReport => msg.muid should equal(muid)
-                               msg.asInstanceOf[AggregateReport[PowerReport]].agg match {
-                                case Some(aggPowerReport) => aggPowerReport.power should equal(6.0)
-                                case None => false
-                               }
-    }
+    expectMsgClass(classOf[PowerReport]).power should equal(6.0)
   }
 }
 

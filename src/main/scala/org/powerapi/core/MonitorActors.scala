@@ -49,7 +49,7 @@ class MonitorChild(eventBus: MessageBus,
 
   import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
-  import org.powerapi.module.PowerChannel.{ AggregateReport, initAggPowerReport, render, subscribePowerReport, unsubscribePowerReport }
+  import org.powerapi.module.PowerChannel.{ AggregateReport, aggregatePowerReports, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case MonitorStart(_, id, freq, targs, agg) if muid == id && frequency == freq && targets == targs && aggFunction == agg => start()
@@ -58,9 +58,9 @@ class MonitorChild(eventBus: MessageBus,
   /**
    * Running state.
    */
-  def running(aggPowerReport: PowerReport): Actor.Receive = LoggingReceive {
+  def running(aggR: AggregateReport[PowerReport]): Actor.Receive = LoggingReceive {
     case tick: ClockTick => produceMessages(tick)
-    case powerReport: PowerReport => aggregate(aggPowerReport, powerReport)
+    case powerReport: PowerReport => aggregate(aggR, powerReport)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -74,7 +74,7 @@ class MonitorChild(eventBus: MessageBus,
     subscribeClockTick(frequency)(eventBus)(self)
     subscribePowerReport(muid)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
-    context.become(running(initAggPowerReport(muid, aggFunction)))
+    context.become(running(aggregatePowerReports(muid, aggFunction)))
   }
 
   /**
@@ -88,14 +88,14 @@ class MonitorChild(eventBus: MessageBus,
    * Wait to retrieve power reports of all targets from a same monitor to aggregate them
    * into once power report.
    */
-  def aggregate(aggPowerReport: PowerReport, powerReport: PowerReport): Unit = {
-    aggPowerReport.asInstanceOf[AggregateReport[PowerReport]] += powerReport
-    if (aggPowerReport.asInstanceOf[AggregateReport[PowerReport]].size == targets.size) {
-      render(aggPowerReport)(eventBus)
-      context.become(running(initAggPowerReport(muid, aggFunction)))
+  def aggregate(aggR: AggregateReport[PowerReport], powerReport: PowerReport): Unit = {
+    aggR += powerReport
+    if (aggR.size == targets.size) {
+      render(aggR)(eventBus)
+      context.become(running(aggregatePowerReports(muid, aggFunction)))
     }
     else
-      context.become(running(aggPowerReport))
+      context.become(running(aggR))
   }
 
   /**

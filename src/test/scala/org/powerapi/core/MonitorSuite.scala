@@ -349,11 +349,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(monitor)
     }, 20.seconds)
     
-    expectMsgClass(classOf[PowerReport])
-      .asInstanceOf[AggregateReport[PowerReport]].agg match {
-        case Some(aggPowerReport) => aggPowerReport.power should equal(15.0)
-        case None => false
-      }
+    expectMsgClass(classOf[PowerReport]).power should equal(15.0)
     
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -403,21 +399,9 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(monitor)
     }, 20.seconds)
     
-    expectMsgClass(classOf[PowerReport])
-      .asInstanceOf[AggregateReport[PowerReport]].agg match {
-        case Some(aggPowerReport) => aggPowerReport.power should equal(3825.0)
-        case None => false
-      }
-    expectMsgClass(classOf[PowerReport])
-      .asInstanceOf[AggregateReport[PowerReport]].agg match {
-        case Some(aggPowerReport) => aggPowerReport.power should equal(11325.0)
-        case None => false
-      }
-    expectMsgClass(classOf[PowerReport])
-      .asInstanceOf[AggregateReport[PowerReport]].agg match {
-        case Some(aggPowerReport) => aggPowerReport.power should equal(18825.0)
-        case None => false
-      }
+    expectMsgClass(classOf[PowerReport]).power should equal(3825.0)
+    expectMsgClass(classOf[PowerReport]).power should equal(11325.0)
+    expectMsgClass(classOf[PowerReport]).power should equal(18825.0)
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)

@@ -31,15 +31,12 @@ package org.powerapi.reporter
 class ConsoleReporter extends ReporterComponent {
   import org.powerapi.module.PowerChannel.{ AggregateReport, PowerReport }
 
-  case class Line(powerReport: PowerReport) {
-    override def toString() = powerReport.asInstanceOf[AggregateReport[PowerReport]].agg match {
-      case Some(aggPowerReport) =>
-        "timestamp=" + aggPowerReport.tick.timestamp + ";" +
-        "target=" + aggPowerReport.target + ";" +
-        "device=" + aggPowerReport.device + ";" +
-        "value=" + aggPowerReport.power + aggPowerReport.unit
-      case None => "N/A"
-    }
+  case class Line(aggPpowerReport: PowerReport) {
+  override def toString() =
+    "timestamp=" + aggPpowerReport.tick.timestamp + ";" +
+    "target=" + aggPpowerReport.target + ";" +
+    "device=" + aggPpowerReport.device + ";" +
+    "value=" + aggPpowerReport.power + aggPpowerReport.unit
   }
 
   def report(aggPowerReport: PowerReport) {

@@ -81,22 +81,26 @@ object PowerChannel extends Channel {
    */
   trait AggregateReport[T] {
     private val values: collection.mutable.Set[T] = collection.mutable.Set.empty
-    var aggFunct = (l: List[T]) => if (l.size > 0) Some(l.last) else None
+    def aggFunct(l: List[T]): Option[T]
     
     def +=(value: T) { values add value }
-    def apply(index: Int): T = values.toList(index)
+    def getValues: collection.mutable.Set[T] = values.clone
     def size: Int = values.size
     
     lazy val agg = aggFunct(values.toList)
   }
   
   /**
-   * 
+   * Initialize an empty aggregated power report which contains power reports
+   * from a same MUID and which computes aggregated power based on these power reports.
+   *
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
+   * @param aggFunction: aggregate power reports of a same monitor.
    */
-  def initAggPowerReport(muid: UUID, aggFunction: List[PowerReport] => Option[PowerReport]): PowerReport = {
+  def aggregatePowerReports(muid: UUID, aggFunction: List[PowerReport] => Option[PowerReport]): AggregateReport[PowerReport] = {
     new PowerReport(aggPowerReportTopic(muid), muid, Process(-1), 0.0, W, "none", ClockTick("none", 0.milliseconds))
       with AggregateReport[PowerReport] {
-        aggFunct = aggFunction
+        override def aggFunct(l: List[PowerReport]): Option[PowerReport] = aggFunction(l)
       }
   }
 
@@ -110,8 +114,29 @@ object PowerChannel extends Channel {
   /**
    * Publish an aggregated PowerReport in the event bus.
    */
-  def render(aggPowerReport: PowerReport): MessageBus => Unit = {
-    publish(aggPowerReport)
+  def render(aggR: AggregateReport[PowerReport]): MessageBus => Unit = {
+    aggR.agg match {
+      case Some(aggPowerReport) => publish(
+        new PowerReport(aggPowerReportTopic(aggPowerReport.muid),
+                        aggPowerReport.muid,
+                        aggPowerReport.target,
+                        aggPowerReport.power,
+                        aggPowerReport.unit,
+                        aggPowerReport.device,
+                        aggPowerReport.tick)
+          with AggregateReport[PowerReport] {
+            override def aggFunct(l: List[PowerReport]): Option[PowerReport] = aggR.aggFunct(l)
+            aggR.getValues.foreach(this += _)
+          }
+        )
+      case None => publish(PowerReport(aggPowerReportTopic(UUID.fromString("0")),
+                                       UUID.fromString("0"),
+                                       Process(-1),
+                                       0.0,
+                                       W,
+                                       "none",
+                                       ClockTick("none", 0.milliseconds)))
+    }
   }
   
   /**
