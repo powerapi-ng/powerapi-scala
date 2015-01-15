@@ -42,7 +42,7 @@ trait Power {
 /**
  * Defines a power value (to be completed).
  */
-final class Power(val value: Double, val unit: PowerUnit) {
+final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
     def toMilliWatts = unit.toMilliWatts(value)
     def toWatts = unit.toWatts(value)
     def toKiloWatts = unit.toKiloWatts(value)
@@ -51,3 +51,23 @@ final class Power(val value: Double, val unit: PowerUnit) {
     //...
 }
 
+implicit class DoublePower(private val value: Double) extends AnyVal {
+	def mW = RawPower(value,PowerUnit.mW)
+	def W = RawPower(value,PowerUnit.W)
+	def kW = RawPower(value,PowerUnit.kW)
+	def MW = RawPower(value,PowerUnit.MW)
+}
+
+implicit class LongPower(private val value: Long) extends AnyVal {
+	def mW = RawPower(value.toDouble,PowerUnit.mW)
+	def W = RawPower(value.toDouble,PowerUnit.W)
+	def kW = RawPower(value.toDouble,PowerUnit.kW)
+	def MW = RawPower(value.toDouble,PowerUnit.MW)
+}
+
+implicit class IntPower(private val value: Int) extends AnyVal {
+	def mW = RawPower(value.toDouble,PowerUnit.mW)
+	def W = RawPower(value.toDouble,PowerUnit.W)
+	def kW = RawPower(value.toDouble,PowerUnit.kW)
+	def MW = RawPower(value.toDouble,PowerUnit.MW)
+}
