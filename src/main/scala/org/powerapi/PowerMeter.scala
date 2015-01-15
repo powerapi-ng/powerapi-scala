@@ -23,7 +23,7 @@
 package org.powerapi
 
 import akka.actor.{ActorRefFactory,Props}
-import org.powerapi.core.{PowerUnit,Target}
+import org.powerapi.core.Target
 import scala.concurrent.duration.Duration
 
 /**
@@ -96,18 +96,6 @@ trait PowerModule {
 }
 
 /**
- * Defines a power value (to be completed).
- */
-final class Power(val value: Double, val unit: PowerUnit) {
-    def toMilliWatts = unit.toMilliWatts(value)
-    def toWatts = unit.toWatts(value)
-    def toKiloWatts = unit.toKiloWatts(value)
-    def toMegaWatts = unit.toMegaWatts(value)
-
-    //...
-}
-
-/**
  * Defines the interface that can be used to control a power monitoring.
  *
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
@@ -116,7 +104,7 @@ trait PowerMonitoring {
     /**
      * Configures the aggregation function to apply on power estimation per sample.
      */
-    def apply((aggregator: (Seq[Power])=>Option[Power])): this.type
+    def apply(aggregator: (Seq[Power])=>Option[Power]): this.type
 
     /**
      * Configures the power display to use for rendering power estimations.
