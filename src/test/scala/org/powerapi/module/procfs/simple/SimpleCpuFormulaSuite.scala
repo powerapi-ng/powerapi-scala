@@ -57,22 +57,24 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.power._
     import PowerChannel.{PowerReport, subscribePowerReport}
     import ProcMetricsChannel.{publishUsageReport, TargetUsageRatio}
-    import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
     val target = Process(1)
     val targetRatio = TargetUsageRatio(0.4)
     val tickMock = ClockTick("test", 25.milliseconds)
-    val power = 220 * 0.7 * targetRatio.ratio
+    val power = (220 * 0.7 * targetRatio.ratio).W
 
     subscribePowerReport(muid)(eventBus)(testActor)
     publishUsageReport(muid, target, targetRatio, tickMock)(eventBus)
 
-    expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) if muid == id && target == targ && power == pow && tickMock == tic => assert(true)
-      case _ => assert(false)
-    }
+    val ret = expectMsgClass(classOf[PowerReport])
+        ret.muid should equal(muid)
+        ret.target should equal(target)
+        ret.power should equal(power)
+        ret.device should equal("cpu")
+        ret.tick should equal(tickMock)
   }
 }

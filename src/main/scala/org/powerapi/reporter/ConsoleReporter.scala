@@ -29,14 +29,14 @@ package org.powerapi.reporter
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
 class ConsoleReporter extends ReporterComponent {
-  import org.powerapi.module.PowerChannel.{ AggregateReport, PowerReport }
+  import org.powerapi.module.PowerChannel.PowerReport
 
   case class Line(aggPpowerReport: PowerReport) {
   override def toString() =
     "timestamp=" + aggPpowerReport.tick.timestamp + ";" +
     "target=" + aggPpowerReport.target + ";" +
     "device=" + aggPpowerReport.device + ";" +
-    "value=" + aggPpowerReport.power + aggPpowerReport.unit
+    "value=" + aggPpowerReport.power
   }
 
   def report(aggPowerReport: PowerReport) {

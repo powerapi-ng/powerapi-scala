@@ -68,7 +68,7 @@ trait FormulaConfiguration extends org.powerapi.module.procfs.simple.FormulaConf
 class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with FormulaConfiguration {
   import ProcMetricsChannel.subscribeDvfsUsageReport
   import PowerChannel.publishPowerReport
-  import org.powerapi.module.PowerUnit
+  import org.powerapi.core.power._
 
   def subscribeSensorReport(): Unit = {
     subscribeDvfsUsageReport(eventBus)(self)
@@ -94,10 +94,10 @@ class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eve
 
   def compute(sensorReport: UsageReport): Unit = {
     lazy val p = power(sensorReport) match {
-      case Some(p: Double) => p
-      case _ => 0d
+      case Some(p: Double) => p.W
+      case _ => 0d.W
     }
 
-    publishPowerReport(sensorReport.muid, sensorReport.target, p, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
+    publishPowerReport(sensorReport.muid, sensorReport.target, p, "cpu", sensorReport.tick)(eventBus)
   }
 }

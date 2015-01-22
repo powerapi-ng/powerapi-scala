@@ -55,8 +55,8 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
   "A reporter component" should "process PowerReport messages" in new Bus {
     import org.powerapi.core.Process
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.module.PowerChannel.{ AggregateReport, aggregatePowerReports, render, subscribeAggPowerReport }
-    import org.powerapi.module.PowerUnit
+    import org.powerapi.core.power._
+    import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
     
     val reporterMock = TestActorRef(Props(classOf[ReporterComponentMock], testActor))(system)
     
@@ -64,24 +64,18 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
     val target = Process(1)
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
-    val aggFunction = (l: List[PowerReport]) => Some(PowerReport("Sum",
-                                                      l.last.muid,
-                                                      l.last.target,
-                                                      l.foldLeft(0.0){ (acc, r) => acc + r.power },
-                                                      l.last.unit,
-                                                      l.last.device,
-                                                      l.last.tick))
+    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
   
     subscribeAggPowerReport(muid)(eventBus)(reporterMock)
     
-    val aggR = aggregatePowerReports(muid, aggFunction)
-    aggR += PowerReport("topictest", muid, target, 1.0, PowerUnit.W, device, tickMock)
-    aggR += PowerReport("topictest", muid, target, 2.0, PowerUnit.W, device, tickMock)
-    aggR += PowerReport("topictest", muid, target, 3.0, PowerUnit.W, device, tickMock)
+    val aggR = AggregateReport(muid, aggFunction)
+    aggR += RawPowerReport("topictest", muid, target, 1.W, device, tickMock)
+    aggR += RawPowerReport("topictest", muid, target, 2.W, device, tickMock)
+    aggR += RawPowerReport("topictest", muid, target, 3.W, device, tickMock)
     
     render(aggR)(eventBus)
     
-    expectMsgClass(classOf[PowerReport]).power should equal(6.0)
+    expectMsgClass(classOf[PowerReport]).power should equal(6.W)
   }
 }
 
