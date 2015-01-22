@@ -26,7 +26,8 @@ import java.util.UUID
 
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Channel, TargetUsageRatio, MessageBus, Target, TimeInStates}
+import org.powerapi.core.{Channel, MessageBus, TimeInStates}
+import org.powerapi.core.target.{Target, TargetUsageRatio}
 import org.powerapi.module.SensorChannel.SensorReport
 
 /**

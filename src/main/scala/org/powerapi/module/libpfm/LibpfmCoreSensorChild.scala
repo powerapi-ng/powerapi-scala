@@ -23,7 +23,8 @@
 package org.powerapi.module.libpfm
 
 import java.util.{BitSet, UUID}
-import org.powerapi.core.{ActorComponent, Target}
+import org.powerapi.core.ActorComponent
+import org.powerapi.core.target.Target
 
 /**
  * Base trait for each LibpfmCoreSensorChild.
@@ -36,7 +37,6 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
   import akka.event.LoggingReceive
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-  import PerformanceCounterChannel.PCWrapper
 
   private var _fd: Option[Int] = None
 
@@ -63,7 +63,7 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
     _fd
   }
 
-  def cleanResource(): Unit = {
+  override def postStop(): Unit = {
     fd match {
       case Some(fdValue) => {
         LibpfmHelper.disablePC(fdValue)
@@ -71,10 +71,6 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
       }
       case _ => {}
     }
-  }
-
-  override def postStop(): Unit = {
-    cleanResource()
   }
 
   def receive: PartialFunction[Any, Unit] = running(true, Array(0,0,0), 0)

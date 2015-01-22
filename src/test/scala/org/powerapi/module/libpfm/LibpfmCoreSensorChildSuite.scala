@@ -47,7 +47,7 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
   "A LibpfmCoreSensorChild" should "collect the performance counter values" ignore new Bus {
     import akka.testkit.TestProbe
     import java.util.{BitSet, UUID}
-    import org.powerapi.core.All
+    import org.powerapi.core.target.All
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.MonitorTick
     import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}

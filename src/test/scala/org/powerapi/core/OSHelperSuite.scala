@@ -29,7 +29,7 @@ import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
 class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
-
+  import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication, Target}
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("OSHelperSuite"))
@@ -45,7 +45,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val taskPath =  s"${basepath}proc/%?pid/task"
     }
 
-    helper.getThreads(Process(1)) should contain allOf(Thread(1000), Thread(1001))
+    helper.getThreads(1) should contain allOf(Thread(1000), Thread(1001))
   }
 
   "The method getTargetCpuTime in the OSHelper" should "return the cpu usage of the target" in {
@@ -56,7 +56,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
         case _ => List()
       }
 
-      def getProcessCpuTime(process: org.powerapi.core.Process): Option[Long] = process match {
+      def getProcessCpuTime(process: Process): Option[Long] = process match {
         case Process(1) => Some(33 + 2)
         case Process(2) => Some(10 + 5)
         case Process(3) => Some(3 + 5)
@@ -74,9 +74,9 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     val goodAppTime = 10 + 5 + 3 + 5
     val badAppTime = 10 + 5
 
-    helper.getTargetCpuTime(Process(1)) should equal(Some(p1Time))
-    helper.getTargetCpuTime(Application("app")) should equal(Some(goodAppTime))
-    helper.getTargetCpuTime(Application("bad-app")) should equal(Some(badAppTime))
+    helper.getTargetCpuTime(1) should equal(Some(p1Time))
+    helper.getTargetCpuTime("app") should equal(Some(goodAppTime))
+    helper.getTargetCpuTime("bad-app") should equal(Some(badAppTime))
     helper.getTargetCpuTime(All) should equal(None)
   }
 
@@ -85,8 +85,8 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
     }
 
-    helper.getProcessCpuTime(Process(1)) should equal(Some(35))
-    helper.getProcessCpuTime(Process(10)) should equal(None)
+    helper.getProcessCpuTime(1) should equal(Some(35))
+    helper.getProcessCpuTime(10) should equal(None)
   }
 
   "The method getGlobalCpuTime in the LinuxHelper" should "return the global cpu time" in {

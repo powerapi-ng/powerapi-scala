@@ -33,7 +33,8 @@ object SensorChannel extends Channel {
   import akka.actor.ActorRef
   import java.util.UUID
   import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.{Target, Message, MessageBus}
+  import org.powerapi.core.{Message, MessageBus}
+  import org.powerapi.core.target.Target
 
   type M = SensorMessage
 

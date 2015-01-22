@@ -25,6 +25,7 @@ package org.powerapi.core
 import java.util.UUID
 import akka.actor.ActorRef
 import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.target.Target
 import scala.concurrent.duration.FiniteDuration
 
 /**

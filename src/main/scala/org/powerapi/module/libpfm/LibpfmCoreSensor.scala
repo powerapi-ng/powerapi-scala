@@ -24,64 +24,80 @@ package org.powerapi.module.libpfm
 
 import java.util.BitSet
 import akka.util.Timeout
-import org.powerapi.core.MessageBus
-import org.powerapi.module.SensorComponent
+import org.powerapi.core.{APIComponent, MessageBus}
 
 /**
  * Main actor for getting the performance counter value per core/event.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, configuration: BitSet, events: Array[String], cores: Map[Int, List[Int]]) extends SensorComponent(eventBus) {
-  import akka.actor.{ActorIdentity, Identify, Props}
+class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, configuration: BitSet, events: Array[String], cores: Map[Int, List[Int]]) extends APIComponent {
+  import akka.actor.{Actor, ActorRef, Props}
+  import akka.event.LoggingReceive
   import akka.pattern.ask
-  import org.powerapi.core.All
-  import org.powerapi.core.MonitorChannel.MonitorTick
+  import java.util.UUID
+  import org.powerapi.core.target.All
+  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
   import PerformanceCounterChannel.{formatLibpfmCoreSensorChildName, PCWrapper, publishPCReport}
-  import scala.concurrent.{Await, Future}
+  import scala.concurrent.Future
 
   override def preStart(): Unit = {
+    subscribeMonitorTick(eventBus)(self)
     subscribeSensorsChannel(eventBus)(self)
     super.preStart()
   }
 
-  def sense(monitorTick: MonitorTick): Unit = {
-    monitorTick.target match {
-      case All => {
-        var wrappers = Map[(Int, String), PCWrapper]()
+  def receive: Actor.Receive = running(Map())
 
-        cores.foreach {
-          case (core, indexes) => {
-            indexes.foreach(index => {
-              events.foreach(event => {
+  def running(actors: Map[(Int, String, UUID), ActorRef]): Actor.Receive = LoggingReceive {
+    case monitorTick: MonitorTick if monitorTick.target == All => sense(monitorTick, actors)
+    case msg: MonitorStop => monitorStopped(msg, actors)
+    case msg: MonitorStopAll => monitorAllStopped(msg, actors)
+  } orElse default
+
+  def sense(monitorTick: MonitorTick, actors: Map[(Int, String, UUID), ActorRef]): Unit = {
+    var _actors = actors
+    var wrappers = Map[(Int, String), PCWrapper]()
+
+    cores.foreach {
+      case (core, indexes) => {
+        indexes.foreach(index => {
+          events.foreach(event => {
+            val actor = {
+              /** Actors were not created before */
+              if(!actors.contains(index, event, monitorTick.muid)) {
                 val name = formatLibpfmCoreSensorChildName(index, event, monitorTick.muid)
-                val identity = Await.result(context.actorSelection(name).?(Identify(None))(timeout), timeout.duration).asInstanceOf[ActorIdentity]
+                val actor = context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, None, configuration), name)
+                _actors += ((index, event, monitorTick.muid) -> actor)
+                actor
+              }
 
-                val actor = identity.ref match {
-                  case None => {
-                    context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, None, configuration), name)
-                  }
-                  case Some(ref) => ref
-                }
+              else _actors(index, event, monitorTick.muid)
+            }
 
-                wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
-              })
-            })
-          }
-        }
-
-        publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
+            wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
+          })
+        })
       }
-      case _ => log.debug("Only the All target is handled by this sensor")
     }
+
+    publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
+    context.become(running(_actors))
   }
 
-  def monitorStopped(msg: MonitorStop): Unit = {
+  def monitorStopped(msg: MonitorStop, actors: Map[(Int, String, UUID), ActorRef]): Unit = {
+    var _actors = actors
+
     context.actorSelection(s"*${msg.muid}") ! msg
+    _actors --= _actors.keys.filter(key => key._3 == msg.muid)
+
+    context.become(running(_actors))
   }
 
-  def monitorAllStopped(msg: MonitorStopAll): Unit = {
+  def monitorAllStopped(msg: MonitorStopAll, actors: Map[(Int, String, UUID), ActorRef]): Unit = {
     context.actorSelection("*") ! msg
+
+    context.become(running(Map()))
   }
 }

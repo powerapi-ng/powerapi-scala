@@ -32,17 +32,13 @@ import org.powerapi.core.Channel
 object PerformanceCounterChannel extends Channel {
   import akka.actor.ActorRef
   import java.util.UUID
-  import org.powerapi.core.{MessageBus, Target}
+  import org.powerapi.core.MessageBus
   import org.powerapi.core.ClockChannel.ClockTick
+  import org.powerapi.core.target.Target
   import org.powerapi.module.SensorChannel.SensorReport
   import scala.concurrent.Future
 
   type M = org.powerapi.module.SensorChannel.M
-
-  /**
-   * Message used for cleaning the resource held by the Sensor's children.
-   */
-  object CleanResource
 
   /**
    * Internal message.

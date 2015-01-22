@@ -50,6 +50,7 @@ case class TimeInStates(times: Map[Long, Long]) {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait OSHelper {
+  import org.powerapi.core.target.{Application, Process, Target}
   /**
    * Get the list of processes behind an Application.
    *
@@ -109,10 +110,10 @@ trait OSHelper {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfiguration {
-
   import java.io.{IOException, File}
   import org.apache.logging.log4j.LogManager
   import org.powerapi.core.FileHelper.using
+  import org.powerapi.core.target.{Application, Process}
   import scala.sys.process.stringSeqToProcess
 
   private val log = LogManager.getLogger

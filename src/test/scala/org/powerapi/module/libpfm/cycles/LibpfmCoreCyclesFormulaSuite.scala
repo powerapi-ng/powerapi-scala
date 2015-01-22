@@ -59,7 +59,7 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
     import akka.testkit.TestActorRef
     import java.util.UUID
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.Process
+    import org.powerapi.core.target.{intToProcess, Process}
     import org.powerapi.module.libpfm.PerformanceCounterChannel.{publishPCReport, PCWrapper}
     import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
     import org.powerapi.module.PowerUnit
@@ -102,16 +102,16 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
     actor.underlyingActor.asInstanceOf[LibpfmCoreCyclesFormula].cyclesThreadName should equal("CPU_CLK_UNHALTED:THREAD_P")
     actor.underlyingActor.asInstanceOf[LibpfmCoreCyclesFormula].cyclesRefName should equal("CPU_CLK_UNHALTED:REF_P")
 
-    publishPCReport(muid, Process(1), wrappers, tick)(eventBus)
+    publishPCReport(muid, 1, wrappers, tick)(eventBus)
 
     expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, unit, device, tick) => {
+      case PowerReport(_, id, targ, pow, unit, device, tic) => {
         id should equal(muid)
         targ should equal(Process(1))
         f"$pow%.5f" should equal(f"$power%.5f")
         unit should equal(PowerUnit.W)
         device should equal("cpu")
-        tick should equal(tick)
+        tic should equal(tick)
       }
     }
   }

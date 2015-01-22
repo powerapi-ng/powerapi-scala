@@ -50,7 +50,8 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
     import akka.testkit.{TestActorRef, TestProbe}
     import akka.util.Timeout
     import java.util.{BitSet, UUID}
-    import org.powerapi.core.{LinuxHelper, Process}
+    import org.powerapi.core.LinuxHelper
+    import org.powerapi.core.target.{intToProcess, Process}
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.MonitorTick
     import org.powerapi.module.SensorChannel.monitorAllStopped
@@ -84,17 +85,19 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
 
     Seq("kill", "-SIGCONT", s"$pid1").!!
     Seq("kill", "-SIGCONT", s"$pid2").!!
-    sensor ! MonitorTick("monitor", muid1, Process(pid1), ClockTick("clock", 1.seconds))
-    sensor ! MonitorTick("monitor", muid2, Process(pid2), ClockTick("clock", 1.seconds))
-    Thread.sleep(1000)
-    sensor ! MonitorTick("monitor", muid1, Process(pid1), ClockTick("clock", 1.seconds))
+    sensor ! MonitorTick("monitor", muid1, pid1, ClockTick("clock", 1.seconds))
     buffer += expectMsgClass(classOf[PCReport])
-    sensor ! MonitorTick("monitor", muid2, Process(pid2), ClockTick("clock", 1.seconds))
+    sensor ! MonitorTick("monitor", muid2, pid2, ClockTick("clock", 1.seconds))
     buffer += expectMsgClass(classOf[PCReport])
     Thread.sleep(1000)
-    sensor ! MonitorTick("monitor", muid1, Process(pid1), ClockTick("clock", 1.seconds))
+    sensor ! MonitorTick("monitor", muid1, pid1, ClockTick("clock", 1.seconds))
     buffer += expectMsgClass(classOf[PCReport])
-    sensor ! MonitorTick("monitor", muid2, Process(pid2), ClockTick("clock", 1.seconds))
+    sensor ! MonitorTick("monitor", muid2, pid2, ClockTick("clock", 1.seconds))
+    buffer += expectMsgClass(classOf[PCReport])
+    Thread.sleep(1000)
+    sensor ! MonitorTick("monitor", muid1, pid1, ClockTick("clock", 1.seconds))
+    buffer += expectMsgClass(classOf[PCReport])
+    sensor ! MonitorTick("monitor", muid2, pid2, ClockTick("clock", 1.seconds))
     buffer += expectMsgClass(classOf[PCReport])
     Seq("kill", "-SIGKILL", s"$pid1").!!
     Seq("kill", "-SIGKILL", s"$pid2").!!

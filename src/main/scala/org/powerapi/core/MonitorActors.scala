@@ -27,6 +27,7 @@ import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, PoisonPill, Props}
 import akka.event.LoggingReceive
 import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.target.Target
 import scala.concurrent.duration.FiniteDuration
 
 /**

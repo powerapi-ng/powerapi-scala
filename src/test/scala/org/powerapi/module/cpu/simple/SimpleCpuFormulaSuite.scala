@@ -53,14 +53,14 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   val formulaMock = TestActorRef(Props(classOf[SimpleCpuFormulaMock], eventBus), "simple-cpuFormula")(system)
 
   "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.{Process, TargetUsageRatio}
     import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
     import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
     import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
     import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
-    val target = Process(1)
+    val target: Target = 1
     val targetRatio = TargetUsageRatio(0.4)
     val tickMock = ClockTick("test", 25.milliseconds)
     val power = 220 * 0.7 * targetRatio.ratio

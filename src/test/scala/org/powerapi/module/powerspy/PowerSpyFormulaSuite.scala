@@ -38,7 +38,8 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   "A PowerSpyFormula" should "listen PowerSpyPower/UsageReport messages and produce PowerReport messages" in {
     import java.util.UUID
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{MessageBus, Process, TargetUsageRatio}
+    import org.powerapi.core.MessageBus
+    import org.powerapi.core.target.{intToProcess, Process, TargetUsageRatio}
     import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
     import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
     import org.powerapi.module.powerspy.PowerSpyChannel.publishSensorPower
@@ -50,23 +51,23 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     val tickMock = ClockTick("test", 25.milliseconds)
     subscribePowerReport(muid)(eventBus)(testActor)
 
-    publishUsageReport(muid, Process(1), TargetUsageRatio(0.5), tickMock)(eventBus)
+    publishUsageReport(muid, 1, TargetUsageRatio(0.5), tickMock)(eventBus)
     expectNoMsg(3.seconds)
 
     publishSensorPower(90.0, PowerUnit.W)(eventBus)
     publishSensorPower(92.0, PowerUnit.W)(eventBus)
     publishSensorPower(150.0, PowerUnit.W)(eventBus)
-    publishUsageReport(muid, Process(1), TargetUsageRatio(0.5), tickMock)(eventBus)
+    publishUsageReport(muid, 1, TargetUsageRatio(0.5), tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
       case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(150 * 0.5); tic should equal(tickMock)
     }
 
     publishSensorPower(140.0, PowerUnit.W)(eventBus)
-    publishUsageReport(muid, Process(1), TargetUsageRatio(0.25), tickMock)(eventBus)
+    publishUsageReport(muid, 1, TargetUsageRatio(0.25), tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
       case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(140 * 0.25); tic should equal(tickMock)
     }
-    publishUsageReport(muid, Process(2), TargetUsageRatio(0.25), tickMock)(eventBus)
+    publishUsageReport(muid, 2, TargetUsageRatio(0.25), tickMock)(eventBus)
     expectMsgClass(classOf[PowerReport]) match {
       case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(2)); pow should equal(140 * 0.25); tic should equal(tickMock)
     }

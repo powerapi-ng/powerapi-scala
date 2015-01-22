@@ -44,7 +44,8 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A simple CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
     import akka.pattern.gracefulStop
-    import org.powerapi.core.{All, Application, OSHelper, Process, TargetUsageRatio, Thread, TimeInStates}
+    import org.powerapi.core.{OSHelper, Thread, TimeInStates}
+    import org.powerapi.core.target.{All, Application, intToProcess, Process, stringToApplication, TargetUsageRatio}
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.module.CacheKey
@@ -92,32 +93,32 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscribeSimpleUsageReport(eventBus)(testActor)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid1, Process(1))) = (oldP1ElapsedTime, oldGlobalElapsedTime)
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, Process(1))) = (oldP1ElapsedTime, oldGlobalElapsedTime)
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, Application("app"))) = (oldAppElapsedTime, oldGlobalElapsedTime)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid1, 1)) = (oldP1ElapsedTime, oldGlobalElapsedTime)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, 1)) = (oldP1ElapsedTime, oldGlobalElapsedTime)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, "app")) = (oldAppElapsedTime, oldGlobalElapsedTime)
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid3, All)) = (oldGlobalElapsedTime, oldGlobalElapsedTime)
 
-   publishMonitorTick(muid1, Process(1), tickMock)(eventBus)
+   publishMonitorTick(muid1, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid1); ur.target should equal(Process(1)); ur.targetRatio should equal(processRatio)
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid1, Process(1)))(0, 0) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid1, 1))(0, 0) match {
       case times => times should equal(p1ElapsedTime, globalElapsedTime)
     }
 
-    publishMonitorTick(muid2, Process(1), tickMock)(eventBus)
+    publishMonitorTick(muid2, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Process(1)); ur.targetRatio should equal(processRatio)
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, Process(1)))(0, 0) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, 1))(0, 0) match {
       case times => times should equal(p1ElapsedTime, globalElapsedTime)
     }
 
-    publishMonitorTick(muid2, Application("app"), tickMock)(eventBus)
+    publishMonitorTick(muid2, "app", tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Application("app")); ur.targetRatio should equal(appRatio)
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, Application("app")))(0, 0) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, "app"))(0, 0) match {
       case times => times should equal(appElapsedTime, globalElapsedTime)
     }
 
@@ -133,7 +134,8 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "handle correctly the time differences for computing the TargetUsageRatio" in {
     import akka.pattern.gracefulStop
-    import org.powerapi.core.{All, Application, OSHelper, Process, TargetUsageRatio, Thread, TimeInStates}
+    import org.powerapi.core.{OSHelper, Thread, TimeInStates}
+    import org.powerapi.core.target.{All, Application, intToProcess, Process, stringToApplication, TargetUsageRatio}
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.module.CacheKey
@@ -170,30 +172,30 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscribeSimpleUsageReport(eventBus)(testActor)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, Process(1))) = (p1ElapsedTime + 10, globalElapsedTime)
-    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1)) = (p1ElapsedTime + 10, globalElapsedTime)
+    publishMonitorTick(muid, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, Process(1)))(0, 0) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1))(0, 0) match {
       case times => times should equal(p1ElapsedTime + 10, globalElapsedTime)
     }
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, Process(1))) = (p1ElapsedTime , globalElapsedTime + 10)
-    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1)) = (p1ElapsedTime , globalElapsedTime + 10)
+    publishMonitorTick(muid, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, Process(1)))(0, 0) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1))(0, 0) match {
       case times => times should equal(p1ElapsedTime , globalElapsedTime + 10)
     }
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, Process(1))) = (globalElapsedTime, p1ElapsedTime)
-    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1)) = (globalElapsedTime, p1ElapsedTime)
+    publishMonitorTick(muid, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, Process(1)))(0, 0) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1))(0, 0) match {
       case times => times should equal(globalElapsedTime, p1ElapsedTime)
     }
     gracefulStop(cpuSensor, 1.seconds)

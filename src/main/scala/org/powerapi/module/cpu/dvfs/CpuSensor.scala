@@ -35,8 +35,8 @@ import org.powerapi.module.Cache
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.cpu.simple.CpuSensor(eventBus, osHelper) {
-  import org.powerapi.core.{Application, Process}
   import org.powerapi.core.MonitorChannel.MonitorTick
+  import org.powerapi.core.target.{Application, Process}
   import org.powerapi.module.CacheKey
   import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}

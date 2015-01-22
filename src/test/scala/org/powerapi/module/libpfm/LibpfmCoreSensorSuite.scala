@@ -51,7 +51,7 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
     import akka.pattern.gracefulStop
     import akka.testkit.{TestActorRef, TestProbe}
     import java.util.{BitSet, UUID}
-    import org.powerapi.core.All
+    import org.powerapi.core.target.All
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.MonitorTick
     import org.powerapi.module.SensorChannel.monitorAllStopped
@@ -86,7 +86,9 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
     Seq("kill", "-SIGCONT", s"$pid1").!!
     Seq("kill", "-SIGCONT", s"$pid2").!!
     sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
+    buffer += expectMsgClass(classOf[PCReport])
     sensor ! MonitorTick("monitor", muid2, All, ClockTick("clock", 1.second))
+    buffer += expectMsgClass(classOf[PCReport])
     Thread.sleep(1000)
     sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
     buffer += expectMsgClass(classOf[PCReport])

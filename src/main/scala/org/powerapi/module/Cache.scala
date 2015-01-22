@@ -23,7 +23,7 @@
 package org.powerapi.module
 
 import java.util.UUID
-import org.powerapi.core.Target
+import org.powerapi.core.target.Target
 
 /**
  * Cache entry.

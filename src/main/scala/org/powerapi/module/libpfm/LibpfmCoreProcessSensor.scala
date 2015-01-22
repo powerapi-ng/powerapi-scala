@@ -24,7 +24,7 @@ package org.powerapi.module.libpfm
 
 import java.util.{BitSet, UUID}
 import akka.util.Timeout
-import org.powerapi.core.{OSHelper, APIComponent, MessageBus, Target}
+import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
 
 /**
  * Main actor for getting the performance counter value per core/event/process.
@@ -32,14 +32,14 @@ import org.powerapi.core.{OSHelper, APIComponent, MessageBus, Target}
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: OSHelper, configuration: BitSet, events: Array[String], cores: Map[Int, List[Int]], inDepth: Boolean) extends APIComponent {
-  import akka.actor.{Actor, ActorIdentity, Identify, Props}
+  import akka.actor.{Actor, ActorRef, PoisonPill, Props}
   import akka.event.LoggingReceive
   import akka.pattern.ask
-  import org.powerapi.core.{Application, Process}
   import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+  import org.powerapi.core.target.{Application, Process, Target}
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
-  import PerformanceCounterChannel.{CleanResource, formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
-  import scala.concurrent.{Await, Future}
+  import PerformanceCounterChannel.{formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
+  import scala.concurrent.Future
   import scala.reflect.ClassTag
 
   override def preStart(): Unit = {
@@ -51,22 +51,22 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
   val processClaz = implicitly[ClassTag[Process]].runtimeClass
   val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
-  def receive: Actor.Receive = running(Map(), Map(), Map())
+  def receive: Actor.Receive = running(Map(), Map(), Map(), Map())
 
-  def running(targets: Map[UUID, Set[Target]], timestamps: Map[UUID, Long], identifiers: Map[(UUID, Target), Set[Int]]): Actor.Receive = LoggingReceive {
+  def running(actors: Map[(Int, String, UUID, Int), ActorRef], targets: Map[UUID, Set[Target]], timestamps: Map[UUID, Long], identifiers: Map[(UUID, Target), Set[Int]]): Actor.Receive = LoggingReceive {
     case monitorTick: MonitorTick if processClaz.isInstance(monitorTick.target) || appClaz.isInstance(monitorTick.target) => {
-      sense(monitorTick, targets, timestamps, identifiers)
+      sense(monitorTick, actors, targets, timestamps, identifiers)
     }
-    case msg: MonitorStop => monitorStopped(msg)
-    case msg: MonitorStopAll => monitorAllStopped(msg)
+    case msg: MonitorStop => monitorStopped(msg, actors, targets, timestamps, identifiers)
+    case msg: MonitorStopAll => monitorAllStopped(msg, actors, targets, timestamps, identifiers)
   } orElse default
 
-  def sense(monitorTick: MonitorTick, targets: Map[UUID, Set[Target]], timestamps: Map[UUID, Long], identifiers: Map[(UUID, Target), Set[Int]]): Unit = {
-    var wrappers = Map[(Int, String), PCWrapper]()
-
+  def sense(monitorTick: MonitorTick, actors: Map[(Int, String, UUID, Int), ActorRef], targets: Map[UUID, Set[Target]], timestamps: Map[UUID, Long], identifiers: Map[(UUID, Target), Set[Int]]): Unit = {
+    var _actors = actors
     var _targets = targets
     var _timestamps = timestamps
     var _identifiers = identifiers
+    var wrappers = Map[(Int, String), PCWrapper]()
 
     if(!_timestamps.contains(monitorTick.muid)) {
       _timestamps += monitorTick.muid -> monitorTick.tick.timestamp
@@ -78,7 +78,7 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
     if(monitorTick.tick.timestamp > _timestamps(monitorTick.muid)) {
       _identifiers.filter(entry => entry._1._1 == monitorTick.muid && !_targets(monitorTick.muid).contains(entry._1._2)).foreach {
         case (key, ids) => {
-          ids.foreach(id => context.actorSelection(s"*$id") ! CleanResource)
+          ids.foreach(id => context.actorSelection(s"*$id") ! PoisonPill)
           _identifiers -= key
         }
       }
@@ -112,24 +112,27 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
      * Clean the resources for the old identifiers linked to the given target.
      */
     oldTickIdentifiers.foreach(id => {
-      context.actorSelection(s"*$id") ! CleanResource
+      context.actorSelection(s"*$id") ! PoisonPill
     })
 
     _identifiers += (monitorTick.muid, monitorTick.target) -> (_identifiers.getOrElse((monitorTick.muid, monitorTick.target), Set()) -- oldTickIdentifiers ++ newTickIdentifiers)
 
+    /** Actors were not created before */
     cores.foreach {
       case (core, indexes) => {
         indexes.foreach(index => {
           events.foreach(event => {
             _identifiers(monitorTick.muid, monitorTick.target).foreach(id => {
-              val name = formatLibpfmCoreProcessSensorChildName(index, event, monitorTick.muid, id)
-              val identity = Await.result(context.actorSelection(name).?(Identify(None))(timeout), timeout.duration).asInstanceOf[ActorIdentity]
-
-              val actor = identity.ref match {
-                case None => {
-                  context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, Some(id), configuration), name)
+              val actor = {
+                /** Actors were not created before */
+                if(!actors.contains(index, event, monitorTick.muid, id)) {
+                  val name = formatLibpfmCoreProcessSensorChildName(index, event, monitorTick.muid, id)
+                  val actor = context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, Some(id), configuration), name)
+                  _actors += ((index, event, monitorTick.muid, id) -> actor)
+                  actor
                 }
-                case Some(ref) => ref
+
+                else _actors(index, event, monitorTick.muid, id)
               }
 
               wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
@@ -140,14 +143,27 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
     }
 
     publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
-    context.become(running(_targets, _timestamps, _identifiers))
+    context.become(running(_actors, _targets, _timestamps, _identifiers))
   }
 
-  def monitorStopped(msg: MonitorStop): Unit = {
+  def monitorStopped(msg: MonitorStop, actors: Map[(Int, String, UUID, Int), ActorRef], targets: Map[UUID, Set[Target]], timestamps: Map[UUID, Long], identifiers: Map[(UUID, Target), Set[Int]]): Unit = {
+    var _actors = actors
+    var _targets = targets
+    var _timestamps = timestamps
+    var _identifiers = identifiers
+
     context.actorSelection(s"*${msg.muid}*") ! msg
+    _actors --= _actors.keys.filter(key => key._3 == msg.muid)
+    _targets --= _targets.keys.filter(muid => muid == msg.muid)
+    _timestamps --= _timestamps.keys.filter(muid => muid == msg.muid)
+    _identifiers --= _identifiers.keys.filter(key => key._1 == msg.muid)
+
+    context.become(running(_actors, _targets, _timestamps, _identifiers))
   }
 
-  def monitorAllStopped(msg: MonitorStopAll): Unit = {
+  def monitorAllStopped(msg: MonitorStopAll, actors: Map[(Int, String, UUID, Int), ActorRef], targets: Map[UUID, Set[Target]], timestamps: Map[UUID, Long], identifiers: Map[(UUID, Target), Set[Int]]): Unit = {
     context.actorSelection("*") ! msg
+
+    context.become(running(Map(), Map(), Map(), Map()))
   }
 }

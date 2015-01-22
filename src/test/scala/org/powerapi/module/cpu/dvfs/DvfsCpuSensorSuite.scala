@@ -47,7 +47,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   "A dvfs CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
     import akka.pattern.gracefulStop
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{All, Application, OSHelper, Process, TargetUsageRatio, Thread}
+    import org.powerapi.core.{OSHelper, Thread}
+    import org.powerapi.core.target.{All, Application, intToProcess, Process, stringToApplication}
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.core.TimeInStates
     import org.powerapi.module.CacheKey
@@ -71,25 +72,25 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val tickMock = ClockTick("test", 25.milliseconds)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1))) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Application("app"))) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, 1)) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, "app")) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, All)) = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
 
     subscribeDvfsUsageReport(eventBus)(testActor)
 
-    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    publishMonitorTick(muid, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.timeInStates should equal(TimeInStates(Map(4000000l -> 6l, 3000000l -> 2l, 2000000l -> 2l, 1000000l -> 2l)))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1)))(TimeInStates(Map())) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, 1))(TimeInStates(Map())) match {
       case t => t should equal(TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l)))
     }
 
-    publishMonitorTick(muid, Application("app"), tickMock)(eventBus)
+    publishMonitorTick(muid, "app", tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Application("app")); ur.timeInStates should equal(TimeInStates(Map(4000000l -> 6l, 3000000l -> 2l, 2000000l -> 2l, 1000000l -> 2l)))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Application("app")))(TimeInStates(Map())) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, "app"))(TimeInStates(Map())) match {
       case t => t should equal(TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l)))
     }
 
@@ -103,7 +104,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   it should "handle correctly the TimeInStates differences for computing the current TimeInStates" in {
     import akka.pattern.gracefulStop
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{Application, OSHelper, Process, Thread}
+    import org.powerapi.core.{OSHelper, Thread}
+    import org.powerapi.core.target.{Application, intToProcess, Process}
     import org.powerapi.core.MonitorChannel.publishMonitorTick
     import org.powerapi.core.TimeInStates
     import org.powerapi.module.CacheKey
@@ -129,13 +131,13 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     subscribeDvfsUsageReport(eventBus)(testActor)
 
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1))) = TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l))
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, 1)) = TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l))
 
-    publishMonitorTick(muid, Process(1), tickMock)(eventBus)
+    publishMonitorTick(muid, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.timeInStates should equal(TimeInStates(Map()))
     }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, Process(1)))(TimeInStates(Map())) match {
+    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].frequenciesCache(CacheKey(muid, 1))(TimeInStates(Map())) match {
       case t => t should equal(TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l)))
     }
     gracefulStop(cpuSensor, 1.seconds)

@@ -23,12 +23,10 @@
 package org.powerapi.module
 
 import java.util.UUID
-
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
-import org.powerapi.core.{MessageBus, Process}
-
+import org.powerapi.core.MessageBus
 import scala.concurrent.duration.DurationInt
 
 class SensorMock(eventBus: MessageBus, actorRef: ActorRef) extends SensorComponent(eventBus) {
@@ -62,12 +60,13 @@ class SensorSuite(system: ActorSystem) extends UnitTest(system) {
   "A Sensor" should "process MonitorTick messages" in new Bus {
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.{MonitorTick, publishMonitorTick}
+    import org.powerapi.core.target.{intToProcess, Target}
     import SensorChannel.{MonitorStop, MonitorStopAll, monitorStopped, monitorAllStopped}
 
     val sensorMock = TestActorRef(Props(classOf[SensorMock], eventBus, testActor))(system)
 
     val muid = UUID.randomUUID()
-    val target = Process(1)
+    val target: Target = 1
     val clockTick = ClockTick("test", 25.milliseconds)
 
     publishMonitorTick(muid, target, clockTick)(eventBus)
