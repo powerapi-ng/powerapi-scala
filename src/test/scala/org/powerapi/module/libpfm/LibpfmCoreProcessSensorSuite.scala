@@ -63,7 +63,7 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
     val configuration = new BitSet()
     configuration.set(0)
     configuration.set(1)
-    val events = Array("cycles", "instructions")
+    val events = Array("CPU_CLK_UNHALTED:THREAD_P", "instructions")
     val cores = Map(0 -> List(0, 1))
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
@@ -104,8 +104,7 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
         case PCReport(_, _, target, wrappers, _) => {
           target should (equal(Process(pid1)) or equal(Process(pid2)))
           wrappers.size should equal(cores.size * events.size)
-          wrappers.count(_.event == "cycles") should equal(cores.size)
-          wrappers.count(_.event == "instructions") should equal(cores.size)
+          events.foreach(event => wrappers.count(_.event == event) should equal(cores.size))
           wrappers.foreach(wrapper => wrapper.values.size should equal(events.size))
         }
       }

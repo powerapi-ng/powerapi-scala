@@ -67,8 +67,8 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
     LibpfmHelper.init()
 
     val reaper = TestProbe()(system)
-    val child1 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], "cycles", 0, None, configuration), testActor, "child1")(system)
-    val child2 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], "cycles", 0, None, configuration), testActor, "child2")(system)
+    val child1 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], "CPU_CLK_UNHALTED:THREAD_P", 0, None, configuration), testActor, "child1")(system)
+    val child2 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], "CPU_CLK_UNHALTED:THREAD_P", 0, None, configuration), testActor, "child2")(system)
     reaper.watch(child1)
     reaper.watch(child2)
 
@@ -76,19 +76,19 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
     child1 ! MonitorTick("monitor", muid1, All, ClockTick("clock", 500.milliseconds))
     msg = expectMsgClass(classOf[Long])
     msg should be >= 0l
-    println(s"muid: $muid1; event: cycles; value: $msg")
+    println(s"muid: $muid1; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
     child2 ! MonitorTick("monitor", muid2, All, ClockTick("clock", 500.milliseconds))
     msg = expectMsgClass(classOf[Long])
     msg should be >= 0l
-    println(s"muid: $muid2; event: cycles; value: $msg")
+    println(s"muid: $muid2; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
     child1 ! MonitorTick("monitor", muid1, All, ClockTick("clock", 500.milliseconds))
     msg = expectMsgClass(classOf[Long])
     msg should be >= 0l
-    println(s"muid: $muid1; event: cycles; value: $msg")
+    println(s"muid: $muid1; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
     child2 ! MonitorTick("monitor", muid2, All, ClockTick("clock", 500.milliseconds))
     msg = expectMsgClass(classOf[Long])
     msg should be >= 0l
-    println(s"muid: $muid2; event: cycles; value: $msg")
+    println(s"muid: $muid2; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
     Seq("kill", "-SIGKILL", s"$pid").!!
 
     child1.underlyingActor.asInstanceOf[LibpfmCoreSensorChild].fd should not equal(None)

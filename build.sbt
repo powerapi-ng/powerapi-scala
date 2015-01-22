@@ -9,7 +9,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.6",
   "com.typesafe" % "config" % "1.2.1",
   "fr.inria.powerspy" %% "powerspy-scala" % "1.0.1",
-  "com.nativelibs4java" % "bridj" % "0.6.2"
+  "com.nativelibs4java" % "bridj" % "0.6.2",
+  "org.scalanlp" %% "breeze" % "0.10"
 )
 
 // Logging

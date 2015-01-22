@@ -122,11 +122,11 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
         indexes.foreach(index => {
           events.foreach(event => {
             _identifiers(monitorTick.muid, monitorTick.target).foreach(id => {
-              val identity = Await.result(context.actorSelection(s"*$index-$event-${monitorTick.muid}-$id").?(Identify(None))(timeout), timeout.duration).asInstanceOf[ActorIdentity]
+              val name = formatLibpfmCoreProcessSensorChildName(index, event, monitorTick.muid, id)
+              val identity = Await.result(context.actorSelection(name).?(Identify(None))(timeout), timeout.duration).asInstanceOf[ActorIdentity]
 
               val actor = identity.ref match {
                 case None => {
-                  val name = formatLibpfmCoreProcessSensorChildName(index, event, monitorTick.muid, id)
                   context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, Some(id), configuration), name)
                 }
                 case Some(ref) => ref

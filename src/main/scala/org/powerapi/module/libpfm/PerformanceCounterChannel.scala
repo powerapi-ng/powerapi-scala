@@ -46,8 +46,8 @@ object PerformanceCounterChannel extends Channel {
 
   /**
    * Internal message.
-   * An event is associated to a list of values.
-   * A value is the aggregated value for an event on one core.
+   * One message per core/event.
+   * Values is a list of performance counter values for each element of a core.
    */
   case class PCWrapper(core: Int, event: String, values: List[Future[Long]]) {
     def +(value: Future[Long]): PCWrapper = {
@@ -97,10 +97,10 @@ object PerformanceCounterChannel extends Channel {
    * Use to format the names.
    */
   def formatLibpfmCoreSensorChildName(core: Int, event: String, muid: UUID): String = {
-    s"libpfm-$core-$event-$muid"
+    s"libpfm-$core-${event.toLowerCase().replace('_', '-').replace(':', '-')}-$muid"
   }
 
   def formatLibpfmCoreProcessSensorChildName(core: Int, event: String, muid: UUID, identifier: Int): String = {
-    s"libpfm-$core-$event-$muid-$identifier"
+    s"libpfm-$core-${event.toLowerCase().replace('_', '-').replace(':', '-')}-$muid-$identifier"
   }
 }
