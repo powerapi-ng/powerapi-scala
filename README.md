@@ -21,6 +21,9 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 * [Apache log4j2](http://logging.apache.org/log4j/2.x/) (version 2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
 * [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.0.1 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
+* [BridJ](https://code.google.com/p/bridj/) (version 0.6.2 under [BSD-2-Clause licence](https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE)), for system or C calls.
+* [Breeze](https://github.com/scalanlp/breeze) (version 0.10 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for numerical processing.
+* [perfmon2](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/) (version 4.6.0 under [MIT licence](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING)), for accessing hardware performance counters.
 
 # Licence
 This software is licensed under the *GNU Affero General Public License*, quoted below.

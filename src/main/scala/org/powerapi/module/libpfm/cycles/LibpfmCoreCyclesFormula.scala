@@ -22,6 +22,7 @@
  */
 package org.powerapi.module.libpfm.cycles
 
+import org.powerapi.configuration.SamplingConfiguration
 import org.powerapi.core.{Configuration, MessageBus}
 import org.powerapi.module.FormulaComponent
 import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
@@ -35,39 +36,32 @@ import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCReport](eventBus) with Configuration {
+class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCReport](eventBus) with SamplingConfiguration with Configuration {
   import breeze.numerics.polyval
   import com.typesafe.config.Config
-  import java.util.concurrent.TimeUnit
   import org.powerapi.core.ConfigValue
   import org.powerapi.module.libpfm.PerformanceCounterChannel.subscribePCReport
   import org.powerapi.module.PowerChannel.publishPowerReport
   import org.powerapi.module.PowerUnit
   import scala.collection.JavaConversions._
-  import scala.concurrent.duration.{DurationDouble, FiniteDuration}
   import scala.concurrent.Future
 
-  lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.cycles-thread") } match {
+  lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.formulae.cycles-thread") } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:THREAD_P"
   }
 
-  lazy val cyclesRefName: String = load { _.getString("powerapi.libpfm.cycles-ref") } match {
+  lazy val cyclesRefName: String = load { _.getString("powerapi.libpfm.formulae.cycles-ref") } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:REF_P"
   }
 
   lazy val formulae: Map[Double, Array[Double]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.libpfm-cycles-formulae"))
+    (for (item: Config <- conf.getConfigList("powerapi.libpfm.formulae.cycles"))
       yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toArray)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
-  }
-
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.MILLISECONDS) } match {
-    case ConfigValue(value) => value.milliseconds
-    case _ => 1.seconds
   }
 
   def subscribeSensorReport(): Unit = {

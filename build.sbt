@@ -35,7 +35,7 @@ parallelExecution in Test := false
 
 instrumentSettings
 
-// Use this task for testing the PowerSpy powermeter in the test suite
+// Use this task to be able to use the PowerSpy powermeter.
 val downloadBluecoveLibs = TaskKey[Seq[File]]("download-bluecove")
 
 downloadBluecoveLibs := {
