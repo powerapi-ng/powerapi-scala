@@ -106,7 +106,7 @@ final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
   def toMegaWatts  = unit.toMegaWatts(value)
   def toUnit(u: PowerUnit) = toMilliWatts / MILLIWATTS.convert(1, u)
   
-  override def toString() = "" + value + " " + unit
+  override def toString() = s"$value $unit"
   
   def compare(other: Power) = toMilliWatts compare other.toMilliWatts
   

@@ -27,18 +27,12 @@ import java.util.UUID
 import scala.concurrent.duration.DurationInt
 
 import akka.actor.{ ActorRef, ActorSystem, Props }
-import akka.testkit.{ TestActorRef, TestKit }
+import akka.testkit.TestKit
 import akka.util.Timeout
 
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel.PowerReport
-
-class ReporterComponentMock(actorRef: ActorRef) extends ReporterComponent {
-  def report(aggPowerReport: PowerReport): Unit = {
-    actorRef ! aggPowerReport
-  }
-}
 
 class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -58,15 +52,13 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.power._
     import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
     
-    val reporterMock = TestActorRef(Props(classOf[ReporterComponentMock], testActor))(system)
-    
     val muid = UUID.randomUUID()
     val target = Process(1)
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
     val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
   
-    subscribeAggPowerReport(muid)(eventBus)(reporterMock)
+    subscribeAggPowerReport(muid)(eventBus)(testActor)
     
     val aggR = AggregateReport(muid, aggFunction)
     aggR += RawPowerReport("topictest", muid, target, 1.W, device, tickMock)

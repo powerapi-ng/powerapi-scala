@@ -50,23 +50,14 @@ class FileReporter extends ReporterComponent with Configuration {
   import scalax.io.Resource
   import org.powerapi.core.FileHelper.using
   import org.powerapi.module.PowerChannel.PowerReport
-
-  case class Line(aggPpowerReport: PowerReport) {
-  override def toString() =
-    "timestamp=" + aggPpowerReport.tick.timestamp + ";" +
-    "target=" + aggPpowerReport.target + ";" +
-    "device=" + aggPpowerReport.device + ";" +
-    "value=" + aggPpowerReport.power + scalax.io.Line.Terminators.NewLine.sep
-  }
-  
   
   lazy val output = {
-    if (log.isInfoEnabled) log.info("using " + filePath + " as output file")
-    Resource.fromFile(filePath)
+    if (log.isInfoEnabled) log.info("using {} as output file", filePath)
+      Resource.fromFile(filePath)
   }
 
   def report(aggPowerReport: PowerReport) {
-    output.append(Line(aggPowerReport).toString)
+    output.append(s"$aggPowerReport\n")
   }
 }
 

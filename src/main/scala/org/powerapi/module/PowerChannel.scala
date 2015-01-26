@@ -55,6 +55,7 @@ object PowerChannel extends Channel {
     def power: Power
     def device: String
     def tick: ClockTick
+    override def toString() = s"timestamp=${tick.timestamp};target=$target;device=$device;value=$power"
   }
 
   /**

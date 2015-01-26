@@ -36,16 +36,8 @@ import org.powerapi.module.PowerChannel.PowerReport
 
 class ConsoleReporterMock(testActor: ActorRef) extends ConsoleReporter {
   override def report(aggPowerReport: PowerReport) = {
-    testActor ! Line(aggPowerReport).toString
+    testActor ! aggPowerReport.toString
   }
-}
-
-case class LineMock(aggPpowerReport: PowerReport) {
-  override def toString() =
-    "timestamp=" + aggPpowerReport.tick.timestamp + ";" +
-    "target=" + aggPpowerReport.target + ";" +
-    "device=" + aggPpowerReport.device + ";" +
-    "value=" + aggPpowerReport.power
 }
 
 class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
@@ -87,9 +79,9 @@ class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
     
-    expectMsgClass(classOf[String]) should equal(LineMock(RawPowerReport("topictest", muid, Process(1), 3.W, device, tickMock)).toString)
-    expectMsgClass(classOf[String]) should equal(LineMock(RawPowerReport("topictest", muid, Process(2), 1.W, device, tickMock)).toString)
-    expectMsgClass(classOf[String]) should equal(LineMock(RawPowerReport("topictest", muid, Process(3), 2.W, device, tickMock)).toString)
+    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, Process(1), 3.W, device, tickMock).toString)
+    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, Process(2), 1.W, device, tickMock).toString)
+    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, Process(3), 2.W, device, tickMock).toString)
   }
 }
 

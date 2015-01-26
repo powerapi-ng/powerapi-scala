@@ -36,7 +36,7 @@ import org.jfree.ui.ApplicationFrame
 /**
  * Display result received from the CpuDiskListener Component to a wrapped JFreeChart chart.
  *
- * @author abourdon
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  */
 class Chart(title: String) {
   val dataset = new TimeSeriesCollection

@@ -88,9 +88,9 @@ class FileReporterSpec(system: ActorSystem) extends UnitTest(system) {
     testFile.size.get should be > 0L
     testFile.lines() should (
       have size 3 and
-      contain(LineMock(RawPowerReport("topictest", muid, Process(1), 3.W, device, tickMock)).toString) and 
-      contain(LineMock(RawPowerReport("topictest", muid, Process(2), 1.W, device, tickMock)).toString) and
-      contain(LineMock(RawPowerReport("topictest", muid, Process(3), 2.W, device, tickMock)).toString)
+      contain(RawPowerReport("topictest", muid, Process(1), 3.W, device, tickMock).toString) and 
+      contain(RawPowerReport("topictest", muid, Process(2), 1.W, device, tickMock).toString) and
+      contain(RawPowerReport("topictest", muid, Process(3), 2.W, device, tickMock).toString)
     )
     testFile.delete(true)
   }

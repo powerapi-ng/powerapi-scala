@@ -33,8 +33,6 @@ import akka.util.Timeout
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 
-class JFreeChartReporterMock extends JFreeChartReporter
-
 class JFreeChartReporterSpec(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)
 
@@ -52,7 +50,7 @@ class JFreeChartReporterSpec(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.power._
     import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
     
-    val reporterMock = TestActorRef(Props[JFreeChartReporterMock], "jfreechartReporter")(system)
+    val reporterMock = TestActorRef(Props[JFreeChartReporter], "jfreechartReporter")(system)
     
     val muid = UUID.randomUUID()
     val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
@@ -64,11 +62,11 @@ class JFreeChartReporterSpec(system: ActorSystem) extends UnitTest(system) {
 
     while(current <= (begin + (5.seconds).toMillis)) {
       render(AggregateReport(muid, aggFunction) += RawPowerReport("topictest",
-                                                      muid,
-                                                      Process(1),
-                                                      Math.random.W,
-                                                      "mock",
-                                                      ClockTick("ticktest", 25.milliseconds, current)))(eventBus)
+                                                                  muid,
+                                                                  Process(1),
+                                                                  Math.random.W,
+                                                                  "mock",
+                                                                  ClockTick("ticktest", 25.milliseconds, current)))(eventBus)
       current += (1.seconds).toMillis
       Thread.sleep((1.seconds).toMillis)
     }

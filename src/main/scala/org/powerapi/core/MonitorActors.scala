@@ -53,7 +53,7 @@ class MonitorChild(eventBus: MessageBus,
   import org.powerapi.module.PowerChannel.{ AggregateReport, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case MonitorStart(_, id, freq, targs, agg) if muid == id && frequency == freq && targets == targs && aggFunction == agg => start()
+    case MonitorStart(_, id, freq, targs, _) if muid == id && frequency == freq && targets == targs => start()
   } orElse default
 
   /**

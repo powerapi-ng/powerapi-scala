@@ -17,6 +17,8 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Akka](http://akka.io) (version 2.3.6 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
 * [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 * [Apache log4j2](http://logging.apache.org/log4j/2.x/) (version 2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
+* [JFreeChart](http://www.jfree.org/jfreechart/) (version 1.0.19 under [LGPL license](https://www.gnu.org/licenses/lgpl.html)), for creation of interactive and animated charts.
+* [Scala IO](http://jesseeichar.github.io/scala-io-doc/0.4.3/index.html#!/overview) (version 0.4.3), for an extensions of IO
 
 # Licence
 This software is licensed under the *GNU Affero General Public License*, quoted below.
