@@ -105,10 +105,19 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCR
       }
     }
 
-    Future.sequence(computations) onSuccess {
+    val future = Future.sequence(computations)
+
+    future onSuccess {
       case powers: List[Double] => {
         lazy val power = powers.foldLeft(0d)((acc, power) => acc + power)
         publishPowerReport(sensorReport.muid, sensorReport.target, power, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
+      }
+    }
+
+    future onFailure {
+      case ex: Throwable => {
+        log.warning("An error occured: {}", ex.getMessage)
+        publishPowerReport(sensorReport.muid, sensorReport.target, 0d, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
       }
     }
   }
