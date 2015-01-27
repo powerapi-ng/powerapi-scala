@@ -22,19 +22,25 @@
  */
 package org.powerapi.module.cpu.simple
 
-import org.powerapi.core.MessageBus
+import org.powerapi.core.{Configuration, MessageBus}
 import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 import org.powerapi.module.{PowerChannel, FormulaComponent}
 import org.powerapi.module.cpu.UsageMetricsChannel
 
 /**
- * CPU formula configuration.
+ * Implements a CpuFormula by making the ratio between maximum CPU power (obtained by multiplying
+ * its Thermal Design Power (TDP) value by a specific factor) and the process CPU usage.
+ *
+ * @see http://en.wikipedia.org/wiki/Thermal_design_power
  *
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait FormulaConfiguration extends org.powerapi.core.Configuration {
+class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with Configuration {
   import org.powerapi.core.ConfigValue
+  import org.powerapi.module.PowerUnit
+  import UsageMetricsChannel.subscribeSimpleUsageReport
+  import PowerChannel.publishPowerReport
 
   /**
    * CPU Thermal Design Power (TDP) value.
@@ -55,21 +61,6 @@ trait FormulaConfiguration extends org.powerapi.core.Configuration {
     case ConfigValue(value) => value
     case _ => 0.7
   }
-}
-
-/**
- * Implements a CpuFormula by making the ratio between maximum CPU power (obtained by multiplying
- * its Thermal Design Power (TDP) value by a specific factor) and the process CPU usage.
- *
- * @see http://en.wikipedia.org/wiki/Thermal_design_power
- *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with FormulaConfiguration {
-  import UsageMetricsChannel.subscribeSimpleUsageReport
-  import PowerChannel.publishPowerReport
-  import org.powerapi.module.PowerUnit
 
   def subscribeSensorReport(): Unit = {
     subscribeSimpleUsageReport(eventBus)(self)

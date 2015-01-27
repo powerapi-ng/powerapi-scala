@@ -94,7 +94,7 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorC
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Clocks(eventBus: MessageBus) extends Supervisor {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, stopAllClock, subscribeClockChannel}
+  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, subscribeClockChannel}
 
   override def preStart(): Unit = {
     subscribeClockChannel(eventBus)(self)

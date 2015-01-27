@@ -24,15 +24,24 @@ package org.powerapi.module.libpfm
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
+import akka.util.Timeout
 import org.powerapi.UnitTest
-
+import org.powerapi.core.MessageBus
+import scala.collection.BitSet
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationDouble
+
+class LibpfmCoreSensorMock(eventBus: MessageBus, _timeout: Timeout, _topology: Map[Int, List[Int]], _configuration: BitSet, _events: List[String]) extends LibpfmCoreSensor(eventBus) {
+  override lazy val timeout = _timeout
+  override lazy val topology = _topology
+  override lazy val configuration = _configuration
+  override lazy val events = _events
+}
 
 class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
   import akka.actor.Props
   import akka.util.Timeout
   import org.powerapi.core.MessageBus
-  import scala.concurrent.duration.DurationDouble
 
   def this() = this(ActorSystem("LibpfmCoreSensorSuite"))
 
@@ -50,24 +59,22 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
     import akka.actor.Terminated
     import akka.pattern.gracefulStop
     import akka.testkit.{TestActorRef, TestProbe}
-    import java.util.{BitSet, UUID}
+    import java.util.UUID
     import org.powerapi.core.target.All
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.MonitorTick
     import org.powerapi.module.SensorChannel.monitorAllStopped
     import PerformanceCounterChannel.{PCReport, subscribePCReport}
-    import scala.collection.mutable.ArrayBuffer
+    import scala.collection.mutable.{ArrayBuffer, BitSet}
     import scala.concurrent.Await
     import scala.concurrent.ExecutionContext.Implicits.global
     import scala.sys.process.stringSeqToProcess
 
-    val configuration = new BitSet()
-    configuration.set(0)
-    configuration.set(1)
+    val configuration = BitSet(0, 1)
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
-    val events = Array("CPU_CLK_UNHALTED:THREAD_P", "instructions")
-    val cores = Map(0 -> List(0, 1))
+    val events = List("CPU_CLK_UNHALTED:THREAD_P", "instructions")
+    val topology = Map(0 -> List(0, 1))
     val buffer = ArrayBuffer[PCReport]()
 
     val basepath = getClass.getResource("/").getPath
@@ -79,7 +86,7 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
     LibpfmHelper.init()
 
     val reaper = TestProbe()(system)
-    val sensor = TestActorRef(Props(classOf[LibpfmCoreSensor], eventBus, timeout, configuration, events, cores), "sensor1")(system)
+    val sensor = TestActorRef(Props(classOf[LibpfmCoreSensorMock], eventBus, Timeout(1.seconds), topology, configuration, events), "sensor1")(system)
 
     subscribePCReport(eventBus)(testActor)
 
@@ -106,8 +113,8 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
       msg match {
         case PCReport(_, _, target, wrappers, _) => {
           target should equal(All)
-          wrappers.size should equal(cores.size * events.size)
-          events.foreach(event => wrappers.count(_.event == event) should equal(cores.size))
+          wrappers.size should equal(topology.size * events.size)
+          events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
           wrappers.foreach(wrapper => wrapper.values.size should equal(events.size))
         }
       }
@@ -117,7 +124,7 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case coreValues: List[Long] => {
             val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
             aggValue should be >= 0l
-            println(s"muid: ${msg.muid}; core: ${wrapper.core}; event: ${wrapper.event}; value: $aggValue")
+            println(s"${msg.tick.timestamp}; muid: ${msg.muid}; core: ${wrapper.core}; event: ${wrapper.event}; value: $aggValue")
           }
         }
       }

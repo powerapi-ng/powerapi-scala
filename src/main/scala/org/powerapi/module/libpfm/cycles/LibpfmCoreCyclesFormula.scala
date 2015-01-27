@@ -56,9 +56,9 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCR
     case _ => "CPU_CLK_UNHALTED:REF_P"
   }
 
-  lazy val formulae: Map[Double, Array[Double]] = load { conf =>
+  lazy val formulae: Map[Double, List[Double]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.libpfm.formulae.cycles"))
-      yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toArray)).toMap
+      yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
@@ -98,7 +98,7 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCR
             coefficient = coefficientsBefore.max
           }
 
-          val formula = formulae(coefficient)
+          val formula = formulae(coefficient).toArray
           formula(0) = 0
           polyval(formula, cyclesVal)
         }
@@ -116,7 +116,7 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCR
 
     future onFailure {
       case ex: Throwable => {
-        log.warning("An error occured: {}", ex.getMessage)
+        log.warning("An error occurred: {}", ex.getMessage)
         publishPowerReport(sensorReport.muid, sensorReport.target, 0d, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
       }
     }

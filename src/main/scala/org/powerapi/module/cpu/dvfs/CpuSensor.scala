@@ -36,19 +36,14 @@ import org.powerapi.module.Cache
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.cpu.simple.CpuSensor(eventBus, osHelper) {
   import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.core.target.{Application, Process}
   import org.powerapi.module.CacheKey
   import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-  import scala.reflect.ClassTag
 
   lazy val frequenciesCache = new Cache[TimeInStates]
 
   def timeInStates(monitorTick: MonitorTick): TimeInStates = {
     val key = CacheKey(monitorTick.muid, monitorTick.target)
-
-    val processClaz = implicitly[ClassTag[Process]].runtimeClass
-    val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
     val now = osHelper.getTimeInStates
     val old = frequenciesCache(key)(now)

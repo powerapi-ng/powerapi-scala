@@ -25,17 +25,22 @@ package org.powerapi.configuration
 import org.powerapi.core.Configuration
 
 /**
- * Number of logical cores / Configuration.
+ * Processor topology.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-trait LogicalCoresConfiguration {
+trait TopologyConfiguration {
   self: Configuration =>
 
+  import com.typesafe.config.Config
   import org.powerapi.core.ConfigValue
+  import scala.collection.JavaConversions._
 
-  lazy val cores = load { _.getInt("powerapi.hardware.cores") } match {
-    case ConfigValue(nbCores) => nbCores
-    case _ => 0
+  lazy val topology: Map[Int, List[Int]] = load { conf =>
+    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
+      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toList)).toMap
+  } match {
+    case ConfigValue(values) => values
+    case _ => Map()
   }
 }

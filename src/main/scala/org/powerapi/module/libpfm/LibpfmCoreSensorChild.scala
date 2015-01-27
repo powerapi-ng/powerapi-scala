@@ -22,9 +22,10 @@
  */
 package org.powerapi.module.libpfm
 
-import java.util.{BitSet, UUID}
+import java.util.UUID
 import org.powerapi.core.ActorComponent
 import org.powerapi.core.target.Target
+import scala.collection.BitSet
 
 /**
  * Base trait for each LibpfmCoreSensorChild.

@@ -22,7 +22,7 @@
  */
 package org.powerapi.core
 
-import org.powerapi.configuration.LogicalCoresConfiguration
+import org.powerapi.configuration.TopologyConfiguration
 
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
@@ -109,7 +109,7 @@ trait OSHelper {
  π
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfiguration {
+class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration {
   import java.io.{IOException, File}
   import org.apache.logging.log4j.LogManager
   import org.powerapi.core.FileHelper.using
@@ -219,14 +219,14 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
   def getTimeInStates: TimeInStates = {
     val result = collection.mutable.HashMap[Long, Long]()
 
-    for(core <- 0 until cores) {
+    for(core <- topology.keys) {
       try {
         using(timeInStatePath.replace("%?index", s"$core"))(source => {
           log.debug("using {} as a sysfs timeinstates path", timeInStatePath)
 
           for(line <- source.getLines) {
             line match {
-              case TimeInStateFormat(freq, t) => result += (freq.toLong -> (t.toLong + (result.getOrElse(freq.toLong, 0l))))
+              case TimeInStateFormat(freq, t) => result += (freq.toLong -> (t.toLong + result.getOrElse(freq.toLong, 0l)))
               case _ => log.warn("unable to parse line {} from file {}", line, timeInStatePath)
             }
           }

@@ -107,12 +107,12 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
     val helper = new LinuxHelper {
       override lazy val timeInStatePath = s"${basepath}sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
-      override lazy val cores = 4
+      override lazy val topology = Map(0 -> List(0), 1 -> List(1), 2 -> List(2), 3 -> List(3))
     }
 
     val badHelper = new LinuxHelper {
       override lazy val timeInStatePath = s"${basepath}sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_states"
-      override lazy val cores = 4
+      override lazy val topology = Map(0 -> List(0), 1 -> List(1), 2 -> List(2), 3 -> List(3))
     }
 
     helper.getTimeInStates should equal(

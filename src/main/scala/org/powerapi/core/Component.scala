@@ -24,7 +24,6 @@ package org.powerapi.core
 
 import akka.actor.{OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator, ActorLogging, Actor}
 import akka.actor.SupervisorStrategy.{Directive, Resume}
-import akka.event.LoggingReceive
 import scala.concurrent.duration.DurationInt
 
 /**

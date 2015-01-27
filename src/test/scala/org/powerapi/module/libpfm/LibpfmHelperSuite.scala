@@ -34,22 +34,22 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "An implicit method" should "convert a BitSet to a long" in {
-    import java.util.BitSet
+    import scala.collection.mutable.BitSet
     import LibpfmHelper.BitSet2Long
 
-    val bitset = new BitSet()
+    val bitset = BitSet()
     var long: Long = bitset
     long should equal(0L)
-    bitset.set(0)
-    bitset.set(1)
+    bitset += 0
+    bitset += 1
     // Only 23 bits are allowed
-    bitset.set(24)
+    bitset += 24
     long = bitset
     long should equal((1L << 0) + (1L << 1))
     bitset.clear()
-    bitset.set(0)
-    bitset.set(1)
-    bitset.set(2)
+    bitset += 0
+    bitset += 1
+    bitset += 2
     long = bitset
     long should equal((1L << 0) + (1L << 1) + (2L << 1))
   }
@@ -73,16 +73,14 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "The libpfm library" can "be used on linux" ignore {
-    import java.util.BitSet
+    import scala.collection.BitSet
     import LibpfmHelper.{init, closePC, configurePC, deinit, disablePC, enablePC, readPC, resetPC}
     import scala.sys.process.stringSeqToProcess
 
     val basepath = getClass.getResource("/").getPath
 
     val pid = Seq("bash", s"${basepath}test-pc.bash").lineStream(0).trim.toInt
-    val configuration = new BitSet()
-    configuration.set(0)
-    configuration.set(1)
+    val configuration = BitSet(0, 1)
 
     init() should equal(true)
     configurePC(TID(pid), configuration, "cycles") match {

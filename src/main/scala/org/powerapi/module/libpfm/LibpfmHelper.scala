@@ -42,7 +42,7 @@ case class TCID(identifier: Int, core: Int) extends Identifier
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 object LibpfmHelper {
-  import java.util.BitSet
+  import scala.collection.BitSet
   import org.apache.logging.log4j.LogManager
   import org.bridj.Pointer.{allocateCLongs, pointerTo, pointerToCString}
   import perfmon2.libpfm.{LibpfmLibrary, perf_event_attr, pfm_perf_encode_arg_t}
@@ -57,20 +57,9 @@ object LibpfmHelper {
    * Implicit conversion BitSet to Long
    */
   implicit def BitSet2Long(value: BitSet): Long = {
-    var long = 0L
     // We limit the size of the bitset (see the documentation on perf_event.h, only 23 bits for the config.)
     // The other 41 bits are reserved.
-    val configuration = value.get(0, 23)
-
-    // Conversion
-    for(i <- 0 until configuration.length) {
-      configuration.get(i) match {
-        case true => long += 1L << i
-        case _ => long += 0L
-      }
-    }
-
-    long
+    value.range(0, 23).foldLeft(0l)((acc, index) => acc + (1L << index))
   }
 
   /**
@@ -110,7 +99,7 @@ object LibpfmHelper {
    * @param configuration: bits configuration
    * @param name: name of the performance counter to open
    */
-  def configurePC(identifier: Identifier, configuration: java.util.BitSet, name: String): Option[Int] = {
+  def configurePC(identifier: Identifier, configuration: BitSet, name: String): Option[Int] = {
     val cName = pointerToCString(name)
     val argEncoded = new pfm_perf_encode_arg_t
     val argEncodedPointer = pointerTo(argEncoded)

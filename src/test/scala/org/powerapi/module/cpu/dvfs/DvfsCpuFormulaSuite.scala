@@ -32,14 +32,10 @@ import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel
 import scala.concurrent.duration.DurationInt
 
-trait DvfsCpuFormulaConfigurationMock extends FormulaConfiguration {
+class DvfsCpuFormulaMock(messageBus: MessageBus) extends CpuFormula(messageBus) {
   override lazy val tdp = 220
   override lazy val tdpFactor = 0.7
 }
-
-class DvfsCpuFormulaMock(messageBus: MessageBus)
-  extends CpuFormula(messageBus)
-  with DvfsCpuFormulaConfigurationMock
 
 class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 

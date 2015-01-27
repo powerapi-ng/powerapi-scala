@@ -30,14 +30,10 @@ import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import scala.concurrent.duration.DurationInt
 
-trait SimpleCpuFormulaConfigurationMock extends FormulaConfiguration {
+class SimpleCpuFormulaMock(messageBus: MessageBus) extends CpuFormula(messageBus) {
   override lazy val tdp = 220
   override lazy val tdpFactor = 0.7
 }
-
-class SimpleCpuFormulaMock(messageBus: MessageBus)
-  extends CpuFormula(messageBus)
-  with SimpleCpuFormulaConfigurationMock
 
 class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 

@@ -22,17 +22,45 @@
  */
 package org.powerapi.module.libpfm
 
-import java.util.BitSet
-import akka.util.Timeout
-import org.powerapi.core.MessageBus
+import org.powerapi.configuration.{TopologyConfiguration, TimeoutConfiguration}
+import org.powerapi.core.{Configuration, MessageBus}
 import org.powerapi.module.SensorComponent
+import scala.collection.BitSet
+
+/**
+ * Main configuration for LibpfmCore sensors.
+ *
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
+ */
+trait LibpfmCoreConfiguration extends Configuration {
+  import org.powerapi.core.ConfigValue
+
+  /**
+   * List of enabled bits for the perf_event_open maccro.
+   * The bits to configure are described in the structure perf_event_attr available below.
+   *
+   * @see http://manpages.ubuntu.com/manpages/trusty/en/man2/perf_event_open.2.html
+   */
+  lazy val configuration =
+    BitSet(
+      (load { _.getIntList("powerapi.libpfm.configuration") } match {
+        case ConfigValue(values) => values.asInstanceOf[List[Int]]
+        case _ => List[Int]()
+      }): _*
+    )
+
+  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
+    case ConfigValue(values) => values.asInstanceOf[List[String]]
+    case _ => List()
+  }
+}
 
 /**
  * Main actor for getting the performance counter value per core/event.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, configuration: BitSet, events: Array[String], cores: Map[Int, List[Int]]) extends SensorComponent(eventBus) {
+class LibpfmCoreSensor(eventBus: MessageBus) extends SensorComponent(eventBus) with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
   import akka.actor.Props
   import akka.pattern.ask
   import org.powerapi.core.MonitorChannel.MonitorTick
@@ -48,7 +76,7 @@ class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, configuration: Bi
   def sense(monitorTick: MonitorTick): Unit = {
     var wrappers = Map[(Int, String), PCWrapper]()
 
-    cores.foreach {
+    topology.foreach {
       case (core, indexes) => {
         indexes.foreach(index => {
           events.foreach(event => {

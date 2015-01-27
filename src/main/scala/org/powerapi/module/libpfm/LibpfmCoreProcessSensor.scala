@@ -22,8 +22,8 @@
  */
 package org.powerapi.module.libpfm
 
-import java.util.{BitSet, UUID}
-import akka.util.Timeout
+import java.util.UUID
+import org.powerapi.configuration.{TimeoutConfiguration, TopologyConfiguration}
 import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
 
 /**
@@ -31,10 +31,11 @@ import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: OSHelper, configuration: BitSet, events: Array[String], cores: Map[Int, List[Int]], inDepth: Boolean) extends APIComponent {
+class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
   import akka.actor.{Actor, PoisonPill, Props}
   import akka.event.LoggingReceive
   import akka.pattern.ask
+  import org.powerapi.core.ConfigValue
   import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
   import org.powerapi.core.target.{Application, Process, Target}
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
@@ -42,14 +43,22 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
   import scala.concurrent.Future
   import scala.reflect.ClassTag
 
+  /**
+   * Allows to know if the threads associated to a Target have to be included.
+   */
+  lazy val inDepth = load { _.getBoolean("powerapi.libpfm.in-depth") } match {
+    case ConfigValue(value) => value
+    case _ => false
+  }
+
+  val processClaz = implicitly[ClassTag[Process]].runtimeClass
+  val appClaz = implicitly[ClassTag[Application]].runtimeClass
+
   override def preStart(): Unit = {
     subscribeMonitorTick(eventBus)(self)
     subscribeSensorsChannel(eventBus)(self)
     super.preStart()
   }
-
-  val processClaz = implicitly[ClassTag[Process]].runtimeClass
-  val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
   def receive: Actor.Receive = running(Map(), Map(), Map())
 
@@ -117,7 +126,7 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, timeout: Timeout, osHelper: 
     _identifiers += (monitorTick.muid, monitorTick.target) -> (_identifiers.getOrElse((monitorTick.muid, monitorTick.target), Set()) -- oldTickIdentifiers ++ newTickIdentifiers)
 
     /** Actors were not created before */
-    cores.foreach {
+    topology.foreach {
       case (core, indexes) => {
         indexes.foreach(index => {
           events.foreach(event => {
