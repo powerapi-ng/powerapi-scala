@@ -32,7 +32,7 @@ trait ConfigResult[T]
 /**
  * Subtypes to specify the different types of result.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class ConfigValue[T](value: T) extends ConfigResult[T]
 case class ConfigError[T](exception: Throwable) extends ConfigResult[T]
@@ -40,7 +40,7 @@ case class ConfigError[T](exception: Throwable) extends ConfigResult[T]
 /**
  * Base trait for dealing with configuration files.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait Configuration {
   private lazy val conf = ConfigFactory.load()

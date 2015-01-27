@@ -29,15 +29,15 @@ import org.powerapi.configuration.TopologyConfiguration
  *
  * @param tid: thread identifier
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class Thread(tid: Int)
 
 /**
  * Wrapper class for the time spent by the cpu in each frequency (if dvfs enabled).
  *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:aurelien.bourdon@gmail.com">Aurélien Bourdon</a
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class TimeInStates(times: Map[Long, Long]) {
   def -(that: TimeInStates) =
@@ -47,7 +47,7 @@ case class TimeInStates(times: Map[Long, Long]) {
 /**
  * Base trait use for implementing os specific methods.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait OSHelper {
   import org.powerapi.core.target.{Application, Process, Target}
@@ -107,7 +107,7 @@ trait OSHelper {
 /**
  * Linux special helper.
  π
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration {
   import java.io.{IOException, File}

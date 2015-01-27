@@ -30,8 +30,8 @@ import org.powerapi.core.{MessageBus, Channel}
 /**
  * Power units.
  *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object PowerUnit extends Enumeration {
 
@@ -44,7 +44,7 @@ object PowerUnit extends Enumeration {
 /**
  * PowerChannel channel and messages.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object PowerChannel extends Channel {
   import org.powerapi.core.ClockChannel.ClockTick

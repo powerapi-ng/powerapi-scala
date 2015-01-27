@@ -29,7 +29,7 @@ import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
 /**
  * Main actor for getting the performance counter value per core/event/process.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
   import akka.actor.{Actor, PoisonPill, Props}

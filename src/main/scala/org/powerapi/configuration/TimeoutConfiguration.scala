@@ -27,7 +27,7 @@ import org.powerapi.core.Configuration
 /**
  * Timeout configuration.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait TimeoutConfiguration {
   self: Configuration =>

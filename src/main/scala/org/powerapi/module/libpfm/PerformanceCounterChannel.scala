@@ -27,7 +27,7 @@ import org.powerapi.core.Channel
 /**
  * PerformanceCounterChannel channel and messages.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object PerformanceCounterChannel extends Channel {
   import akka.actor.ActorRef

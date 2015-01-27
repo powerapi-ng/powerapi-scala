@@ -35,7 +35,7 @@ import perfmon2.libpfm.perf_event_attr;
 /**
  * This class is used for binding several functions available on the system or in C.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 @Library("c")
 @Runtime(CRuntime.class)

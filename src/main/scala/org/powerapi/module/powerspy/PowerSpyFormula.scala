@@ -31,7 +31,7 @@ import org.powerapi.core.{APIComponent, Configuration, MessageBus}
  *
  * The simple CpuSensor is used for getting the Target cpu usage ratio (UsageReport).
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class PowerSpyFormula(eventBus: MessageBus) extends APIComponent with Configuration with IdlePowerConfiguration {
   import akka.event.LoggingReceive

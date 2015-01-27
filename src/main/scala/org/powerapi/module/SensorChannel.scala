@@ -27,7 +27,7 @@ import org.powerapi.core.Channel
 /**
  * Base channel for the Sensor components.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object SensorChannel extends Channel {
   import akka.actor.ActorRef
@@ -41,7 +41,7 @@ object SensorChannel extends Channel {
   /**
    * Main sensor messages.
    *
-   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
    */
   trait SensorMessage extends Message
 

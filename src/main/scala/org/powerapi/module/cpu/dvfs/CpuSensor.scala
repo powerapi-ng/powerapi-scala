@@ -31,8 +31,8 @@ import org.powerapi.module.Cache
  *
  * @see http://www.kernel.org/doc/man-pages/online/pages/man5/proc.5.html
  *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:aurelien.bourdon@gmail.com">Aurélien Bourdon</a
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.cpu.simple.CpuSensor(eventBus, osHelper) {
   import org.powerapi.core.MonitorChannel.MonitorTick

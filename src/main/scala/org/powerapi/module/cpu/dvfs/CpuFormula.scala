@@ -40,8 +40,8 @@ import scala.collection.JavaConversions
  * @see [1] "Frequency–Voltage Cooperative CPU Power Control: A Design Rule and Its Application by Feedback Prediction" by Toyama & al.
  * @see [2] http://en.wikipedia.org/wiki/Voltage_and_frequency_scaling.
  *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:aurelien.bourdon@gmail.com">Aurélien Bourdon</a
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuFormula(eventBus: MessageBus) extends org.powerapi.module.cpu.simple.CpuFormula(eventBus) {
   import org.powerapi.core.ConfigValue

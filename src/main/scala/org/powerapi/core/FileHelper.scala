@@ -29,7 +29,7 @@ import scala.io.Source
  *
  * @see https://wiki.scala-lang.org/display/SYGN/Loan
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object FileHelper {
   def using[A](filepath: String)(f: Source => A): A = {

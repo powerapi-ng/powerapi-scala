@@ -28,8 +28,8 @@ import akka.event.LookupClassification
 /**
  * Messages are the messages used to route the messages in the bus.
  *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait Message {
   /**
@@ -41,7 +41,7 @@ trait Message {
 /**
  * Main types definition.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait EventBus extends akka.event.EventBus {
   type Event = Message
@@ -52,8 +52,8 @@ trait EventBus extends akka.event.EventBus {
 /**
  * Common event bus used by PowerAPI components to communicate.
  *
- * @author Loic Huertas <loic.huertas@inria.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class MessageBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
@@ -78,8 +78,8 @@ class MessageBus extends EventBus with LookupClassification {
 /**
  * Used to specify the channels used by the components.
  *
- * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class Channel {
   type M <: Message

@@ -26,8 +26,8 @@ package object target {
   /**
    * Targets are system elements that can be monitored by PowerAPI
    *
-   * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
-   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
    */
   trait Target
 
@@ -36,8 +36,8 @@ package object target {
    *
    * @param pid: process identifier.
    *
-   * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
-   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
    */
   case class Process(pid: Int) extends Target
 
@@ -46,8 +46,8 @@ package object target {
    *
    * @param name: name of the application.
    *
-   * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
-   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
    */
   case class Application(name: String) extends Target
 
@@ -56,15 +56,15 @@ package object target {
    *
    * @param ratio: usage ratio.
    *
-   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
    */
   case class TargetUsageRatio(ratio: Double)
 
   /**
    * Monitoring target for the whole system.
    *
-   * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
-   * @author Maxime Colmant <maxime.colmant@gmail.com>
+   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
    */
   object All extends Target
 

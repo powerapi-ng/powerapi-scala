@@ -28,7 +28,7 @@ import org.powerapi.core.{MessageBus, ExternalPMeter, Configuration}
  * PowerSpy special helper.
  * @see http://www.alciom.com/en/products/powerspy2-en-gb-2.html
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configuration {
   import org.powerapi.core.ConfigValue

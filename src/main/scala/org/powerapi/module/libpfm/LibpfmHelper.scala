@@ -25,7 +25,7 @@ package org.powerapi.module.libpfm
 /**
  * Internal wrappers
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait Identifier
 case class TID(identifier: Int) extends Identifier
@@ -39,7 +39,7 @@ case class TCID(identifier: Int, core: Int) extends Identifier
  * @see https://github.com/ochafik/nativelibs4java
  * @see http://www.man7.org/linux/man-pages/man2/perf_event_open.2.html.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object LibpfmHelper {
   import scala.collection.BitSet

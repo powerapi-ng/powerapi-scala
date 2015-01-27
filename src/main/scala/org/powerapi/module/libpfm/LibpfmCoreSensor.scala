@@ -30,7 +30,7 @@ import scala.collection.BitSet
 /**
  * Main configuration for LibpfmCore sensors.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait LibpfmCoreConfiguration extends Configuration {
   import org.powerapi.core.ConfigValue
@@ -58,7 +58,7 @@ trait LibpfmCoreConfiguration extends Configuration {
 /**
  * Main actor for getting the performance counter value per core/event.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreSensor(eventBus: MessageBus) extends SensorComponent(eventBus) with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
   import akka.actor.Props

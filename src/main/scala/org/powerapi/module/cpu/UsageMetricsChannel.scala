@@ -33,7 +33,7 @@ import org.powerapi.module.SensorChannel.SensorReport
 /**
  * UsageMetricsChannel channel and messages.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object UsageMetricsChannel extends Channel {
 

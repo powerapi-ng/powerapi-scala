@@ -33,8 +33,8 @@ import org.powerapi.module.cpu.UsageMetricsChannel
  *
  * @see http://en.wikipedia.org/wiki/Thermal_design_power
  *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:aurelien.bourdon@gmail.com">Aurélien Bourdon</a
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with Configuration {
   import org.powerapi.core.ConfigValue

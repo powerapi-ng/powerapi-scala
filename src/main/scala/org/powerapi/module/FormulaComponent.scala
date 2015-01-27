@@ -31,7 +31,7 @@ import scala.reflect.ClassTag
  * Base trait for each PowerAPI formula.
  * Each of them should react to a SensorReport, compute the power and then publish a PowerReport.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 abstract class FormulaComponent[SR <: SensorReport : ClassTag](eventBus: MessageBus) extends APIComponent {
 

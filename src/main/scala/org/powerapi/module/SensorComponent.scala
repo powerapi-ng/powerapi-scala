@@ -29,7 +29,7 @@ import org.powerapi.core.{APIComponent, MessageBus}
  * Base trait for each PowerAPI sensor.
  * Each of them should react to a MonitorTick, sense informations and then publish a SensorReport.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
   import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}

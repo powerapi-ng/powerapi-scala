@@ -28,14 +28,14 @@ import org.powerapi.core.target.Target
 /**
  * Cache entry.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class CacheKey(muid: UUID, target: Target)
 
 /**
  * Delegate class used for caching data.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class Cache[T] {
   /**

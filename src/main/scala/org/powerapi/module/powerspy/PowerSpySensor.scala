@@ -24,6 +24,11 @@ package org.powerapi.module.powerspy
 
 import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
 
+/**
+ * PowerSpySensor's implementation by using an helper.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
 class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
   import akka.event.LoggingReceive
   import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishSensorPower, subscribePowerSpyPower}

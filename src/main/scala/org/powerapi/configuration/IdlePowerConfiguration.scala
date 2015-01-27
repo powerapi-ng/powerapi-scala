@@ -27,7 +27,7 @@ import org.powerapi.core.Configuration
 /**
  * Ilde power / Configuration.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait IdlePowerConfiguration {
   self: Configuration =>
@@ -35,7 +35,7 @@ trait IdlePowerConfiguration {
   import org.powerapi.core.ConfigValue
 
   lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
-    case ConfigValue(idlePower) => idlePower
+    case ConfigValue(idle) => idle
     case _ => 0d
   }
 }

@@ -31,7 +31,7 @@ import scala.collection.BitSet
  * Base trait for each LibpfmCoreSensorChild.
  * A LibpfmCoreSensorChild is reponsible to handle one performance counter, to collect its value and then to process the result.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configuration: BitSet) extends ActorComponent {
   import akka.actor.{Actor, PoisonPill}

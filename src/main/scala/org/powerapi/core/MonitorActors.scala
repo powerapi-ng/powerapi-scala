@@ -34,7 +34,7 @@ import scala.concurrent.duration.FiniteDuration
  * One child represents one monitor.
  * Allows to publish messages in the right topics depending of the targets.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
@@ -90,7 +90,7 @@ class MonitorChild(eventBus: MessageBus,
  * This actor listens the bus on a given topic and reacts on the received messages.
  * It is responsible to handle a pool of child actors which represent all monitors.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class Monitors(eventBus: MessageBus) extends Supervisor {
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}

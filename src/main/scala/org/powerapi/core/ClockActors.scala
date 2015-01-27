@@ -31,7 +31,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  * One child clock is created per frequency.
  * Allows to publish a message in the right topics for a given frequency.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorComponent {
   import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishClockTick}
@@ -91,7 +91,7 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorC
  * This clock listens the bus on a given topic and reacts on the received message.
  * It is responsible to handle a pool of clocks for the monitored frequencies.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class Clocks(eventBus: MessageBus) extends Supervisor {
   import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, subscribeClockChannel}

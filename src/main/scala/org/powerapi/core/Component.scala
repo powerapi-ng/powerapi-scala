@@ -29,7 +29,7 @@ import scala.concurrent.duration.DurationInt
 /**
  * Base trait for components which use Actor.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait ActorComponent extends Actor with ActorLogging {
   /**
@@ -43,14 +43,14 @@ trait ActorComponent extends Actor with ActorLogging {
 /**
  * Base trait for API component.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait APIComponent extends ActorComponent
 
 /**
  * Supervisor strategy.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait Supervisor extends ActorComponent {
   def handleFailure: PartialFunction[Throwable, Directive]
@@ -63,7 +63,7 @@ trait Supervisor extends ActorComponent {
  * This class is used for defining a default supervisor strategy for the Guardian Actor.
  * The Guardian Actor is the main actor used when system.actorOf(...) is used.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
   def handleFailure: PartialFunction[Throwable, Directive] = {

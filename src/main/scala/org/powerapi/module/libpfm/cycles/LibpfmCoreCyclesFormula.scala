@@ -34,7 +34,7 @@ import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
  * The first counter is injected for computing the power.
  * The second one is used for computing the frequency coefficient.
  *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCReport](eventBus) with SamplingConfiguration with Configuration {
   import breeze.numerics.polyval

@@ -24,6 +24,8 @@ package org.powerapi.core
 
 /**
  * Base trait for implementing external power meters.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait ExternalPMeter {
   def init(): Unit
