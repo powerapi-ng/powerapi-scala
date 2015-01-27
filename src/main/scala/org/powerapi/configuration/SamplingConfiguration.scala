@@ -20,51 +20,24 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module
+package org.powerapi.configuration
 
-import java.util.UUID
-import org.powerapi.core.target.Target
+import org.powerapi.core.Configuration
 
 /**
- * Cache entry.
+ * Sampling configuration.
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-case class CacheKey(muid: UUID, target: Target)
+trait SamplingConfiguration {
+  self: Configuration =>
 
-/**
- * Delegate class used for caching data.
- *
- * @author Maxime Colmant <maxime.colmant@gmail.com>
- */
-class Cache[T] {
-  /**
-   * Internal cache
-   */
-  private lazy val cache = collection.mutable.Map[CacheKey, T]()
+  import java.util.concurrent.TimeUnit
+  import org.powerapi.core.ConfigValue
+  import scala.concurrent.duration.{DurationDouble, FiniteDuration}
 
-  def apply(key: CacheKey)(default: T): T = {
-    cache.getOrElse(key, default)
-  }
-
-  def update(key: CacheKey, now: T): Unit = {
-    val old = cache.getOrElse(key, now)
-    cache += (key -> now)
-  }
-
-  def clear(): Unit = {
-    cache.clear()
-  }
-
-  def isEmpty: Boolean = {
-    cache.isEmpty
-  }
-
-  def -=(key: CacheKey): Unit = {
-    cache -= key
-  }
-
-  def -=(muid: UUID): Unit = {
-    cache.filter(entry => entry._1.muid == muid).foreach(entry => cache -= entry._1)
+  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.MILLISECONDS) } match {
+    case ConfigValue(value) => value.milliseconds
+    case _ => 1.seconds
   }
 }

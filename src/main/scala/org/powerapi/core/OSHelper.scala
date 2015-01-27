@@ -31,7 +31,7 @@ import org.powerapi.configuration.LogicalCoresConfiguration
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-case class Thread(tid: Long)
+case class Thread(tid: Int)
 
 /**
  * Wrapper class for the time spent by the cpu in each frequency (if dvfs enabled).
@@ -50,6 +50,7 @@ case class TimeInStates(times: Map[Long, Long]) {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 trait OSHelper {
+  import org.powerapi.core.target.{Application, Process, Target}
   /**
    * Get the list of processes behind an Application.
    *
@@ -109,10 +110,10 @@ trait OSHelper {
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfiguration {
-
   import java.io.{IOException, File}
   import org.apache.logging.log4j.LogManager
   import org.powerapi.core.FileHelper.using
+  import org.powerapi.core.target.{Application, Process}
   import scala.sys.process.stringSeqToProcess
 
   private val log = LogManager.getLogger
@@ -157,7 +158,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
 
   def getProcesses(application: Application): List[Process] = {
     Seq("ps", "-C", application.name, "-o", "pid", "--no-headers").!!.split("\n").toList.map {
-      case PSFormat(pid) => Process(pid.toLong)
+      case PSFormat(pid) => Process(pid.toInt)
     }
   }
 
@@ -168,7 +169,7 @@ class LinuxHelper extends OSHelper with Configuration with LogicalCoresConfigura
       /**
        * The pid is removed because it corresponds to the main thread.
        */
-      pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").toList.map(dir => Thread(dir.getName.toLong))
+      pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").toList.map(dir => Thread(dir.getName.toInt))
     }
     else List()
   }

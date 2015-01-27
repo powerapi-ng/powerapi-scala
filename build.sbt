@@ -8,7 +8,9 @@ scalaVersion := "2.11.4"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.6",
   "com.typesafe" % "config" % "1.2.1",
-  "fr.inria.powerspy" %% "powerspy-scala" % "1.0.1"
+  "fr.inria.powerspy" %% "powerspy-scala" % "1.0.1",
+  "com.nativelibs4java" % "bridj" % "0.6.2",
+  "org.scalanlp" %% "breeze" % "0.10"
 )
 
 // Logging
@@ -24,6 +26,7 @@ libraryDependencies ++= Seq(
 )
 
 scalacOptions ++= Seq(
+  "-language:implicitConversions",
   "-feature",
   "-deprecation"
 )
@@ -32,7 +35,7 @@ parallelExecution in Test := false
 
 instrumentSettings
 
-// Use this task for testing the PowerSpy powermeter in the test suite
+// Use this task to be able to use the PowerSpy powermeter.
 val downloadBluecoveLibs = TaskKey[Seq[File]]("download-bluecove")
 
 downloadBluecoveLibs := {

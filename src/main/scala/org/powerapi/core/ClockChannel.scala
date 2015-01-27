@@ -94,14 +94,16 @@ object ClockChannel extends Channel {
     publish(ClockStop(topic, frequency))
   }
 
+  def stopAllClock: MessageBus => Unit = {
+    publish(ClockStopAll(topic))
+  }
+
   /**
    * Internal methods used by the Clocks actor for interacting with the bus.
    */
   def subscribeClockChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
-
-  lazy val stopAllClock = ClockStopAll(topic)
 
   /**
    * Internal methods used by the ClockChild actors for interacting with the bus.

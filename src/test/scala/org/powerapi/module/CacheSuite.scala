@@ -40,13 +40,29 @@ class CacheSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A Cache" can "be parametrized, updated" in {
     import java.util.UUID
-    import org.powerapi.core.Process
+    import org.powerapi.core.target.intToProcess
 
     val cache = new Cache[(Double, Double)]
     val muid = UUID.randomUUID()
-    val key = CacheKey(muid, Process(1))
+    val muid2 = UUID.randomUUID()
+    val key = CacheKey(muid, 1)
+    val key2 = CacheKey(muid2, 2)
+    val key3 = CacheKey(muid2, 3)
     cache(key) = (10, 10)
+    cache(key2) = (1, 1)
+    cache(key3) = (2, 2)
+    cache.isEmpty should equal(false)
     cache(key)(0, 0) should equal(10, 10)
-    cache(CacheKey(UUID.randomUUID(), Process(1)))(0, 0) should equal(0,0)
+    cache(key2)(0, 0) should equal(1, 1)
+    cache(key3)(0, 0) should equal(2, 2)
+    cache -= key
+    cache(key)(0, 0) should equal(0, 0)
+    cache(CacheKey(muid2, 1))(0, 0) should equal(0,0)
+    cache -= muid2
+    cache(key2)(0, 0) should equal(0, 0)
+    cache(key3)(0, 0) should equal(0, 0)
+    cache(key) = (10,10)
+    cache.clear()
+    cache.isEmpty should equal(true)
   }
 }

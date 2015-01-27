@@ -27,12 +27,15 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
+import org.powerapi.core.{Channel, MessageBus}
+import org.powerapi.module.SensorChannel.SensorReport
 import org.powerapi.module.SensorMockChannel.SensorMockReport
 
-object SensorMockChannel extends SensorChannel {
+object SensorMockChannel extends Channel {
   import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.Target
+  import org.powerapi.core.target.Target
+
+  type M = org.powerapi.module.SensorChannel.M
 
   private val topic = "test"
 
@@ -73,7 +76,7 @@ class FormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A Formula" should "process SensorReport messages" in new Bus {
     import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.Process
+    import org.powerapi.core.target.intToProcess
     import org.powerapi.module.SensorMockChannel.publishSensorMockReport
     import scala.concurrent.duration.DurationInt
 
@@ -82,7 +85,7 @@ class FormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
     val muid = UUID.randomUUID()
     val power = 2.2d
-    val target = Process(1)
+    val target = 1
     val tick = ClockTick("test", 25.milliseconds)
 
     publishSensorMockReport(muid, target, power, tick)(eventBus)

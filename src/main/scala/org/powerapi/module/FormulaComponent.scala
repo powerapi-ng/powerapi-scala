@@ -24,6 +24,7 @@ package org.powerapi.module
 
 import akka.event.LoggingReceive
 import org.powerapi.core.{APIComponent, MessageBus}
+import SensorChannel.SensorReport
 import scala.reflect.ClassTag
 
 /**

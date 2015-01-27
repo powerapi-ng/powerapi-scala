@@ -51,7 +51,8 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   import org.powerapi.core.ClockChannel.formatClockChildName
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopMonitor}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor}
+  import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target}
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -72,7 +73,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     val muid = UUID.randomUUID()
     val frequency = 50.milliseconds
-    val targets = List(Process(1))
+    val targets = List[Target](1)
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor1")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
@@ -115,8 +116,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     val frequency = 25.milliseconds
     val muid = UUID.randomUUID()
-    val targets = List(Process(1), Application("java"), All)
-    
+    val targets = List[Target](1, "java", All)
+
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor2")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
@@ -164,7 +165,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val targets = scala.collection.mutable.ListBuffer[Target]()
 
     for(i <- 1 to 100) {
-      targets += Process(i)
+      targets += i
     }
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks3")
@@ -207,7 +208,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks4")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors4")
 
-    val targets = List(Process(1), Application("java"))
+    val targets = List[Target](1, "java")
     val monitor = new Monitor(eventBus, targets)
     val frequency = 25.milliseconds
 
@@ -242,6 +243,43 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     
     Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)  
+    _system.shutdown()
+    _system.awaitTermination(timeout.duration)
+  }
+
+  it should "publish a message to the sensor actors for let them know that the monitor(s) is/are stopped" in new Bus {
+    import akka.actor.Terminated
+    import akka.testkit.TestActorRef
+    import java.lang.Thread
+    import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
+
+    val _system = ActorSystem("MonitorSuiteTest5")
+
+    val monitors = TestActorRef(Props(classOf[Monitors], eventBus), "monitors5")(_system)
+    val reaper = TestProbe()(system)
+    subscribeSensorsChannel(eventBus)(testActor)
+
+    val monitor = new Monitor(eventBus, List[Target](1))
+    val monitor2 = new Monitor(eventBus, List[Target](2))
+
+    startMonitor(monitor.muid, 25.milliseconds, List[Target](1))(eventBus)
+    startMonitor(monitor2.muid, 50.milliseconds, List[Target](2))(eventBus)
+    Thread.sleep(250)
+    val children = monitors.children.toArray.clone()
+    children.foreach(child => reaper.watch(child))
+
+    stopMonitor(monitor.muid)(eventBus)
+    stopAllMonitor(eventBus)
+    for(_ <- 0 until children.size) {
+      reaper.expectMsgClass(classOf[Terminated])
+    }
+
+    expectMsgClass(classOf[MonitorStop]) match {
+      case MonitorStop(_, id) => monitor.muid should equal(id)
+    }
+    expectMsgClass(classOf[MonitorStopAll])
+
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
   }

@@ -101,11 +101,6 @@ class Clocks(eventBus: MessageBus) extends Supervisor {
     super.preStart()
   }
 
-  override def postStop(): Unit = {
-    context.actorSelection("*") ! stopAllClock
-    super.postStop()
-  }
-
   /**
    * ClockChild actors can only launch exception if the message received is not handled.
    */

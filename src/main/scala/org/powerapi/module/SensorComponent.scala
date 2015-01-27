@@ -33,15 +33,21 @@ import org.powerapi.core.{APIComponent, MessageBus}
  */
 abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
   import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+  import SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
 
   override def preStart(): Unit = {
     subscribeMonitorTick(eventBus)(self)
+    subscribeSensorsChannel(eventBus)(self)
     super.preStart()
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case msg: MonitorTick => sense(msg)
+    case msg: MonitorStop => monitorStopped(msg)
+    case msg: MonitorStopAll => monitorAllStopped(msg)
   } orElse default
 
   def sense(monitorTick: MonitorTick): Unit
+  def monitorStopped(msg: MonitorStop): Unit
+  def monitorAllStopped(msg: MonitorStopAll)
 }

@@ -48,7 +48,8 @@ object PowerUnit extends Enumeration {
  */
 object PowerChannel extends Channel {
   import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.{Message, Target}
+  import org.powerapi.core.Message
+  import org.powerapi.core.target.Target
   import org.powerapi.module.PowerUnit.PowerUnit
 
   type M = PowerReport
