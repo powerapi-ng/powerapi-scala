@@ -32,7 +32,7 @@ import org.powerapi.core.Channel
 object PowerSpyChannel extends Channel {
   import akka.actor.ActorRef
   import org.powerapi.core.{Message, MessageBus}
-  import org.powerapi.module.PowerUnit.PowerUnit
+  import org.powerapi.core.power.Power
 
   type M = PowerSpyPower
 
@@ -41,12 +41,10 @@ object PowerSpyChannel extends Channel {
    *
    * @param topic: subject used for routing the message.
    * @param power: power consumption got by an external device.
-   * @param unit: power unit.
    */
   case class PowerSpyPower(topic: String,
-                         power: Double,
-                         unit: PowerUnit,
-                         source: String = "powerspy") extends Message
+                           power: Power,
+                           source: String = "powerspy") extends Message
 
   /**
    * Topic for communicating with the Sensor actor.
@@ -61,12 +59,12 @@ object PowerSpyChannel extends Channel {
   /**
    * Publish a PowerSpyPower in the event bus.
    */
-  def publishPowerSpyPower(power: Double, unit: PowerUnit): MessageBus => Unit = {
-    publish(PowerSpyPower(topic, power, unit))
+  def publishPowerSpyPower(power: Power): MessageBus => Unit = {
+    publish(PowerSpyPower(topic, power))
   }
 
-  def publishSensorPower(power: Double, unit: PowerUnit): MessageBus => Unit = {
-    publish(PowerSpyPower(topicToPublish, power, unit))
+  def publishSensorPower(power: Power): MessageBus => Unit = {
+    publish(PowerSpyPower(topicToPublish, power))
   }
 
   /**

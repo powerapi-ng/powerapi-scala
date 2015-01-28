@@ -45,9 +45,9 @@ import scala.collection.JavaConversions
  */
 class CpuFormula(eventBus: MessageBus) extends org.powerapi.module.cpu.simple.CpuFormula(eventBus) {
   import org.powerapi.core.ConfigValue
-  import org.powerapi.module.PowerUnit
   import UsageMetricsChannel.subscribeDvfsUsageReport
   import PowerChannel.publishPowerReport
+  import org.powerapi.core.power._
 
   lazy val constant = (tdp * tdpFactor) / (frequencies.max._1 * math.pow(frequencies.max._2, 2))
   lazy val powers = frequencies.map(frequency => (frequency._1, constant * frequency._1 * math.pow(frequency._2, 2)))
@@ -85,10 +85,10 @@ class CpuFormula(eventBus: MessageBus) extends org.powerapi.module.cpu.simple.Cp
 
   override def compute(sensorReport: UsageReport): Unit = {
     lazy val p = power(sensorReport) match {
-      case Some(p: Double) => p
-      case _ => 0d
+      case Some(p: Double) => p.W
+      case _ => 0d.W
     }
 
-    publishPowerReport(sensorReport.muid, sensorReport.target, p, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
+    publishPowerReport(sensorReport.muid, sensorReport.target, p, "cpu", sensorReport.tick)(eventBus)
   }
 }

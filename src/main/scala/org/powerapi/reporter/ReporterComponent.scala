@@ -20,36 +20,24 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.reporter
 
-import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
+import akka.event.LoggingReceive
+
+import org.powerapi.core.APIComponent
 
 /**
- * PowerSpySensor's implementation by using an helper.
+ * Base trait for reporters which are part of the API.
  *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
-  import akka.event.LoggingReceive
-  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishSensorPower, subscribePowerSpyPower}
-
-  override def preStart(): Unit = {
-    subscribePowerSpyPower(eventBus)(self)
-    pMeter.init()
-    pMeter.start()
-    super.preStart()
-  }
-
-  override def postStop(): Unit = {
-    pMeter.stop()
-    super.postStop()
-  }
+abstract class ReporterComponent extends APIComponent {
+  import org.powerapi.module.PowerChannel.PowerReport
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerSpyPower => sense(msg)
+    case msg: PowerReport => report(msg)
   } orElse default
 
-  def sense(pSpyPower: PowerSpyPower): Unit = {
-    publishSensorPower(pSpyPower.power)(eventBus)
-  }
+  def report(aggPowerReport: PowerReport): Unit
 }
+

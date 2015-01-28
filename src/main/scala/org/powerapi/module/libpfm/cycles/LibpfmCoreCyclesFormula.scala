@@ -37,12 +37,11 @@ import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCReport](eventBus) with SamplingConfiguration with Configuration {
-  import breeze.numerics.polyval
   import com.typesafe.config.Config
   import org.powerapi.core.ConfigValue
   import org.powerapi.module.libpfm.PerformanceCounterChannel.subscribePCReport
   import org.powerapi.module.PowerChannel.publishPowerReport
-  import org.powerapi.module.PowerUnit
+  import org.powerapi.core.power._
   import scala.collection.JavaConversions._
   import scala.concurrent.Future
 
@@ -98,9 +97,8 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCR
             coefficient = coefficientsBefore.max
           }
 
-          val formula = formulae(coefficient).toArray
-          formula(0) = 0
-          polyval(formula, cyclesVal)
+          val formula = formulae(coefficient).updated(0, 0d)
+          formula.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(cyclesVal, tuple._2)))
         }
       }
     }
@@ -109,15 +107,15 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCR
 
     future onSuccess {
       case powers: List[Double] => {
-        lazy val power = powers.foldLeft(0d)((acc, power) => acc + power)
-        publishPowerReport(sensorReport.muid, sensorReport.target, power, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
+        lazy val power = powers.foldLeft(0d)((acc, power) => acc + power).W
+        publishPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
       }
     }
 
     future onFailure {
       case ex: Throwable => {
         log.warning("An error occurred: {}", ex.getMessage)
-        publishPowerReport(sensorReport.muid, sensorReport.target, 0d, PowerUnit.W, "cpu", sensorReport.tick)(eventBus)
+        publishPowerReport(sensorReport.muid, sensorReport.target, 0.W, "cpu", sensorReport.tick)(eventBus)
       }
     }
   }

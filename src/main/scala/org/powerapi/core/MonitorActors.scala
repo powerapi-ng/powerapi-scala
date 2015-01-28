@@ -24,10 +24,13 @@ package org.powerapi.core
 
 import java.util.UUID
 import akka.actor.SupervisorStrategy.{Directive, Resume}
-import akka.actor.{Actor, PoisonPill, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.event.LoggingReceive
 import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power.Power
+import org.powerapi.module.PowerChannel.PowerReport
 import org.powerapi.core.target.Target
+import org.powerapi.reporter.ReporterComponent
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -35,36 +38,42 @@ import scala.concurrent.duration.FiniteDuration
  * Allows to publish messages in the right topics depending of the targets.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>        
  */
 class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
-                   targets: List[Target]) extends ActorComponent {
+                   targets: List[Target],
+                   aggFunction: Seq[Power] => Power) extends ActorComponent {
 
   import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
   import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
+  import org.powerapi.module.PowerChannel.{ AggregateReport, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
+    case MonitorStart(_, id, freq, targs, _) if muid == id && frequency == freq && targets == targs => start()
   } orElse default
 
   /**
    * Running state.
    */
-  def running: Actor.Receive = LoggingReceive {
+  def running(aggR: AggregateReport): Actor.Receive = LoggingReceive {
     case tick: ClockTick => produceMessages(tick)
+    case powerReport: PowerReport => aggregate(aggR, powerReport)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
 
   /**
-   * Start the clock, subscribe on the associated topic for receiving tick messages.
+   * Start the clock, subscribe on the associated topic for receiving tick messages
+   * and power reports.
    */
   def start(): Unit = {
     startClock(frequency)(eventBus)
     subscribeClockTick(frequency)(eventBus)(self)
+    subscribePowerReport(muid)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
-    context.become(running)
+    context.become(running(AggregateReport(muid, aggFunction)))
   }
 
   /**
@@ -73,14 +82,29 @@ class MonitorChild(eventBus: MessageBus,
   def produceMessages(tick: ClockTick): Unit = {
     targets.foreach(target => publishMonitorTick(muid, target, tick)(eventBus))
   }
+  
+  /**
+   * Wait to retrieve power reports of all targets from a same monitor to aggregate them
+   * into once power report.
+   */
+  def aggregate(aggR: AggregateReport, powerReport: PowerReport): Unit = {
+    aggR += powerReport
+    if (aggR.size == targets.size) {
+      render(aggR)(eventBus)
+      context.become(running(AggregateReport(muid, aggFunction)))
+    }
+    else
+      context.become(running(aggR))
+  }
 
   /**
    * Publish a request for stopping the clock which is responsible to produce the ticks at this frequency,
-   * stop to listen ticks and kill the monitor actor.
+   * stop to listen ticks and power reports and kill the monitor actor.
    */
   def stop(): Unit = {
     stopClock(frequency)(eventBus)
     unsubscribeClockTick(frequency)(eventBus)(self)
+    unsubscribePowerReport(muid)(eventBus)(self)
     log.info("monitor is stopped, muid: {}", muid)
     self ! PoisonPill
   }
@@ -90,15 +114,20 @@ class MonitorChild(eventBus: MessageBus,
  * This actor listens the bus on a given topic and reacts on the received messages.
  * It is responsible to handle a pool of child actors which represent all monitors.
  *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Monitors(eventBus: MessageBus) extends Supervisor {
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
   import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
-
+  
   override def preStart(): Unit = {
     subscribeMonitorsChannel(eventBus)(self)
     super.preStart()
+  }
+
+  override def postStop(): Unit = {
+    context.actorSelection("*") ! stopAllMonitor
+    super.postStop()
   }
 
   /**
@@ -128,7 +157,7 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
    */
   def start(msg: MonitorStart): Unit = {
     val name = formatMonitorChildName(msg.muid)
-    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets), name)
+    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets, msg.aggFunction), name)
     child ! msg
     context.become(running)
   }
@@ -159,9 +188,20 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
 /**
  * This class is an interface for interacting directly with a MonitorChild actor.
  */
-class Monitor(eventBus: MessageBus, targets: List[Target]) {
+class Monitor(eventBus: MessageBus, _system: ActorSystem) {
   val muid = UUID.randomUUID()
-
+  
+  def reportTo(reporterComponent: Class[_ <: ReporterComponent], args: List[Any] = List()): Monitor = {
+    reportTo(_system.actorOf(Props(reporterComponent, args: _*)))
+  }
+  
+  def reportTo(reporter: ActorRef): Monitor = {
+    import org.powerapi.module.PowerChannel.subscribeAggPowerReport
+  
+    subscribeAggPowerReport(muid)(eventBus)(reporter)
+    this
+  }
+  
   def cancel(): Unit = {
     import org.powerapi.core.MonitorChannel.stopMonitor
     

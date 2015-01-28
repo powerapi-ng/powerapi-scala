@@ -32,7 +32,7 @@ import org.powerapi.core.{MessageBus, ExternalPMeter, Configuration}
  */
 class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configuration {
   import org.powerapi.core.ConfigValue
-  import org.powerapi.module.PowerUnit
+  import org.powerapi.core.power._
   import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
   import fr.inria.powerspy.core.PowerSpy
   import org.apache.logging.log4j.LogManager
@@ -66,7 +66,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
               override def run(): Unit = {
                 while(running) {
                   pSpy.readRealTime() match {
-                    case Some(rtValue) => publishPowerSpyPower(rtValue.power, PowerUnit.W)(eventBus)
+                    case Some(rtValue) => publishPowerSpyPower(rtValue.power.W)(eventBus)
                     case _ => {}
                   }
                 }

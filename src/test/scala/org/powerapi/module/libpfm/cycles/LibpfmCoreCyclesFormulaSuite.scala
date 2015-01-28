@@ -59,10 +59,10 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
     import akka.testkit.TestActorRef
     import java.util.UUID
     import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.power._
     import org.powerapi.core.target.{intToProcess, Process}
     import org.powerapi.module.libpfm.PerformanceCounterChannel.{publishPCReport, PCWrapper}
     import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.module.PowerUnit
     import scala.concurrent.duration.DurationDouble
     import scala.concurrent.ExecutionContext.Implicits.global
     import scala.concurrent.Future
@@ -104,15 +104,11 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
 
     publishPCReport(muid, 1, wrappers, tick)(eventBus)
 
-    expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, unit, device, tic) => {
-        id should equal(muid)
-        targ should equal(Process(1))
-        f"$pow%.5f" should equal(f"$power%.5f")
-        unit should equal(PowerUnit.W)
-        device should equal("cpu")
-        tic should equal(tick)
-      }
-    }
+    val ret = expectMsgClass(classOf[PowerReport])
+    ret.muid should equal(muid)
+    ret.target should equal(Process(1))
+    ret.power should equal(power.W)
+    ret.device should equal("cpu")
+    ret.tick should equal(tick)
   }
 }

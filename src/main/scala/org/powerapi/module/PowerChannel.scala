@@ -23,65 +23,113 @@
 package org.powerapi.module
 
 import java.util.UUID
-
+import scala.concurrent.duration.DurationInt
 import akka.actor.ActorRef
 import org.powerapi.core.{MessageBus, Channel}
-
-/**
- * Power units.
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-object PowerUnit extends Enumeration {
-
-  case class PowerUnit(name: String, description: String) extends Val
-
-  val W = PowerUnit("W", "Watts")
-  val kW = PowerUnit("kW", "KiloWatts")
-}
 
 /**
  * PowerChannel channel and messages.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+ * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 object PowerChannel extends Channel {
-  import org.powerapi.core.ClockChannel.ClockTick
   import org.powerapi.core.Message
-  import org.powerapi.core.target.Target
-  import org.powerapi.module.PowerUnit.PowerUnit
+  import org.powerapi.core.ClockChannel.ClockTick
+  import org.powerapi.core.power._
+  import org.powerapi.core.target.{intToProcess, Target}
 
   type M = PowerReport
 
+  case object PowerReport
+
   /**
-   * PowerReport is represented as a dedicated type of message.
+   * Base trait for each power report
+   */
+  trait PowerReport extends Message {
+    def muid: UUID
+    def target: Target
+    def power: Power
+    def device: String
+    def tick: ClockTick
+    override def toString() = s"timestamp=${tick.timestamp};target=$target;device=$device;value=$power"
+  }
+
+  /**
+   * RawPowerReport is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param target: monitor target.
    * @param power: target's power consumption.
-   * @param unit: power unit.
    * @param device: device targeted.
    * @param tick: tick origin.
    */
-  case class PowerReport(topic: String,
-                         muid: UUID,
-                         target: Target,
-                         power: Double,
-                         unit: PowerUnit,
-                         device: String,
-                         tick: ClockTick) extends Message
-
+  case class RawPowerReport(topic: String,
+                            muid: UUID,
+                            target: Target,
+                            power: Power,
+                            device: String,
+                            tick: ClockTick) extends PowerReport
+                         
   /**
-   * Publish a PowerReport in the event bus.
+   * Used to represent an aggregated PowerReport.
+   *
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
+   * @param aggFunction: aggregate power estimation for a specific sample of power reports.
    */
-  def publishPowerReport(muid: UUID, target: Target, power: Double, unit: PowerUnit, device: String, tick: ClockTick): MessageBus => Unit = {
-    publish(PowerReport(powerReportMuid(muid), muid, target, power, unit, device, tick))
+  case class AggregateReport(muid: UUID, aggFunction: Seq[Power] => Power) extends PowerReport {
+    private val values: collection.mutable.Buffer[Power] = collection.mutable.Buffer.empty
+    private lazy val agg = aggFunction(values.seq)
+    private var lastPowerReport:PowerReport = RawPowerReport(aggPowerReportTopic(muid),
+                                                             muid,
+                                                             -1,
+                                                             0.W,
+                                                             "none",
+                                                             ClockTick("none", 0.milliseconds))
+    
+    def size: Int = values.size
+    def +=(value: PowerReport):AggregateReport = {
+      values append value.power
+      lastPowerReport = value
+      this
+    }
+    
+    val topic: String = aggPowerReportTopic(muid)
+    def target: Target = lastPowerReport.target
+    def power: Power = agg
+    def device: String = lastPowerReport.device
+    def tick: ClockTick = lastPowerReport.tick
   }
 
   /**
-   * External method used by the Reporter for interacting with the bus.
+   * Publish a power report in the event bus.
+   */
+  def publishPowerReport(muid: UUID, target: Target, power: Power, device: String, tick: ClockTick): MessageBus => Unit = {
+    publish(RawPowerReport(powerReportMuid(muid), muid, target, power, device, tick))
+  }
+  
+  /**
+   * Publish an aggregated power report in the event bus.
+   */
+  def render(aggR: AggregateReport): MessageBus => Unit = {
+    publish(aggR)
+  }
+  
+  /**
+   * External methods used by the Reporter components for interacting with the bus.
+   */
+  def subscribeAggPowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
+    subscribe(aggPowerReportTopic(muid))
+  }
+  
+  def unsubscribeAggPowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
+    unsubscribe(aggPowerReportTopic(muid))
+  }
+  
+  /**
+   * External method used by the MonitorChild actors for interacting with the bus.
    */
   def subscribePowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
     subscribe(powerReportMuid(muid))
@@ -90,8 +138,15 @@ object PowerChannel extends Channel {
   def unsubscribePowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
     unsubscribe(powerReportMuid(muid))
   }
-
+  
+  /**
+   * Use to format a MUID to an associated topic.
+   */
   private def powerReportMuid(muid: UUID): String  = {
     s"power:$muid"
+  }
+  
+  private def aggPowerReportTopic(muid: UUID): String = {
+    s"reporter:$muid"
   }
 }

@@ -35,6 +35,7 @@ import org.powerapi.core.{APIComponent, Configuration, MessageBus}
  */
 class PowerSpyFormula(eventBus: MessageBus) extends APIComponent with Configuration with IdlePowerConfiguration {
   import akka.event.LoggingReceive
+  import org.powerapi.core.power._
   import org.powerapi.module.PowerChannel.publishPowerReport
   import org.powerapi.module.cpu.UsageMetricsChannel.{UsageReport, subscribeSimpleUsageReport}
   import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
@@ -55,7 +56,7 @@ class PowerSpyFormula(eventBus: MessageBus) extends APIComponent with Configurat
   def compute(pSpyPower: Option[PowerSpyPower], usageReport: UsageReport): Unit = {
     pSpyPower match {
       case Some(pPower) => {
-        publishPowerReport(usageReport.muid, usageReport.target, pPower.power * usageReport.targetRatio.ratio, pPower.unit, pPower.source, usageReport.tick)(eventBus)
+        publishPowerReport(usageReport.muid, usageReport.target, pPower.power * usageReport.targetRatio.ratio, pPower.source, usageReport.tick)(eventBus)
       }
       case _ => log.debug("{}", "no PowerSpyPower messages received")
     }

@@ -23,7 +23,6 @@
 package org.powerapi.module.cpu.dvfs
 
 import java.util.UUID
-
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
@@ -97,26 +96,29 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     import org.powerapi.core.TimeInStates
     import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
     import org.powerapi.core.ClockChannel.ClockTick
+    import org.powerapi.core.power._
     import PowerChannel.{PowerReport, subscribePowerReport}
     import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
-    import org.powerapi.module.PowerUnit
 
     val muid = UUID.randomUUID()
     val target: Target = 1
     val targetRatio = TargetUsageRatio(0.5)
     val timeInStates = TimeInStates(Map(1800002l -> 1l, 2100002l -> 2l, 2400003l -> 3l))
     val tickMock = ClockTick("test", 25.milliseconds)
-    val power = (
+    val power = ((
       formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(1800002) * 1 +
       formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(2100002) * 2 +
       formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(2400003) * 3
-    ) / (1 + 2 + 3)
+    ) / (1 + 2 + 3)).W
 
     subscribePowerReport(muid)(eventBus)(testActor)
     publishUsageReport(muid, target, targetRatio, timeInStates, tickMock)(eventBus)
 
-    expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "cpu", tic) => id should equal(muid); targ should equal(target); pow should equal(power); tic should equal(tickMock)
-    }
+    val ret = expectMsgClass(classOf[PowerReport])
+    ret.muid should equal(muid)
+    ret.target should equal(target)
+    ret.power should equal(power)
+    ret.device should equal("cpu")
+    ret.tick should equal(tickMock)
   }
 }

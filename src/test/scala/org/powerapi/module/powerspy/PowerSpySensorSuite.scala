@@ -30,14 +30,14 @@ import org.powerapi.core.{MessageBus, ExternalPMeter}
 import scala.concurrent.duration.DurationInt
 
 class MockPMeter(eventBus: MessageBus) extends ExternalPMeter {
-  import org.powerapi.module.PowerUnit
+  import org.powerapi.core.power._
   import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
 
   def init(): Unit = {}
   def start(): Unit = {
-    publishPowerSpyPower(10.0, PowerUnit.W)(eventBus)
-    publishPowerSpyPower(20.0, PowerUnit.W)(eventBus)
-    publishPowerSpyPower(14.0, PowerUnit.W)(eventBus)
+    publishPowerSpyPower(10.W)(eventBus)
+    publishPowerSpyPower(20.W)(eventBus)
+    publishPowerSpyPower(14.W)(eventBus)
   }
   def stop(): Unit = {}
 }
@@ -72,20 +72,20 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A PowerSpySensor" should "listen PowerSpyPower messages, build a new message and then publish it" in new EventBus {
     import akka.pattern.gracefulStop
-    import org.powerapi.module.PowerUnit
+    import org.powerapi.core.power._
     import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
 
     subscribeSensorPower(eventBus)(testActor)
     val pSpySensor = TestActorRef(Props(classOf[PowerSpySensor], eventBus, new MockPMeter(eventBus)), "pSpySensor")(system)
 
     expectMsgClass(classOf[PowerSpyPower]) match {
-      case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(10.0)
+      case PowerSpyPower(_, power, "powerspy") => power should equal(10.W)
     }
     expectMsgClass(classOf[PowerSpyPower]) match {
-      case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(20.0)
+      case PowerSpyPower(_, power, "powerspy") => power should equal(20.W)
     }
     expectMsgClass(classOf[PowerSpyPower]) match {
-      case PowerSpyPower(_, power, PowerUnit.W, "powerspy") => power should equal(14.0)
+      case PowerSpyPower(_, power, "powerspy") => power should equal(14.W)
     }
 
     gracefulStop(pSpySensor, 15.seconds)

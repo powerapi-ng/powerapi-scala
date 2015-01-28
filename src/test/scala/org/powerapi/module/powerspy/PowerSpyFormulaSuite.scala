@@ -25,7 +25,7 @@ package org.powerapi.module.powerspy
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
-import org.powerapi.module.PowerUnit
+import org.powerapi.core.power._
 
 class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -54,22 +54,30 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     publishUsageReport(muid, 1, TargetUsageRatio(0.5), tickMock)(eventBus)
     expectNoMsg(3.seconds)
 
-    publishSensorPower(90.0, PowerUnit.W)(eventBus)
-    publishSensorPower(92.0, PowerUnit.W)(eventBus)
-    publishSensorPower(150.0, PowerUnit.W)(eventBus)
-    publishUsageReport(muid, 1, TargetUsageRatio(0.5), tickMock)(eventBus)
-    expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(150 * 0.5); tic should equal(tickMock)
-    }
+    publishSensorPower(90.W)(eventBus)
+    publishSensorPower(92.W)(eventBus)
 
-    publishSensorPower(140.0, PowerUnit.W)(eventBus)
+    publishSensorPower(150.W)(eventBus)
+    publishUsageReport(muid, 1, TargetUsageRatio(0.5), tickMock)(eventBus)
+    var ret = expectMsgClass(classOf[PowerReport])
+    ret.muid should equal(muid)
+    ret.target should equal(Process(1))
+    ret.power should equal((150 * 0.5).W)
+    ret.tick should equal(tickMock)
+
+    publishSensorPower(140.W)(eventBus)
     publishUsageReport(muid, 1, TargetUsageRatio(0.25), tickMock)(eventBus)
-    expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(1)); pow should equal(140 * 0.25); tic should equal(tickMock)
-    }
+    ret = expectMsgClass(classOf[PowerReport])
+    ret.muid should equal(muid)
+    ret.target should equal(Process(1))
+    ret.power should equal((140 * 0.25).W)
+    ret.tick should equal(tickMock)
+
     publishUsageReport(muid, 2, TargetUsageRatio(0.25), tickMock)(eventBus)
-    expectMsgClass(classOf[PowerReport]) match {
-      case PowerReport(_, id, targ, pow, PowerUnit.W, "powerspy", tic) => id should equal(muid); targ should equal(Process(2)); pow should equal(140 * 0.25); tic should equal(tickMock)
-    }
+    ret = expectMsgClass(classOf[PowerReport])
+    ret.muid should equal(muid)
+    ret.target should equal(Process(2))
+    ret.power should equal((140 * 0.25).W)
+    ret.tick should equal(tickMock)
   }
 }

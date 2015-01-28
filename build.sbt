@@ -10,7 +10,9 @@ libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.2.1",
   "fr.inria.powerspy" %% "powerspy-scala" % "1.0.1",
   "com.nativelibs4java" % "bridj" % "0.6.2",
-  "org.scalanlp" %% "breeze" % "0.10"
+  "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
+  "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
+  "org.jfree" % "jfreechart" % "1.0.19"
 )
 
 // Logging
