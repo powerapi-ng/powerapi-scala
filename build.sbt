@@ -29,6 +29,7 @@ libraryDependencies ++= Seq(
 )
 
 scalacOptions ++= Seq(
+  "-language:reflectiveCalls",
   "-language:implicitConversions",
   "-feature",
   "-deprecation"
