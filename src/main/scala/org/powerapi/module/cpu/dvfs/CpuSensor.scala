@@ -53,7 +53,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.m
       frequenciesCache(key) = now
       diffTimeInStates
     }
-    else TimeInStates(Map())
+    else TimeInStates(for((freq, value) <- diffTimeInStates.times) yield freq -> 0l)
   }
 
   override def sense(monitorTick: MonitorTick): Unit = {
