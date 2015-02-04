@@ -82,12 +82,12 @@ object PowerChannel extends Channel {
   case class AggregateReport(muid: UUID, aggFunction: Seq[Power] => Power) extends PowerReport {
     private val values: collection.mutable.Buffer[Power] = collection.mutable.Buffer.empty
     private lazy val agg = aggFunction(values.seq)
-    private var lastPowerReport:PowerReport = RawPowerReport(aggPowerReportTopic(muid),
-                                                             muid,
-                                                             -1,
-                                                             0.W,
-                                                             "none",
-                                                             ClockTick("none", 0.milliseconds))
+    private var lastPowerReport: PowerReport = RawPowerReport(aggPowerReportTopic(muid),
+                                                              muid,
+                                                              -1,
+                                                              0.W,
+                                                              "none",
+                                                              ClockTick("none", 0.milliseconds))
     
     def size: Int = values.size
     def +=(value: PowerReport):AggregateReport = {

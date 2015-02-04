@@ -42,19 +42,19 @@ trait ConfigurationMock extends Configuration {
   override lazy val filePath = ConfigurationMock.testPath
 }
 
-class FileReporterMock extends FileReporter with ConfigurationMock
+class FileDisplayMock extends FileDisplay with ConfigurationMock
 
-class FileReporterSpec(system: ActorSystem) extends UnitTest(system) {
+class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("FileReporterSuite"))
+  def this() = this(ActorSystem("FileDisplaySuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
   val eventBus = new MessageBus
-  val reporterMock = TestActorRef(Props[FileReporterMock], "fileReporter")(system)
+  val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new FileDisplayMock), "fileReporter")(system)
 
   "A file reporter" should "process a power report and then report energy information in a file" in {
     import scalax.file.Path
@@ -88,9 +88,9 @@ class FileReporterSpec(system: ActorSystem) extends UnitTest(system) {
     testFile.size.get should be > 0L
     testFile.lines() should (
       have size 3 and
-      contain(RawPowerReport("topictest", muid, 1, 3.W, device, tickMock).toString) and
-      contain(RawPowerReport("topictest", muid, 2, 1.W, device, tickMock).toString) and
-      contain(RawPowerReport("topictest", muid, 3, 2.W, device, tickMock).toString)
+      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(1)};device=$device;value=${3.W}") and
+      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(2)};device=$device;value=${1.W}") and
+      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(3)};device=$device;value=${2.W}")
     )
     testFile.delete(true)
   }

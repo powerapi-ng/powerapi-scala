@@ -22,28 +22,20 @@
  */
 package org.powerapi.reporter
 
-import akka.event.LoggingReceive
-
 import org.powerapi.PowerDisplay
-import org.powerapi.core.APIComponent
+import org.powerapi.core.power.Power
+import org.powerapi.core.target.Target
 
 /**
- * Base class for reporters which are part of the API.
+ * Display power information into the console.
  *
+ * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-class ReporterComponent(output: PowerDisplay) extends APIComponent {
-  import org.powerapi.module.PowerChannel.PowerReport
+class ConsoleDisplay extends PowerDisplay {
 
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerReport => report(msg)
-  } orElse default
-
-  def report(aggPowerReport: PowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp,
-                   aggPowerReport.target,
-                   aggPowerReport.device,
-                   aggPowerReport.power)
+  def display(timestamp: Long, target: Target, device: String, power: Power) {
+    println(s"timestamp=$timestamp;target=$target;device=$device;value=$power")
   }
 }
 

@@ -32,27 +32,29 @@ import akka.util.Timeout
 
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.core.power.Power
+import org.powerapi.core.target.Target
 import org.powerapi.module.PowerChannel.PowerReport
 
-class ConsoleReporterMock(testActor: ActorRef) extends ConsoleReporter {
-  override def report(aggPowerReport: PowerReport) = {
-    testActor ! aggPowerReport.toString
+class ConsoleDisplayMock(testActor: ActorRef) extends ConsoleDisplay {
+  override def display(timestamp: Long, target: Target, device: String, power: Power) {
+    testActor ! s"timestamp=$timestamp;target=$target;device=$device;value=$power"
   }
 }
 
-class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
+class ConsoleDisplaySuite(system: ActorSystem) extends UnitTest(system) {
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("ConsoleReporterSuite"))
+  def this() = this(ActorSystem("ConsoleDisplaySuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
   val eventBus = new MessageBus
-  val reporterMock = TestActorRef(Props(classOf[ConsoleReporterMock], testActor), "consoleReporter")(system)
-
+  val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new ConsoleDisplayMock(testActor)), "consoleReporter")(system)
+  
   "A console reporter" should "process a PowerReport and then report energy information in a String format" in {
     import org.powerapi.core.target.intToProcess
     import org.powerapi.core.ClockChannel.ClockTick
@@ -79,9 +81,9 @@ class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
     
-    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, 1, 3.W, device, tickMock).toString)
-    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, 2, 1.W, device, tickMock).toString)
-    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, 3, 2.W, device, tickMock).toString)
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(1)};device=$device;value=${3.W}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(2)};device=$device;value=${1.W}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(3)};device=$device;value=${2.W}")
   }
 }
 

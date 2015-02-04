@@ -20,30 +20,21 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.powerspy
 
-import javax.swing.SwingUtilities
+import akka.actor.{ ActorRefFactory, Props }
 
-/**
- * Listen to power report and display its content into a JFreeChart graph.
- *
- * @see http://www.jfree.org/jfreechart
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
- */
-class JFreeChartReporter extends ReporterComponent {
-  import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.PowerModule
+import org.powerapi.core.MessageBus
 
-  override def preStart() {
-    SwingUtilities.invokeLater(new Runnable {
-      def run() {
-        Chart.run()
-      }
-    })
-  }
-
-  def report(aggPowerReport: PowerReport) {
-    Chart.process(Map(aggPowerReport.muid.toString -> aggPowerReport.power.toWatts), aggPowerReport.tick.timestamp)
+object PowerSpyModule extends PowerModule {
+  val underlyingSensorClass  = classOf[PowerSpySensor]
+  val underlyingFormulaClass = classOf[PowerSpyFormula]
+  
+  override def start(factory: ActorRefFactory, eventBus: MessageBus) {
+    val propS  = Props(underlyingSensorClass, eventBus, new PowerSpyPMeter(eventBus))
+    sensorRef  = factory.actorOf(propS)
+    val propF  = Props(underlyingFormulaClass, eventBus)
+    formulaRef = factory.actorOf(propF)
   }
 }
-

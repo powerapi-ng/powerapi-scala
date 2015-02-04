@@ -54,6 +54,17 @@ object MonitorChannel extends Channel {
                          muid: UUID,
                          target: Target,
                          tick: ClockTick) extends MonitorMessage
+                         
+  /**
+   * MonitorAggFunction is represented as a dedicated type of message.
+   *
+   * @param topic: subject used for routing the message.
+   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
+   * @param aggFunction: aggregate power estimation for a specific sample of power reports.
+   */
+  case class MonitorAggFunction(topic: String,
+                                muid: UUID,
+                                aggFunction: Seq[Power] => Power) extends MonitorMessage
 
   /**
    * MonitorStart is represented as a dedicated type of message.
@@ -62,13 +73,11 @@ object MonitorChannel extends Channel {
    * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
    * @param frequency: clock frequency.
    * @param targets: monitor targets.
-   * @param aggFunction: aggregate power estimation for a specific sample of power reports.
    */
   case class MonitorStart(topic: String,
                           muid: UUID,
                           frequency: FiniteDuration,
-                          targets: List[Target],
-                          aggFunction: Seq[Power] => Power) extends MonitorMessage
+                          targets: List[Target]) extends MonitorMessage
 
   /**
    * MonitorStop is represented as a dedicated type of message.
@@ -105,8 +114,8 @@ object MonitorChannel extends Channel {
   /**
    * External Methods used by the API (or a Monitor object) for interacting with the bus.
    */
-  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target], aggFunction: Seq[Power] => Power): MessageBus => Unit = {
-    publish(MonitorStart(topic, muid, frequency, targets, aggFunction))
+  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
+    publish(MonitorStart(topic, muid, frequency, targets))
   }
 
   def stopMonitor(muid: UUID): MessageBus => Unit = {
@@ -115,6 +124,10 @@ object MonitorChannel extends Channel {
 
   def stopAllMonitor: MessageBus => Unit = {
     publish(MonitorStopAll(topic))
+  }
+  
+  def setAggFunction(muid: UUID, aggFunction: Seq[Power] => Power): MessageBus => Unit = {
+    publish(MonitorAggFunction(topic, muid, aggFunction))
   }
 
   /**

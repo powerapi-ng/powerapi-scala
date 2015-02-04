@@ -22,59 +22,138 @@
  */
 package org.powerapi
 
-import akka.actor.{ActorRefFactory,Props}
-import org.powerapi.core.Target
-import scala.concurrent.duration.Duration
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.duration.{ FiniteDuration, DurationInt }
+
+import akka.actor.{ Actor, ActorLogging, ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props }
+import akka.event.LoggingReceive
+import akka.pattern.{ after, ask, gracefulStop }
+import akka.util.Timeout
+
+import org.powerapi.core.{ ActorComponent, MessageBus }
+import org.powerapi.core.target.Target
+import org.powerapi.core.power._
+
+/**
+ * PowerAPI object encapsulates all the messages.
+ */
+object PowerMeterMessages {
+  case object StopAll
+}
+
+/**
+* Object used to share the timeout.
+*/
+object DefaultTimeout {
+  val timeout = Timeout(1.seconds)
+}
+
+/**
+ * Represents the main actor of a PowerMeter. Used to handle all the actors created for one PowerMeter.
+ */
+class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends ActorComponent {
+  import PowerMeterMessages._
+  import org.powerapi.core.{ Clocks, Monitors }
+  import org.powerapi.core.ClockChannel.stopAllClock
+  import org.powerapi.core.MonitorChannel.{ MonitorStart, stopAllMonitor }
+  
+  implicit val timeout = DefaultTimeout.timeout
+  
+  var clockSupervisor: ActorRef   = null
+  var monitorSupervisor: ActorRef = null
+  
+  // Starts the mandatory supervisors.
+  override def preStart(): Unit = {
+    clockSupervisor   = context.actorOf(Props(classOf[Clocks], eventBus), "clockSupervisor")
+    monitorSupervisor = context.actorOf(Props(classOf[Monitors], eventBus), "monitorSupervisor")
+    
+    modules.foreach(module => {
+      module.start(context, eventBus)
+    })
+  }
+  
+  def receive = LoggingReceive {
+    case msg: MonitorStart => monitorSupervisor ! msg
+    case StopAll => stopAll
+  } orElse default
+  
+  def stopAll {
+    context.stop(monitorSupervisor)
+    context.stop(clockSupervisor)
+    modules.foreach(module => {
+      module.stop(context)
+    })
+  }
+}
 
 /**
  * Implements the main functionalities for configuring a <i>Software-Defined Power Meter</i>.
  *
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerMeter {
-    /**
-     * Triggers a new power monitoring for a specific set of targets at a given frequency.
-     *
-     * @param frequency Sampling frequency for estimating the power consumption.
-     * @param targets System targets to be monitored (and grouped by timestamp).
-     * @return the acknowledgment of the triggered power monitoring.
-     */
-    def monitor(frequency: Duration)(targets: Target*): PowerMonitoring = ???
+class PowerMeter(val modules: Seq[PowerModule], system: ActorSystem) {
+  import org.powerapi.core.Monitor
+  import org.powerapi.core.MonitorChannel.MonitorStart
+  import PowerMeterMessages._
+  
+  implicit val timeout = DefaultTimeout.timeout
 
-    /**
-     * Blocks and actively waits for a specific duration before returning.
-     *
-     * @param duration: duration to wait for.
-     * @return the instance of the power meter.
-     */
-    def waitFor(duration: Duration): this.type = ???
+  private val eventBus = new MessageBus
+  private val powerMeterActor = system.actorOf(Props(classOf[PowerMeterActor], modules, eventBus))
+  
+  /**
+   * Triggers a new power monitoring for a specific set of targets at a given frequency.
+   *
+   * @param frequency Sampling frequency for estimating the power consumption.
+   * @param targets System targets to be monitored (and grouped by timestamp).
+   * @return the acknowledgment of the triggered power monitoring.
+   */
+  def monitor(frequency: FiniteDuration)(targets: Target*): PowerMonitoring = {
+    val mon = new Monitor(eventBus, system)
+    powerMeterActor ! MonitorStart("", mon.muid, frequency, targets.toList)
+    mon
+  }
 
-    /**
-     * Shuts down the current instance of power meter.
-     */
-    def shutdown(): Unit = ???
+  /**
+   * Blocks and actively waits for a specific duration before returning.
+   *
+   * @param duration: duration to wait for.
+   * @return the instance of the power meter.
+   */
+  def waitFor(duration: FiniteDuration): this.type = {
+    import scala.concurrent.ExecutionContext.Implicits._
+    Await.result(after(duration, using = system.scheduler) {
+          Future successful s"waitFor completed"
+        }, duration + 1.seconds)
+    this
+  }
+
+  /**
+   * Shuts down the current instance of power meter.
+   */
+  def shutdown(): Unit = {
+    powerMeterActor ! StopAll
+    Await.result(gracefulStop(powerMeterActor, timeout.duration), timeout.duration)
+  }
 }
 
 object PowerMeter {
-    /**
-     * Loads a specific power module as a tuple (sensor,formula).
-     *
-     * Example: `PowerMeter.load(PowerSpyModule)`
-     *
-     * @param modules: the list of power modules to be loaded within the PowerMeter.
-     * @return the resulting instance of the requested power meter.
-     */
-    def load(modules: PowerModule*): PowerMeter = ???
-
-    /**
-     * Loads a specific display to render the power estimations produced by the power meter.
-     *
-     * Example: `PowerMeter.load(ConsoleDisplay.props)`
-     *
-     * @param display: the configuration of the power display to be loaded.
-     * @return the resulting instance of the requested power display.
-     */
-    def load(display: Props): PowerDisplay = ???
+  import org.powerapi.reporter.ReporterComponent
+  
+  implicit lazy val system = ActorSystem(s"${System.currentTimeMillis}")
+  
+  /**
+   * Loads a specific power module as a tuple (sensor,formula).
+   *
+   * Example: `PowerMeter.load(PowerSpyModule, system)`
+   *
+   * @param modules: the list of power modules to be loaded within the PowerMeter.
+   * @return the resulting instance of the requested power meter.
+   */
+  def load(modules: PowerModule*): PowerMeter = {
+    new PowerMeter(modules, system)
+  }
 }
 
 
@@ -84,15 +163,40 @@ object PowerMeter {
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 trait PowerModule {
-    /**
-     * Initiate a power module
-     */
-    def start(factory: ActorRefFactory)
+  import org.powerapi.core.APIComponent
+  import org.powerapi.module.SensorChannel.SensorReport
 
-    /**
-     * Stop a power module
-     */
-    def stop(factory: ActorRefFactory)
+  implicit val timeout = DefaultTimeout.timeout
+
+  // Underlying classes of a power module, used to create the actors.
+  def underlyingSensorClass: Class[_ <: APIComponent]
+  def underlyingFormulaClass: Class[_ <: APIComponent]
+  
+  def sensorArgs: List[Any]  = List()
+  def formulaArgs: List[Any] = List()
+  
+  var sensorRef: ActorRef  = null
+  var formulaRef: ActorRef = null
+
+  /**
+   * Initiate a power module
+   */
+  def start(factory: ActorRefFactory, eventBus: MessageBus) {
+    val propS  = Props(underlyingSensorClass, eventBus +: sensorArgs:_*)
+    sensorRef  = factory.actorOf(propS)
+    val propF  = Props(underlyingFormulaClass, eventBus +: formulaArgs:_*)
+    formulaRef = factory.actorOf(propF)
+  }
+
+  /**
+   * Stop a power module
+   */
+  def stop(factory: ActorRefFactory) {
+    if (formulaRef != null)
+      factory.stop(formulaRef)
+    if (sensorRef != null)
+      factory.stop(sensorRef)
+  }
 }
 
 /**
@@ -101,20 +205,20 @@ trait PowerModule {
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 trait PowerMonitoring {
-    /**
-     * Configures the aggregation function to apply on power estimation per sample.
-     */
-    def apply(aggregator: (Seq[Power])=>Option[Power]): this.type
+  /**
+   * Configures the aggregation function to apply on power estimation per sample.
+   */
+  def apply(aggregator: Seq[Power] => Power): this.type
 
-    /**
-     * Configures the power display to use for rendering power estimations.
-     */
-    def to(output:PowerDisplay): this.type
+  /**
+   * Configures the power display to use for rendering power estimations.
+   */
+  def to(output: PowerDisplay): this.type
 
-    /**
-     * Cancel the subscription and stops the associated monitoring.
-     */
-    def cancel()
+  /**
+   * Cancel the subscription and stops the associated monitoring.
+   */
+  def cancel()
 }
 
 /**
@@ -123,8 +227,10 @@ trait PowerMonitoring {
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 trait PowerDisplay {
-    /**
-     * Tells the power display to listen on power reports sent to a specific channel.
-     */
-    def listen(channel:String)
+
+  /**
+   * Displays data from power reports.
+   */
+  def display(timestamp: Long, target: Target, device: String, power: Power)
 }
+

@@ -22,6 +22,8 @@
  */
 package org.powerapi.core
 
+import org.saddle.Vec
+
 package object power {
   type PowerUnit = org.powerapi.core.power.PowerUnitSystem.PowerUnitVal
   final val MILLIWATTS = org.powerapi.core.power.PowerUnitSystem.MILLIWATTS
@@ -49,5 +51,21 @@ package object power {
 	  def kW = Power(value.toDouble, KILOWATTS)
 	  def MW = Power(value.toDouble, MEGAWATTS)
   }
+  
+  def MAX(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).max match {
+    case Some(max) => max.mW
+    case None => 0.W
+  }
+  def MIN(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).min match {
+    case Some(min) => min.mW
+    case None => 0.W
+  }
+  def GEOMEAN(s: Seq[Power])  = Vec(s.map(_.toMilliWatts):_*).geomean.mW
+  def LOGSUM(s: Seq[Power])   = Vec(s.map(_.toMilliWatts):_*).logsum.mW
+  def MEAN(s: Seq[Power])     = Vec(s.map(_.toMilliWatts):_*).mean.mW
+  def MEDIAN(s: Seq[Power])   = Vec(s.map(_.toMilliWatts):_*).median.mW
+  def STDEV(s: Seq[Power])    = Vec(s.map(_.toMilliWatts):_*).stdev.mW
+  def SUM(s: Seq[Power])      = Vec(s.map(_.toMilliWatts):_*).sum.mW
+  def VARIANCE(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).variance.mW
 }
 
