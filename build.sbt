@@ -12,7 +12,8 @@ libraryDependencies ++= Seq(
   "com.nativelibs4java" % "bridj" % "0.6.2",
   "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
-  "org.jfree" % "jfreechart" % "1.0.19"
+  "org.jfree" % "jfreechart" % "1.0.19",
+  "org.scala-saddle" %% "saddle-core" % "1.3.3"
 )
 
 // Logging

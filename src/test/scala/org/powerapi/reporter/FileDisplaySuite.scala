@@ -26,7 +26,7 @@ import java.util.UUID
 
 import scala.concurrent.duration.DurationInt
 
-import akka.actor.{ ActorRef, ActorSystem, Props }
+import akka.actor.{ ActorSystem, Props }
 import akka.testkit.{ TestActorRef, TestKit }
 import akka.util.Timeout
 
@@ -34,26 +34,28 @@ import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel.PowerReport
 
-class ConsoleReporterMock(testActor: ActorRef) extends ConsoleReporter {
-  override def report(aggPowerReport: PowerReport) = {
-    testActor ! aggPowerReport.toString
-  }
+object ConfigurationMock {
+  val testPath = "powerapi-reporter-file-test"
 }
 
-class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
+class FileDisplayMock extends FileDisplay {
+  override lazy val filePath = ConfigurationMock.testPath
+}
 
+class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("ConsoleReporterSuite"))
+  def this() = this(ActorSystem("FileDisplaySuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
   val eventBus = new MessageBus
-  val reporterMock = TestActorRef(Props(classOf[ConsoleReporterMock], testActor), "consoleReporter")(system)
+  val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new FileDisplayMock), "fileReporter")(system)
 
-  "A console reporter" should "process a PowerReport and then report energy information in a String format" in {
+  "A file reporter" should "process a power report and then report energy information in a file" in {
+    import scalax.file.Path
     import org.powerapi.core.target.intToProcess
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.power._
@@ -78,10 +80,17 @@ class ConsoleReporterSuite(system: ActorSystem) extends UnitTest(system) {
     render(aggR1)(eventBus)
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
-    
-    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, 1, 3.W, device, tickMock).toString)
-    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, 2, 1.W, device, tickMock).toString)
-    expectMsgClass(classOf[String]) should equal(RawPowerReport("topictest", muid, 3, 2.W, device, tickMock).toString)
+
+    val testFile = Path.fromString(ConfigurationMock.testPath)
+    testFile.isFile should be (true)
+    testFile.size.get should be > 0L
+    testFile.lines() should (
+      have size 3 and
+      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(1)};device=$device;value=${3.W}") and
+      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(2)};device=$device;value=${1.W}") and
+      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(3)};device=$device;value=${2.W}")
+    )
+    testFile.delete(true)
   }
 }
 

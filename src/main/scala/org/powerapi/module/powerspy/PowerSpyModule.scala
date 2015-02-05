@@ -20,30 +20,20 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.powerspy
 
-import akka.event.LoggingReceive
+import akka.actor.{ ActorRefFactory, Props }
 
-import org.powerapi.PowerDisplay
-import org.powerapi.core.APIComponent
+import org.powerapi.PowerModule
+import org.powerapi.core.MessageBus
 
-/**
- * Base class for reporters which are part of the API.
- *
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
- */
-class ReporterComponent(output: PowerDisplay) extends APIComponent {
-  import org.powerapi.module.PowerChannel.PowerReport
+object PowerSpyModule extends PowerModule {
+  val underlyingSensorsClass  = Seq()
+  val underlyingFormulaeClass = Seq()
 
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerReport => report(msg)
-  } orElse default
-
-  def report(aggPowerReport: PowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp,
-                   aggPowerReport.target,
-                   aggPowerReport.device,
-                   aggPowerReport.power)
+  override def start(factory: ActorRefFactory, eventBus: MessageBus) {
+    sensors  :+= factory.actorOf(Props(classOf[PowerSpySensor], eventBus, new PowerSpyPMeter(eventBus)))
+    sensors  :+= factory.actorOf(Props(classOf[org.powerapi.module.cpu.simple.CpuSensor], eventBus, new org.powerapi.core.LinuxHelper()))
+    formulae :+= factory.actorOf(Props(classOf[PowerSpyFormula], eventBus))
   }
 }
-

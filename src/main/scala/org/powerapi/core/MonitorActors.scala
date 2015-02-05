@@ -27,10 +27,10 @@ import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.event.LoggingReceive
 import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.power.Power
+import org.powerapi.core.power._
 import org.powerapi.module.PowerChannel.PowerReport
 import org.powerapi.core.target.Target
-import org.powerapi.reporter.ReporterComponent
+import org.powerapi.{ PowerDisplay, PowerMonitoring }
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -43,23 +43,23 @@ import scala.concurrent.duration.FiniteDuration
 class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
-                   targets: List[Target],
-                   aggFunction: Seq[Power] => Power) extends ActorComponent {
+                   targets: List[Target]) extends ActorComponent {
 
-  import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick}
+  import org.powerapi.core.ClockChannel.{ startClock, stopClock, subscribeClockTick, unsubscribeClockTick }
+  import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick }
   import org.powerapi.module.PowerChannel.{ AggregateReport, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case MonitorStart(_, id, freq, targs, _) if muid == id && frequency == freq && targets == targs => start()
+    case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
   } orElse default
 
   /**
    * Running state.
    */
-  def running(aggR: AggregateReport): Actor.Receive = LoggingReceive {
+  def running(aggR: AggregateReport, aggFunction: Seq[Power] => Power): Actor.Receive = LoggingReceive {
     case tick: ClockTick => produceMessages(tick)
-    case powerReport: PowerReport => aggregate(aggR, powerReport)
+    case MonitorAggFunction(_, id, aggF) if muid == id => setAggregatingFunction(aggR, aggF)
+    case powerReport: PowerReport => aggregate(aggR, powerReport, aggFunction)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -73,7 +73,15 @@ class MonitorChild(eventBus: MessageBus,
     subscribeClockTick(frequency)(eventBus)(self)
     subscribePowerReport(muid)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
-    context.become(running(AggregateReport(muid, aggFunction)))
+    context.become(running(AggregateReport(muid, SUM), SUM))
+  }
+
+  /**
+   * Change the aggregating function for this monitor
+   */
+  def setAggregatingFunction(aggR: AggregateReport, aggF: Seq[Power] => Power): Unit = {
+    log.info("aggregating function is changed")
+    context.become(running(aggR, aggF))
   }
 
   /**
@@ -87,14 +95,14 @@ class MonitorChild(eventBus: MessageBus,
    * Wait to retrieve power reports of all targets from a same monitor to aggregate them
    * into once power report.
    */
-  def aggregate(aggR: AggregateReport, powerReport: PowerReport): Unit = {
+  def aggregate(aggR: AggregateReport, powerReport: PowerReport, aggF: Seq[Power] => Power): Unit = {
     aggR += powerReport
-    if (aggR.size == targets.size) {
+    if (aggR.size >= targets.size) {
       render(aggR)(eventBus)
-      context.become(running(AggregateReport(muid, aggFunction)))
+      context.become(running(AggregateReport(muid, aggF), aggF))
     }
     else
-      context.become(running(aggR))
+      context.become(running(aggR, aggF))
   }
 
   /**
@@ -117,7 +125,7 @@ class MonitorChild(eventBus: MessageBus,
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Monitors(eventBus: MessageBus) extends Supervisor {
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
+  import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, stopAllMonitor, subscribeMonitorsChannel}
   import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
   
   override def preStart(): Unit = {
@@ -125,16 +133,11 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
     super.preStart()
   }
 
-  override def postStop(): Unit = {
-    context.actorSelection("*") ! stopAllMonitor
-    super.postStop()
-  }
-
   /**
    * MonitorChild actors can only launch exception if the message received is not handled.
    */
   def handleFailure: PartialFunction[Throwable, Directive] = {
-    case _: UnsupportedOperationException => Resume 
+    case _: UnsupportedOperationException => Resume
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
@@ -146,6 +149,7 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
    */
   def running: Actor.Receive = LoggingReceive {
     case msg: MonitorStart => start(msg)
+    case msg: MonitorAggFunction => setAggregatingFunction(msg)
     case msg: MonitorStop => stop(msg)
     case msg: MonitorStopAll => stopAll(msg)
   } orElse default
@@ -157,9 +161,19 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
    */
   def start(msg: MonitorStart): Unit = {
     val name = formatMonitorChildName(msg.muid)
-    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets, msg.aggFunction), name)
+    val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets), name)
     child ! msg
     context.become(running)
+  }
+  
+  /**
+   * Change the aggregating function for a given MonitorChild.
+   *
+   * @param msg: Message received for changing the aggregating function.
+   */
+  def setAggregatingFunction(msg: MonitorAggFunction): Unit = {
+    val name = formatMonitorChildName(msg.muid)
+    context.actorSelection(name) ! msg
   }
 
   /**
@@ -188,17 +202,22 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
 /**
  * This class is an interface for interacting directly with a MonitorChild actor.
  */
-class Monitor(eventBus: MessageBus, _system: ActorSystem) {
+class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring {
   val muid = UUID.randomUUID()
   
-  def reportTo(reporterComponent: Class[_ <: ReporterComponent], args: List[Any] = List()): Monitor = {
-    reportTo(_system.actorOf(Props(reporterComponent, args: _*)))
+  def apply(aggregator: Seq[Power] => Power): this.type = {
+    import org.powerapi.core.MonitorChannel.setAggFunction
+    
+    setAggFunction(muid, aggregator)(eventBus)
+    this
   }
   
-  def reportTo(reporter: ActorRef): Monitor = {
+  def to(output: PowerDisplay): this.type = {
     import org.powerapi.module.PowerChannel.subscribeAggPowerReport
-  
-    subscribeAggPowerReport(muid)(eventBus)(reporter)
+    import org.powerapi.reporter.ReporterComponent
+    
+    val reporterRef = system.actorOf(Props(classOf[ReporterComponent], output))
+    subscribeAggPowerReport(muid)(eventBus)(reporterRef)
     this
   }
   

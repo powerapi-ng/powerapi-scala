@@ -51,7 +51,7 @@ class MonitorMockSubscriber(eventBus: MessageBus) extends Actor {
 
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   import ClockChannel.{ ClockTick, formatClockChildName }
-  import MonitorChannel.{ MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
+  import MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
   import org.powerapi.core.power._
   import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target}
   import org.powerapi.module.PowerChannel.{ PowerReport, publishPowerReport, subscribeAggPowerReport }
@@ -76,9 +76,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 50.milliseconds
     val targets = List[Target](1)
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
                                                             
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets, aggFunction), "monitor1")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor1")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
@@ -86,16 +85,16 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, Duration.Zero, targets, aggFunction)
+      monitor ! MonitorStart("test", muid, Duration.Zero, targets)
     })(_system)
 
     // Not an exception, just an assessment (switching in the running state).
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets, aggFunction)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets, aggFunction)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
@@ -121,15 +120,14 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val frequency = 25.milliseconds
     val muid = UUID.randomUUID()
     val targets = List[Target](1, "java", All)
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
     
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets, aggFunction), "monitor2")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor2")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets, aggFunction)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
 
     Thread.sleep(250)
@@ -168,19 +166,18 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val frequency = 25.milliseconds
     val muid = UUID.randomUUID()
     val targets = scala.collection.mutable.ListBuffer[Target]()
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
 
     for(i <- 1 to 100) {
       targets += i
     }
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks3")
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets.toList, aggFunction), "monitor3")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets.toList), "monitor3")
     val subscriber = _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
 
-    monitor ! MonitorStart("test", muid, frequency, targets.toList, aggFunction)
+    monitor ! MonitorStart("test", muid, frequency, targets.toList)
     Thread.sleep(250)
     monitor ! MonitorStop("test", muid)
 
@@ -216,7 +213,6 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     
     val frequency = 25.milliseconds
     val targets = List[Target](1, "java")
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
                                                       
     val monitor = new Monitor(eventBus, _system)
 
@@ -226,7 +222,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       subscribers += _system.actorOf(Props(classOf[MonitorMockSubscriber], eventBus))
     }
 
-    startMonitor(monitor.muid, frequency, targets, aggFunction)(eventBus)
+    startMonitor(monitor.muid, frequency, targets)(eventBus)
     Thread.sleep(250)
     monitor.cancel()
 
@@ -270,8 +266,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val monitor = new Monitor(eventBus, _system)
     val monitor2 = new Monitor(eventBus, _system)
 
-    startMonitor(monitor.muid, 25.milliseconds, List[Target](1), (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p })(eventBus)
-    startMonitor(monitor2.muid, 50.milliseconds, List[Target](2), (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p })(eventBus)
+    startMonitor(monitor.muid, 25.milliseconds, List[Target](1))(eventBus)
+    startMonitor(monitor2.muid, 50.milliseconds, List[Target](2))(eventBus)
     Thread.sleep(250)
     val children = monitors.children.toArray.clone()
     children.foreach(child => reaper.watch(child))
@@ -300,11 +296,10 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")
 
     val targets = List(All)
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
 
     for(frequency <- 50 to 100) {
       val monitor = new Monitor(eventBus, _system)
-      startMonitor(monitor.muid, frequency.milliseconds, targets, aggFunction)(eventBus)
+      startMonitor(monitor.muid, frequency.milliseconds, targets)(eventBus)
     }
 
     Thread.sleep(1000)
@@ -321,23 +316,36 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 25.milliseconds
     val targets = List[Target](1, 2, 3)
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
 
     val device = "mock"
     val tickMock = ClockTick("ticktest", frequency)
 
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets, aggFunction), "monitor6")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor6")
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
     subscribeAggPowerReport(muid)(eventBus)(testActor)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets, aggFunction)
+      monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
-
+    
     publishPowerReport(muid, 1, 4.W, device, tickMock)(eventBus)
     publishPowerReport(muid, 2, 5.W, device, tickMock)(eventBus)
+    EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorAggFunction("test", muid, MAX)
+    })(_system)
     publishPowerReport(muid, 3, 6.W, device, tickMock)(eventBus)
+
+    publishPowerReport(muid, 1, 11.W, device, tickMock)(eventBus)
+    publishPowerReport(muid, 2, 10.W, device, tickMock)(eventBus)
+    EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
+      monitor ! MonitorAggFunction("test", muid, MIN)
+    })(_system)
+    publishPowerReport(muid, 3, 12.W, device, tickMock)(eventBus)
+    
+    publishPowerReport(muid, 1, 9.W, device, tickMock)(eventBus)
+    publishPowerReport(muid, 2, 3.W, device, tickMock)(eventBus)
+    publishPowerReport(muid, 3, 7.W, device, tickMock)(eventBus)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorStop("test", muid)
@@ -348,6 +356,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     }, 20.seconds)
 
     expectMsgClass(classOf[PowerReport]).power should equal(15.W)
+    expectMsgClass(classOf[PowerReport]).power should equal(12.W)
+    expectMsgClass(classOf[PowerReport]).power should equal(3.W)
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
@@ -361,7 +371,6 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid = UUID.randomUUID()
     val frequency = 25.milliseconds
     val targets = scala.collection.mutable.ListBuffer[Target]()
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
 
     val device = "mock"
     val tickMock = ClockTick("ticktest", frequency)
@@ -370,13 +379,13 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       targets += i
     }
 
-    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets.toList, aggFunction), "monitor7")
+    val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets.toList), "monitor7")
     val watcher = TestProbe()(_system)
     watcher.watch(monitor)
     subscribeAggPowerReport(muid)(eventBus)(testActor)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
-      monitor ! MonitorStart("test", muid, frequency, targets.toList, aggFunction)
+      monitor ! MonitorStart("test", muid, frequency, targets.toList)
     })(_system)
 
     for(i <- 1 to 150) {

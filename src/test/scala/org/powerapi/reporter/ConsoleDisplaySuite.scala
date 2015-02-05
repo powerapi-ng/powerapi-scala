@@ -26,38 +26,36 @@ import java.util.UUID
 
 import scala.concurrent.duration.DurationInt
 
-import akka.actor.{ ActorSystem, Props }
+import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.testkit.{ TestActorRef, TestKit }
 import akka.util.Timeout
 
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.core.power.Power
+import org.powerapi.core.target.Target
 import org.powerapi.module.PowerChannel.PowerReport
 
-object ConfigurationMock {
-  val testPath = "powerapi-reporter-file-test"
+class ConsoleDisplayMock(testActor: ActorRef) extends ConsoleDisplay {
+  override def display(timestamp: Long, target: Target, device: String, power: Power) {
+    testActor ! s"timestamp=$timestamp;target=$target;device=$device;value=$power"
+  }
 }
 
-trait ConfigurationMock extends Configuration {
-  override lazy val filePath = ConfigurationMock.testPath
-}
+class ConsoleDisplaySuite(system: ActorSystem) extends UnitTest(system) {
 
-class FileReporterMock extends FileReporter with ConfigurationMock
-
-class FileReporterSpec(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("FileReporterSuite"))
+  def this() = this(ActorSystem("ConsoleDisplaySuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
   val eventBus = new MessageBus
-  val reporterMock = TestActorRef(Props[FileReporterMock], "fileReporter")(system)
-
-  "A file reporter" should "process a power report and then report energy information in a file" in {
-    import scalax.file.Path
+  val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new ConsoleDisplayMock(testActor)), "consoleReporter")(system)
+  
+  "A console reporter" should "process a PowerReport and then report energy information in a String format" in {
     import org.powerapi.core.target.intToProcess
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.power._
@@ -82,17 +80,10 @@ class FileReporterSpec(system: ActorSystem) extends UnitTest(system) {
     render(aggR1)(eventBus)
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
-
-    val testFile = Path.fromString(ConfigurationMock.testPath)
-    testFile.isFile should be (true)
-    testFile.size.get should be > 0L
-    testFile.lines() should (
-      have size 3 and
-      contain(RawPowerReport("topictest", muid, 1, 3.W, device, tickMock).toString) and
-      contain(RawPowerReport("topictest", muid, 2, 1.W, device, tickMock).toString) and
-      contain(RawPowerReport("topictest", muid, 3, 2.W, device, tickMock).toString)
-    )
-    testFile.delete(true)
+    
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(1)};device=$device;value=${3.W}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(2)};device=$device;value=${1.W}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(3)};device=$device;value=${2.W}")
   }
 }
 

@@ -22,28 +22,36 @@
  */
 package org.powerapi.reporter
 
-import javax.swing.SwingUtilities
+import org.powerapi.PowerDisplay
+import org.powerapi.core.Configuration
 
 /**
- * Listen to power report and display its content into a JFreeChart graph.
+ * Display power information into a given file.
  *
- * @see http://www.jfree.org/jfreechart
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-class JFreeChartReporter extends ReporterComponent {
-  import org.powerapi.module.PowerChannel.PowerReport
-
-  override def preStart() {
-    SwingUtilities.invokeLater(new Runnable {
-      def run() {
-        Chart.run()
-      }
-    })
+class FileDisplay extends PowerDisplay with Configuration {
+  import scalax.file.Path
+  import scalax.io.Resource
+  import org.powerapi.core.ConfigValue
+  import org.powerapi.core.FileHelper.using
+  import org.powerapi.core.power.Power
+  import org.powerapi.core.target.Target
+  
+  /**
+   * The output file path, build from prefix given by user.
+   * Temporary file as default.
+   */
+  lazy val filePath = load { _.getString("powerapi.reporter.file.prefix") + System.nanoTime() } match {
+    case ConfigValue(path) => path
+    case _ => Path.createTempFile(prefix = "powerapi.reporter-file", deleteOnExit = false).path
   }
+  
+  lazy val output = Resource.fromFile(filePath)
 
-  def report(aggPowerReport: PowerReport) {
-    Chart.process(Map(aggPowerReport.muid.toString -> aggPowerReport.power.toWatts), aggPowerReport.tick.timestamp)
+  def display(timestamp: Long, target: Target, device: String, power: Power) {
+    output.append(s"timestamp=$timestamp;target=$target;device=$device;value=$power\n")
   }
 }
 

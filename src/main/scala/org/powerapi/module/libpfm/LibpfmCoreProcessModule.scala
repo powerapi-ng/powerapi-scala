@@ -20,19 +20,12 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.libpfm
 
-/**
- * Listen to powerReport message and display its content into the console.
- *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
- */
-class ConsoleReporter extends ReporterComponent {
-  import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.PowerModule
+import org.powerapi.core.LinuxHelper
 
-  def report(aggPowerReport: PowerReport) {
-    println(aggPowerReport)
-  }
+object LibpfmCoreProcessModule extends PowerModule {
+  val underlyingSensorsClass  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper)))
+  val underlyingFormulaeClass = Seq((classOf[cycles.LibpfmCoreCyclesFormula], Seq()))
 }
-
