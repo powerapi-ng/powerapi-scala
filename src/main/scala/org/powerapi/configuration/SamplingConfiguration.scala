@@ -36,8 +36,8 @@ trait SamplingConfiguration {
   import org.powerapi.core.ConfigValue
   import scala.concurrent.duration.{DurationDouble, FiniteDuration}
 
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.MILLISECONDS) } match {
-    case ConfigValue(value) => value.milliseconds
+  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
+    case ConfigValue(value) => value.nanoseconds
     case _ => 1.seconds
   }
 }
