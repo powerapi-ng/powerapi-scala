@@ -26,8 +26,6 @@ import org.powerapi.PowerModule
 import org.powerapi.core.LinuxHelper
 
 object CpuDvfsModule extends PowerModule {
-  val underlyingSensorClass  = classOf[CpuSensor]
-  val underlyingFormulaClass = classOf[CpuFormula]
-  
-  override val sensorArgs: List[Any] = List(new LinuxHelper)
+  val underlyingSensorsClass  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
+  val underlyingFormulaeClass = Seq((classOf[CpuFormula], Seq()))
 }

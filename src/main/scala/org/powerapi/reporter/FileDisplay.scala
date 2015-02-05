@@ -22,17 +22,22 @@
  */
 package org.powerapi.reporter
 
-import scalax.file.Path
-
 import org.powerapi.PowerDisplay
-import org.powerapi.core.power.Power
-import org.powerapi.core.target.Target
+import org.powerapi.core.Configuration
 
 /**
- * FileDisplay's configuration part.
+ * Display power information into a given file.
+ *
+ * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
+ * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-trait Configuration extends org.powerapi.core.Configuration {
+class FileDisplay extends PowerDisplay with Configuration {
+  import scalax.file.Path
+  import scalax.io.Resource
   import org.powerapi.core.ConfigValue
+  import org.powerapi.core.FileHelper.using
+  import org.powerapi.core.power.Power
+  import org.powerapi.core.target.Target
   
   /**
    * The output file path, build from prefix given by user.
@@ -42,17 +47,6 @@ trait Configuration extends org.powerapi.core.Configuration {
     case ConfigValue(path) => path
     case _ => Path.createTempFile(prefix = "powerapi.reporter-file", deleteOnExit = false).path
   }
-}
-
-/**
- * Display power information into a given file.
- *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
- */
-class FileDisplay extends PowerDisplay with Configuration {
-  import scalax.io.Resource
-  import org.powerapi.core.FileHelper.using
   
   lazy val output = Resource.fromFile(filePath)
 

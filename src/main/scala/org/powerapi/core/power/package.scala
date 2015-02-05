@@ -54,11 +54,11 @@ package object power {
   
   def MAX(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).max match {
     case Some(max) => max.mW
-    case None => 0.W
+    case None => 0.mW
   }
   def MIN(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).min match {
     case Some(min) => min.mW
-    case None => 0.W
+    case None => 0.mW
   }
   def GEOMEAN(s: Seq[Power])  = Vec(s.map(_.toMilliWatts):_*).geomean.mW
   def LOGSUM(s: Seq[Power])   = Vec(s.map(_.toMilliWatts):_*).logsum.mW

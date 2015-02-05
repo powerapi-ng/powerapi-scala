@@ -38,11 +38,9 @@ object ConfigurationMock {
   val testPath = "powerapi-reporter-file-test"
 }
 
-trait ConfigurationMock extends Configuration {
+class FileDisplayMock extends FileDisplay {
   override lazy val filePath = ConfigurationMock.testPath
 }
-
-class FileDisplayMock extends FileDisplay with ConfigurationMock
 
 class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)

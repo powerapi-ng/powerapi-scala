@@ -26,8 +26,6 @@ import org.powerapi.PowerModule
 import org.powerapi.core.LinuxHelper
 
 object LibpfmCoreProcessModule extends PowerModule {
-  val underlyingSensorClass  = classOf[LibpfmCoreProcessSensor]
-  val underlyingFormulaClass = classOf[cycles.LibpfmCoreCyclesFormula]
-  
-  override val sensorArgs: List[Any] = List(new LinuxHelper)
+  val underlyingSensorsClass  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper)))
+  val underlyingFormulaeClass = Seq((classOf[cycles.LibpfmCoreCyclesFormula], Seq()))
 }

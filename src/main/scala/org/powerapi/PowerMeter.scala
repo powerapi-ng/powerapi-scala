@@ -92,7 +92,7 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerMeter(val modules: Seq[PowerModule], system: ActorSystem) {
+class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) {
   import org.powerapi.core.Monitor
   import org.powerapi.core.MonitorChannel.MonitorStart
   import PowerMeterMessages._
@@ -110,9 +110,9 @@ class PowerMeter(val modules: Seq[PowerModule], system: ActorSystem) {
    * @return the acknowledgment of the triggered power monitoring.
    */
   def monitor(frequency: FiniteDuration)(targets: Target*): PowerMonitoring = {
-    val mon = new Monitor(eventBus, system)
-    powerMeterActor ! MonitorStart("", mon.muid, frequency, targets.toList)
-    mon
+    val monitor = new Monitor(eventBus, system)
+    powerMeterActor ! MonitorStart("", monitor.muid, frequency, targets.toList)
+    monitor
   }
 
   /**
@@ -124,7 +124,7 @@ class PowerMeter(val modules: Seq[PowerModule], system: ActorSystem) {
   def waitFor(duration: FiniteDuration): this.type = {
     import scala.concurrent.ExecutionContext.Implicits._
     Await.result(after(duration, using = system.scheduler) {
-          Future successful s"waitFor completed"
+          Future successful "waitFor completed"
         }, duration + 1.seconds)
     this
   }
@@ -139,9 +139,7 @@ class PowerMeter(val modules: Seq[PowerModule], system: ActorSystem) {
 }
 
 object PowerMeter {
-  import org.powerapi.reporter.ReporterComponent
-  
-  implicit lazy val system = ActorSystem(s"${System.currentTimeMillis}")
+  implicit lazy val system = ActorSystem(s"PowerMeter-${System.currentTimeMillis}")
   
   /**
    * Loads a specific power module as a tuple (sensor,formula).
@@ -164,38 +162,34 @@ object PowerMeter {
  */
 trait PowerModule {
   import org.powerapi.core.APIComponent
-  import org.powerapi.module.SensorChannel.SensorReport
 
   implicit val timeout = DefaultTimeout.timeout
 
   // Underlying classes of a power module, used to create the actors.
-  def underlyingSensorClass: Class[_ <: APIComponent]
-  def underlyingFormulaClass: Class[_ <: APIComponent]
+  def underlyingSensorsClass: Seq[(Class[_ <: APIComponent], Seq[Any])]
+  def underlyingFormulaeClass: Seq[(Class[_ <: APIComponent], Seq[Any])]
   
-  def sensorArgs: List[Any]  = List()
-  def formulaArgs: List[Any] = List()
-  
-  var sensorRef: ActorRef  = null
-  var formulaRef: ActorRef = null
+  protected var sensors: List[ActorRef]  = List()
+  protected var formulae: List[ActorRef] = List()
 
   /**
    * Initiate a power module
    */
   def start(factory: ActorRefFactory, eventBus: MessageBus) {
-    val propS  = Props(underlyingSensorClass, eventBus +: sensorArgs:_*)
-    sensorRef  = factory.actorOf(propS)
-    val propF  = Props(underlyingFormulaClass, eventBus +: formulaArgs:_*)
-    formulaRef = factory.actorOf(propF)
+    underlyingSensorsClass.foreach(underlyingSensorClass => {
+      sensors :+= factory.actorOf(Props(underlyingSensorClass._1, eventBus +: underlyingSensorClass._2:_*))
+    })
+    underlyingFormulaeClass.foreach(underlyingFormulaClass => {
+      formulae :+= factory.actorOf(Props(underlyingFormulaClass._1, eventBus +: underlyingFormulaClass._2:_*))
+    })
   }
 
   /**
    * Stop a power module
    */
   def stop(factory: ActorRefFactory) {
-    if (formulaRef != null)
-      factory.stop(formulaRef)
-    if (sensorRef != null)
-      factory.stop(sensorRef)
+    sensors.foreach(sensor => factory.stop(sensor))
+    formulae.foreach(formula => factory.stop(formula))
   }
 }
 

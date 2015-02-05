@@ -28,13 +28,12 @@ import org.powerapi.PowerModule
 import org.powerapi.core.MessageBus
 
 object PowerSpyModule extends PowerModule {
-  val underlyingSensorClass  = classOf[PowerSpySensor]
-  val underlyingFormulaClass = classOf[PowerSpyFormula]
-  
+  val underlyingSensorsClass  = Seq()
+  val underlyingFormulaeClass = Seq()
+
   override def start(factory: ActorRefFactory, eventBus: MessageBus) {
-    val propS  = Props(underlyingSensorClass, eventBus, new PowerSpyPMeter(eventBus))
-    sensorRef  = factory.actorOf(propS)
-    val propF  = Props(underlyingFormulaClass, eventBus)
-    formulaRef = factory.actorOf(propF)
+    sensors  :+= factory.actorOf(Props(classOf[PowerSpySensor], eventBus, new PowerSpyPMeter(eventBus)))
+    sensors  :+= factory.actorOf(Props(classOf[org.powerapi.module.cpu.simple.CpuSensor], eventBus, new org.powerapi.core.LinuxHelper()))
+    formulae :+= factory.actorOf(Props(classOf[PowerSpyFormula], eventBus))
   }
 }
