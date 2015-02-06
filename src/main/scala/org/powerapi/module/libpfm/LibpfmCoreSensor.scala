@@ -34,6 +34,7 @@ import scala.collection.BitSet
  */
 trait LibpfmCoreConfiguration extends Configuration {
   import org.powerapi.core.ConfigValue
+  import scala.collection.JavaConversions._
 
   /**
    * List of enabled bits for the perf_event_open maccro.
@@ -44,14 +45,14 @@ trait LibpfmCoreConfiguration extends Configuration {
   lazy val configuration =
     BitSet(
       (load { _.getIntList("powerapi.libpfm.configuration") } match {
-        case ConfigValue(values) => values.asInstanceOf[List[Int]]
+        case ConfigValue(values) => values.map(_.toInt).toList
         case _ => List[Int]()
       }): _*
     )
 
   lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
-    case ConfigValue(values) => values.asInstanceOf[List[String]]
-    case _ => List()
+    case ConfigValue(values) => values.map(_.toString).toList
+    case _ => List[String]()
   }
 }
 

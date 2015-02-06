@@ -29,7 +29,7 @@ import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
 class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication, Target}
+  import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication}
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("OSHelperSuite"))
@@ -63,7 +63,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
         case _ => None
       }
 
-      def getGlobalCpuTime: Option[Long] = None
+      def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
 
       def getThreads(process: Process): List[Thread] = List()
 
@@ -99,9 +99,10 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val activeTime = 25883594
 
-    helper.getGlobalCpuTime should equal(Some(globalTime))
-    badHelper.getGlobalCpuTime should equal(None)
+    helper.getGlobalCpuTime should equal(GlobalCpuTime(globalTime, activeTime))
+    badHelper.getGlobalCpuTime should equal(GlobalCpuTime(0, 0))
   }
 
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {

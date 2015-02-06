@@ -54,45 +54,52 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     val eventBus = new MessageBus
 
-    val globalElapsedTime1 = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val globalElapsedTime2 = 43173 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val globalElapsedTime3 = 43175 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val p1ElapsedTime1 = 33 + 2
-    val p1ElapsedTime2 = 33 + 4
-    val p2ElapsedTime = 10 + 5
-    val p3ElapsedTime = 3 + 5
-    val appElapsedTime = p2ElapsedTime + p3ElapsedTime
+    val globalElapsedTime1: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val activeElapsedTime1: Long = globalElapsedTime1 - 25883594
+    val globalElapsedTime2: Long = 43173 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val activeElapsedTime2: Long = globalElapsedTime2 - 25883594
+    val globalElapsedTime3: Long = 43175 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val activeElapsedTime3: Long = globalElapsedTime3 - 25883594
+    val p1ElapsedTime1: Long = 33 + 2
+    val p1ElapsedTime2: Long = 33 + 4
+    val p2ElapsedTime: Long = 10 + 5
+    val p3ElapsedTime: Long = 3 + 5
+    val appElapsedTime: Long = p2ElapsedTime + p3ElapsedTime
 
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
     val muid3 = UUID.randomUUID()
 
-    val oldP1ElapsedTime1 = (p1ElapsedTime1 / 2).toLong
-    val oldP1ElapsedTime2 = (p1ElapsedTime1 / 2).toLong
-    val oldP2ElapsedTime = (p2ElapsedTime / 2).toLong
-    val oldP3ElapsedTime = (p3ElapsedTime / 2).toLong
+    val oldP1ElapsedTime1 = p1ElapsedTime1 / 2
+    val oldP1ElapsedTime2 = p1ElapsedTime1 / 2
+    val oldP2ElapsedTime = p2ElapsedTime / 2
+    val oldP3ElapsedTime = p3ElapsedTime / 2
     val oldAppElapsedTime = oldP2ElapsedTime + oldP3ElapsedTime
-    val oldGlobalElapsedTime1 = (globalElapsedTime1 / 2).toLong
-    val oldGlobalElapsedTime2 = (globalElapsedTime2 / 2).toLong
-    val oldGlobalElapsedTime3 = (globalElapsedTime3 / 2).toLong
+    val (oldGlobalElapsedTime1, oldActiveElapsedTime1) = (globalElapsedTime1 / 2, activeElapsedTime1 / 2)
+    val (oldGlobalElapsedTime2, oldActiveElapsedTime2) = (globalElapsedTime2 / 2, activeElapsedTime2 / 2)
+    val (oldGlobalElapsedTime3, oldActiveElapsedTime3) = (globalElapsedTime3 / 2, activeElapsedTime3 / 2)
 
     val processRatio1 = TargetUsageRatio((p1ElapsedTime1 - oldP1ElapsedTime1).toDouble / (globalElapsedTime1 - oldGlobalElapsedTime1))
 
     val processRatio2 = TargetUsageRatio((p1ElapsedTime2 - oldP1ElapsedTime2).toDouble / (globalElapsedTime2 - oldGlobalElapsedTime2))
     val appRatio = TargetUsageRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime2 - oldGlobalElapsedTime2))
 
+    val allRatio = TargetUsageRatio((activeElapsedTime3 - oldActiveElapsedTime3).toDouble / (globalElapsedTime3 - oldGlobalElapsedTime3))
+
     val tickMock = ClockTick("test", 25.milliseconds)
 
     val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
+      import org.powerapi.core.GlobalCpuTime
+
       private var targetTimes = Map[Target, List[Long]](
         Process(1) -> List(oldP1ElapsedTime1, oldP1ElapsedTime2, p1ElapsedTime1, p1ElapsedTime2),
         Process(2) -> List(oldP2ElapsedTime, p2ElapsedTime),
         Process(3) -> List(oldP3ElapsedTime, p3ElapsedTime)
       )
 
-      private var globalTimes = List[Long](
-        oldGlobalElapsedTime1, oldGlobalElapsedTime2, oldGlobalElapsedTime2, oldGlobalElapsedTime3,
-        globalElapsedTime1, globalElapsedTime2, globalElapsedTime2, globalElapsedTime3
+      private var globalTimes = List[(Long, Long)](
+        (oldGlobalElapsedTime1, oldActiveElapsedTime1), (oldGlobalElapsedTime2, oldActiveElapsedTime2), (oldGlobalElapsedTime2, oldActiveElapsedTime2), (oldGlobalElapsedTime3, oldActiveElapsedTime3),
+        (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime3, activeElapsedTime3)
       )
 
       def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
@@ -109,13 +116,13 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
         }
       }
 
-      def getGlobalCpuTime: Option[Long] = {
+      def getGlobalCpuTime: GlobalCpuTime = {
         globalTimes.headOption match {
-          case time: Some[Long] => {
+          case Some((globalTime, activeTime)) => {
             globalTimes = globalTimes.tail
-            time
+            GlobalCpuTime(globalTime, activeTime)
           }
-          case _ => None
+          case _ => GlobalCpuTime(0, 0)
         }
       }
 
@@ -164,10 +171,10 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     }
     publishMonitorTick(muid3, All, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(TargetUsageRatio(1.0))
+      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(allRatio)
     }
     cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid3, All))(0, 0) match {
-      case times => times should equal(globalElapsedTime3, globalElapsedTime3)
+      case times => times should equal(activeElapsedTime3, globalElapsedTime3)
     }
 
     gracefulStop(cpuSensor, 1.seconds)
@@ -185,12 +192,15 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
     val eventBus = new MessageBus
 
-    val globalElapsedTime = (43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0).toLong
+    val globalElapsedTime: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val activeElapsedTime: Long = globalElapsedTime - 25883594
     val p1ElapsedTime = (33 + 2).toLong
 
     val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
+      import org.powerapi.core.GlobalCpuTime
+
       private var targetTimes = Map[Target, List[Long]](Process(1) -> List(p1ElapsedTime + 10, p1ElapsedTime))
-      private var globalTimes = List[Long](globalElapsedTime, globalElapsedTime)
+      private var globalTimes = List[(Long, Long)]((globalElapsedTime, activeElapsedTime), (globalElapsedTime, activeElapsedTime))
 
       def getProcesses(application: Application): List[Process] = List()
 
@@ -206,13 +216,13 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
         }
       }
 
-      def getGlobalCpuTime: Option[Long] = {
+      def getGlobalCpuTime: GlobalCpuTime = {
         globalTimes.headOption match {
-          case time: Some[Long] => {
+          case Some((globalTime, activeTime)) => {
             globalTimes = globalTimes.tail
-            time
+            GlobalCpuTime(globalTime, activeTime)
           }
-          case _ => None
+          case _ => GlobalCpuTime(0, 0)
         }
       }
 

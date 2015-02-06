@@ -58,6 +58,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val timeInStates = TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
 
     val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
+      import org.powerapi.core.GlobalCpuTime
+
       private var times = List(oldTimeInStates, oldTimeInStates, oldTimeInStates, timeInStates, timeInStates, timeInStates)
 
       def getProcesses(application: Application): List[Process] = List()
@@ -66,7 +68,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       def getProcessCpuTime(process: Process): Option[Long] = None
 
-      def getGlobalCpuTime: Option[Long] = None
+      def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
 
       def getTimeInStates: TimeInStates = {
         times.headOption match {
@@ -134,6 +136,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val timeInStates = TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
 
     val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
+      import org.powerapi.core.GlobalCpuTime
+
       private var times = List(oldTimeInStates, timeInStates)
 
       def getProcesses(application: Application): List[Process] = List()
@@ -142,7 +146,7 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       def getProcessCpuTime(process: Process): Option[Long] = None
 
-      def getGlobalCpuTime: Option[Long] = None
+      def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
 
       def getTimeInStates: TimeInStates = {
         times.headOption match {

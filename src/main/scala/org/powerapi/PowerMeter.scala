@@ -22,15 +22,16 @@
  */
 package org.powerapi
 
+import org.powerapi.configuration.TimeoutConfiguration
+
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.{ FiniteDuration, DurationInt }
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props }
+import akka.actor.{ ActorRef, ActorRefFactory, ActorSystem, Props }
 import akka.event.LoggingReceive
-import akka.pattern.{ after, ask, gracefulStop }
-import akka.util.Timeout
+import akka.pattern.{ after, gracefulStop }
 
-import org.powerapi.core.{ ActorComponent, MessageBus }
+import org.powerapi.core.{Configuration, ActorComponent, MessageBus}
 import org.powerapi.core.target.Target
 import org.powerapi.core.power._
 
@@ -42,30 +43,20 @@ object PowerMeterMessages {
 }
 
 /**
-* Object used to share the timeout.
-*/
-object DefaultTimeout {
-  val timeout = Timeout(1.seconds)
-}
-
-/**
  * Represents the main actor of a PowerMeter. Used to handle all the actors created for one PowerMeter.
  */
 class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends ActorComponent {
   import PowerMeterMessages._
   import org.powerapi.core.{ Clocks, Monitors }
-  import org.powerapi.core.ClockChannel.stopAllClock
-  import org.powerapi.core.MonitorChannel.{ MonitorStart, stopAllMonitor }
+  import org.powerapi.core.MonitorChannel.MonitorStart
   
-  implicit val timeout = DefaultTimeout.timeout
-  
-  var clockSupervisor: ActorRef   = null
-  var monitorSupervisor: ActorRef = null
+  var clockSupervisor: Option[ActorRef] = None
+  var monitorSupervisor: Option[ActorRef] = None
   
   // Starts the mandatory supervisors.
   override def preStart(): Unit = {
-    clockSupervisor   = context.actorOf(Props(classOf[Clocks], eventBus), "clockSupervisor")
-    monitorSupervisor = context.actorOf(Props(classOf[Monitors], eventBus), "monitorSupervisor")
+    clockSupervisor = Some(context.actorOf(Props(classOf[Clocks], eventBus), "clockSupervisor"))
+    monitorSupervisor = Some(context.actorOf(Props(classOf[Monitors], eventBus), "monitorSupervisor"))
     
     modules.foreach(module => {
       module.start(context, eventBus)
@@ -73,13 +64,25 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
   }
   
   def receive = LoggingReceive {
-    case msg: MonitorStart => monitorSupervisor ! msg
-    case StopAll => stopAll
+    case msg: MonitorStart => {
+      monitorSupervisor match {
+        case Some(actorRef) => actorRef ! msg
+        case _ => log.error("The monitor supervisor is not created")
+      }
+    }
+    case StopAll => stopAll()
   } orElse default
   
-  def stopAll {
-    context.stop(monitorSupervisor)
-    context.stop(clockSupervisor)
+  def stopAll(): Unit = {
+    monitorSupervisor match {
+      case Some(actorRef) => context.stop(actorRef)
+      case _ => log.error("The monitor supervisor is not created")
+    }
+    clockSupervisor match {
+      case Some(actorRef) => context.stop(actorRef)
+      case _ => log.error("The clock supervisor is not created")
+    }
+
     modules.foreach(module => {
       module.stop(context)
     })
@@ -92,12 +95,10 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) {
+class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configuration with TimeoutConfiguration {
   import org.powerapi.core.Monitor
   import org.powerapi.core.MonitorChannel.MonitorStart
   import PowerMeterMessages._
-  
-  implicit val timeout = DefaultTimeout.timeout
 
   private val eventBus = new MessageBus
   private val powerMeterActor = system.actorOf(Props(classOf[PowerMeterActor], modules, eventBus))
@@ -123,9 +124,11 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) {
    */
   def waitFor(duration: FiniteDuration): this.type = {
     import scala.concurrent.ExecutionContext.Implicits._
+
     Await.result(after(duration, using = system.scheduler) {
-          Future successful "waitFor completed"
-        }, duration + 1.seconds)
+      Future successful "waitFor completed"
+    }, duration + 1.seconds)
+
     this
   }
 
@@ -139,7 +142,7 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) {
 }
 
 object PowerMeter {
-  implicit lazy val system = ActorSystem(s"PowerMeter-${System.currentTimeMillis}")
+  implicit lazy val system = ActorSystem(s"PowerMeter-${System.nanoTime()}")
   
   /**
    * Loads a specific power module as a tuple (sensor,formula).
@@ -154,7 +157,6 @@ object PowerMeter {
   }
 }
 
-
 /**
  * A PowerModule groups a sets of tightly coupled elements that need to be deployed together.
  *
@@ -162,8 +164,6 @@ object PowerMeter {
  */
 trait PowerModule {
   import org.powerapi.core.APIComponent
-
-  implicit val timeout = DefaultTimeout.timeout
 
   // Underlying classes of a power module, used to create the actors.
   def underlyingSensorsClass: Seq[(Class[_ <: APIComponent], Seq[Any])]

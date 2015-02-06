@@ -45,6 +45,13 @@ case class TimeInStates(times: Map[Long, Long]) {
 }
 
 /**
+ * Wrapper class for the global cpu times. It includes the global time and the time consumed by the CPU.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+case class GlobalCpuTime(globalTime: Long, activeTime: Long)
+
+/**
  * Base trait use for implementing os specific methods.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
@@ -75,7 +82,7 @@ trait OSHelper {
   /**
    * Get the global execution time for the cpu.
    */
-  def getGlobalCpuTime: Option[Long]
+  def getGlobalCpuTime: GlobalCpuTime
 
   /**
    * Get how many time CPU spent under each frequency.
@@ -189,30 +196,33 @@ class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration
     }
   }
 
-  def getGlobalCpuTime: Option[Long] = {
+  def getGlobalCpuTime: GlobalCpuTime = {
     try {
       using(globalStatPath)(source => {
         log.debug("using {} as a procfs global stat path", globalStatPath)
 
-        val time = source.getLines.toIndexedSeq(0) match {
+        val cpuTimes = source.getLines.toIndexedSeq(0) match {
           /**
            * Exclude all guest columns, they are already added in utime column.
            *
            * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
            */
-          case GlobalStatFormat(times) => Some(
-            times.split("\\s").slice(0, 8).foldLeft(0: Long) {
+          case GlobalStatFormat(times) => {
+            val globalTime = times.split("\\s").slice(0, 8).foldLeft(0: Long) {
               (acc, x) => acc + x.toLong
             }
-          )
-          case _ => log.warn("unable to parse line from {}", globalStatPath); None
+            val activeTime = times.split("\\s")(3).toLong
+
+            GlobalCpuTime(globalTime, activeTime)
+          }
+          case _ => log.warn("unable to parse line from {}", globalStatPath); GlobalCpuTime(0, 0)
         }
 
-        time
+        cpuTimes
       })
     }
     catch {
-      case ioe: IOException => log.warn("i/o exception: {}", ioe.getMessage); None
+      case ioe: IOException => log.warn("i/o exception: {}", ioe.getMessage); GlobalCpuTime(0, 0)
     }
   }
 

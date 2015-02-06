@@ -35,6 +35,7 @@ import org.powerapi.module.SensorComponent
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) {
+  import org.powerapi.core.GlobalCpuTime
   import org.powerapi.core.MonitorChannel.MonitorTick
   import org.powerapi.core.target.{All, Application, Process, TargetUsageRatio}
   import org.powerapi.module.{Cache, CacheKey}
@@ -42,14 +43,13 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
   import scala.reflect.ClassTag
 
-  lazy val cpuTimesCache = new Cache[(Double, Double)]
+  lazy val cpuTimesCache = new Cache[(Long, Long)]
 
   def targetCpuUsageRatio(monitorTick: MonitorTick): TargetUsageRatio = {
     val key = CacheKey(monitorTick.muid, monitorTick.target)
 
-    lazy val globalCpuTime = osHelper.getGlobalCpuTime match {
-      case Some(time) => time.toDouble
-      case _ => 1d // we cannot divide by 0
+    lazy val (globalCpuTime, activeCpuTime) = osHelper.getGlobalCpuTime match {
+      case GlobalCpuTime(globalTime, activeTime) => (globalTime, activeTime)
     }
 
     val processClaz = implicitly[ClassTag[Process]].runtimeClass
@@ -58,20 +58,20 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
     lazy val now = monitorTick.target match {
       case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
         lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
-          case Some(time) => time.toDouble
-          case _ => 0d
+          case Some(time) => time
+          case _ => 0l
         }
 
         (targetCpuTime, globalCpuTime)
       }
-      case All => (globalCpuTime, globalCpuTime)
+      case All => (activeCpuTime, globalCpuTime)
     }
 
     val old = cpuTimesCache(key)(now)
     val diffTimes = (now._1 - old._1, now._2 - old._2)
 
     diffTimes match {
-      case diff: (Double, Double) => {
+      case diff: (Long, Long) => {
         if(old == now) {
           cpuTimesCache(key) = now
           TargetUsageRatio(0.0)
@@ -79,7 +79,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
 
         else if (diff._1 > 0 && diff._2 > 0 && diff._1 <= diff._2) {
           cpuTimesCache(key) = now
-          TargetUsageRatio(diff._1 / diff._2)
+          TargetUsageRatio(diff._1.toDouble / diff._2)
         }
 
         else TargetUsageRatio(0.0)
