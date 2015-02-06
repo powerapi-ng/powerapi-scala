@@ -16,7 +16,7 @@ If you would like to contribute code you can do so through GitHub by forking the
 When submitting code, please make every effort to follow existing conventions and style in order to keep the code as readable as possible.
 
 ## Publications
-* **Process-level Power Estimation in VM-based Systems**: M. Colmant, M. Kurpicz, L. Huertas, R. Rouvoy, P. Felber. *European Conference on Computer Systems* (EuroSys). 2015, pp.1-12. To appear.
+* **Process-level Power Estimation in VM-based Systems**: M. Colmant, M. Kurpicz, L. Huertas, R. Rouvoy, P. Felber, A. Sobe. *European Conference on Computer Systems* (EuroSys). April 2015, Bordeaux, France. pp.1-14. To appear.
 * **[Monitoring Energy Hotspots in Software](https://hal.inria.fr/hal-01069142)**: A. Noureddine, R. Rouvoy, L. Seinturier. *Journal of Automated Software Engineering*, Springer, 2015, pp.1-42.
 * **[Unit Testing of Energy Consumption of Software Libraries](https://hal.inria.fr/hal-00912613)**: A. Noureddine, R. Rouvoy, L. Seinturier. *International Symposium On Applied Computing* (SAC), Mar 2014, Gyeongju, South Korea. pp.1200-1205.
 * **[Informatique : Des logiciels mis au vert](http://www.jinnove.com/Actualites/Informatique-des-logiciels-mis-au-vert)**: L. Seinturier, R. Rouvoy. *J'innove en Nord Pas de Calais*, [NFID](http://www.jinnove.com), 2013.
