@@ -43,38 +43,37 @@ object PowerSpyChannel extends Channel {
    * @param power: power consumption got by an external device.
    */
   case class PowerSpyPower(topic: String,
-                           power: Power,
-                           source: String = "powerspy") extends Message
+                           power: Power) extends Message
 
   /**
    * Topic for communicating with the Sensor actor.
    */
-  private val topic = "powerspy:power"
+  private val pMeterTopic = "powerspy:power"
 
   /**
    * Topic for communicating with the Formula actor.
    */
-  private val topicToPublish = "sensor:powerspy"
+  private val topic = "sensor:powerspy"
 
   /**
    * Publish a PowerSpyPower in the event bus.
    */
-  def publishPowerSpyPower(power: Power): MessageBus => Unit = {
-    publish(PowerSpyPower(topic, power))
+  def publishExternalPowerSpyPower(power: Power): MessageBus => Unit = {
+    publish(PowerSpyPower(pMeterTopic, power))
   }
 
-  def publishSensorPower(power: Power): MessageBus => Unit = {
-    publish(PowerSpyPower(topicToPublish, power))
+  def publishPowerSpyPower(power: Power): MessageBus => Unit = {
+    publish(PowerSpyPower(topic, power))
   }
 
   /**
    * External methods used for interacting with the bus.
    */
-  def subscribePowerSpyPower: MessageBus => ActorRef => Unit = {
-    subscribe(topic)
+  def subscribeExternalPowerSpyPower: MessageBus => ActorRef => Unit = {
+    subscribe(pMeterTopic)
   }
 
-  def subscribeSensorPower: MessageBus => ActorRef => Unit = {
-    subscribe(topicToPublish)
+  def subscribePowerSpyPower: MessageBus => ActorRef => Unit = {
+    subscribe(topic)
   }
 }

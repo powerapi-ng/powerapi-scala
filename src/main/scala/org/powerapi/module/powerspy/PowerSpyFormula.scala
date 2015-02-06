@@ -23,7 +23,7 @@
 package org.powerapi.module.powerspy
 
 import org.powerapi.configuration.IdlePowerConfiguration
-import org.powerapi.core.{APIComponent, Configuration, MessageBus}
+import org.powerapi.core.{OSHelper, APIComponent, Configuration, MessageBus}
 
 /**
  * The overall power consumption is distributed among processes if
@@ -33,16 +33,19 @@ import org.powerapi.core.{APIComponent, Configuration, MessageBus}
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class PowerSpyFormula(eventBus: MessageBus) extends APIComponent with Configuration with IdlePowerConfiguration {
+class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with Configuration with IdlePowerConfiguration {
   import akka.event.LoggingReceive
+  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
   import org.powerapi.core.power._
+  import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
+  import org.powerapi.module.{Cache, CacheKey}
   import org.powerapi.module.PowerChannel.publishPowerReport
-  import org.powerapi.module.cpu.UsageMetricsChannel.{UsageReport, subscribeSimpleUsageReport}
-  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
+  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
+  import scala.reflect.ClassTag
 
   override def preStart(): Unit = {
-    subscribeSensorPower(eventBus)(self)
-    subscribeSimpleUsageReport(eventBus)(self)
+    subscribePowerSpyPower(eventBus)(self)
+    subscribeMonitorTick(eventBus)(self)
     super.preStart()
   }
 
@@ -50,15 +53,60 @@ class PowerSpyFormula(eventBus: MessageBus) extends APIComponent with Configurat
 
   def running(pspyPower: Option[PowerSpyPower]): PartialFunction[Any, Unit] = LoggingReceive {
     case msg: PowerSpyPower => context.become(running(Some(msg)))
-    case msg: UsageReport => compute(pspyPower, msg)
+    case msg: MonitorTick => compute(pspyPower, msg)
   } orElse default
 
-  def compute(pSpyPower: Option[PowerSpyPower], usageReport: UsageReport): Unit = {
+  // In order to compute the target's ratio
+  lazy val cpuTimesCache = new Cache[(Long, Long)]
+
+  def targetCpuUsageRatio(monitorTick: MonitorTick): TargetUsageRatio = {
+    val key = CacheKey(monitorTick.muid, monitorTick.target)
+
+    lazy val activeCpuTime = osHelper.getGlobalCpuTime.activeTime
+
+    val processClaz = implicitly[ClassTag[Process]].runtimeClass
+    val appClaz = implicitly[ClassTag[Application]].runtimeClass
+
+    lazy val now = monitorTick.target match {
+      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+        lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
+          case Some(time) => time
+          case _ => 0l
+        }
+
+        (targetCpuTime, activeCpuTime)
+      }
+      case All => (activeCpuTime, activeCpuTime)
+    }
+
+    val old = cpuTimesCache(key)(now)
+    val diffTimes = (now._1 - old._1, now._2 - old._2)
+
+    diffTimes match {
+      case diff: (Long, Long) => {
+        if(old == now) {
+          cpuTimesCache(key) = now
+          TargetUsageRatio(0.0)
+        }
+
+        else if (diff._1 > 0 && diff._2 > 0 && diff._1 <= diff._2) {
+          cpuTimesCache(key) = now
+          TargetUsageRatio(diff._1.toDouble / diff._2)
+        }
+
+        else TargetUsageRatio(0.0)
+      }
+      case _ => TargetUsageRatio(0.0)
+    }
+  }
+
+  def compute(pSpyPower: Option[PowerSpyPower], monitorTick: MonitorTick): Unit = {
     pSpyPower match {
       case Some(pPower) => {
-        publishPowerReport(usageReport.muid, usageReport.target, pPower.power * usageReport.targetRatio.ratio, pPower.source, usageReport.tick)(eventBus)
+        val dynamicP = if(pPower.power.toMilliWatts - idlePower.toMilliWatts > 0) pPower.power - idlePower else 0.W
+        publishPowerReport(monitorTick.muid, monitorTick.target, idlePower + (dynamicP * targetCpuUsageRatio(monitorTick).ratio), "PowerSpy", monitorTick.tick)(eventBus)
       }
-      case _ => log.debug("{}", "no PowerSpyPower messages received")
+      case _ => log.debug("{}", "no PowerSpyPower message received")
     }
   }
 }

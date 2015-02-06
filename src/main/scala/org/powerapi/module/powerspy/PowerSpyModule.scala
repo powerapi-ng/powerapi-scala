@@ -25,7 +25,7 @@ package org.powerapi.module.powerspy
 import akka.actor.{ ActorRefFactory, Props }
 
 import org.powerapi.PowerModule
-import org.powerapi.core.MessageBus
+import org.powerapi.core.{LinuxHelper, MessageBus}
 
 object PowerSpyModule extends PowerModule {
   val underlyingSensorsClass  = Seq()
@@ -33,7 +33,6 @@ object PowerSpyModule extends PowerModule {
 
   override def start(factory: ActorRefFactory, eventBus: MessageBus) {
     sensors  :+= factory.actorOf(Props(classOf[PowerSpySensor], eventBus, new PowerSpyPMeter(eventBus)))
-    sensors  :+= factory.actorOf(Props(classOf[org.powerapi.module.cpu.simple.CpuSensor], eventBus, new org.powerapi.core.LinuxHelper()))
-    formulae :+= factory.actorOf(Props(classOf[PowerSpyFormula], eventBus))
+    formulae :+= factory.actorOf(Props(classOf[PowerSpyFormula], eventBus, new LinuxHelper()))
   }
 }

@@ -31,10 +31,10 @@ import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
  */
 class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
   import akka.event.LoggingReceive
-  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishSensorPower, subscribePowerSpyPower}
+  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishPowerSpyPower, subscribeExternalPowerSpyPower}
 
   override def preStart(): Unit = {
-    subscribePowerSpyPower(eventBus)(self)
+    subscribeExternalPowerSpyPower(eventBus)(self)
     pMeter.init()
     pMeter.start()
     super.preStart()
@@ -50,6 +50,6 @@ class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APICo
   } orElse default
 
   def sense(pSpyPower: PowerSpyPower): Unit = {
-    publishSensorPower(pSpyPower.power)(eventBus)
+    publishPowerSpyPower(pSpyPower.power)(eventBus)
   }
 }

@@ -31,22 +31,22 @@ import scala.concurrent.duration.DurationInt
 
 class MockPMeter(eventBus: MessageBus) extends ExternalPMeter {
   import org.powerapi.core.power._
-  import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
+  import org.powerapi.module.powerspy.PowerSpyChannel.publishExternalPowerSpyPower
 
   def init(): Unit = {}
   def start(): Unit = {
-    publishPowerSpyPower(10.W)(eventBus)
-    publishPowerSpyPower(20.W)(eventBus)
-    publishPowerSpyPower(14.W)(eventBus)
+    publishExternalPowerSpyPower(10.W)(eventBus)
+    publishExternalPowerSpyPower(20.W)(eventBus)
+    publishExternalPowerSpyPower(14.W)(eventBus)
   }
   def stop(): Unit = {}
 }
 
 class PowerSpyPowerListener(eventBus: MessageBus) extends Actor {
-  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
+  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
 
   override def preStart(): Unit = {
-    subscribeSensorPower(eventBus)(self)
+    subscribePowerSpyPower(eventBus)(self)
   }
 
   def receive = {
@@ -73,19 +73,19 @@ class PowerSpySensorSuite(system: ActorSystem) extends UnitTest(system) {
   "A PowerSpySensor" should "listen PowerSpyPower messages, build a new message and then publish it" in new EventBus {
     import akka.pattern.gracefulStop
     import org.powerapi.core.power._
-    import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribeSensorPower}
+    import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
 
-    subscribeSensorPower(eventBus)(testActor)
+    subscribePowerSpyPower(eventBus)(testActor)
     val pSpySensor = TestActorRef(Props(classOf[PowerSpySensor], eventBus, new MockPMeter(eventBus)), "pSpySensor")(system)
 
     expectMsgClass(classOf[PowerSpyPower]) match {
-      case PowerSpyPower(_, power, "powerspy") => power should equal(10.W)
+      case PowerSpyPower(_, power) => power should equal(10.W)
     }
     expectMsgClass(classOf[PowerSpyPower]) match {
-      case PowerSpyPower(_, power, "powerspy") => power should equal(20.W)
+      case PowerSpyPower(_, power) => power should equal(20.W)
     }
     expectMsgClass(classOf[PowerSpyPower]) match {
-      case PowerSpyPower(_, power, "powerspy") => power should equal(14.W)
+      case PowerSpyPower(_, power) => power should equal(14.W)
     }
 
     gracefulStop(pSpySensor, 15.seconds)

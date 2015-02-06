@@ -34,7 +34,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
   import java.util.concurrent.TimeUnit
   import org.powerapi.core.ConfigValue
   import org.powerapi.core.power._
-  import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
+  import org.powerapi.module.powerspy.PowerSpyChannel.publishExternalPowerSpyPower
   import fr.inria.powerspy.core.PowerSpy
   import org.apache.logging.log4j.LogManager
   import scala.concurrent.duration.{FiniteDuration, DurationDouble}
@@ -73,7 +73,7 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
               override def run(): Unit = {
                 while(running) {
                   pSpy.readRealTime() match {
-                    case Some(rtValue) => publishPowerSpyPower(rtValue.power.W)(eventBus)
+                    case Some(rtValue) => publishExternalPowerSpyPower(rtValue.power.W)(eventBus)
                     case _ => {}
                   }
                 }

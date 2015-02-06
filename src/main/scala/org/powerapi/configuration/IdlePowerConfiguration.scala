@@ -33,9 +33,10 @@ trait IdlePowerConfiguration {
   self: Configuration =>
 
   import org.powerapi.core.ConfigValue
+  import org.powerapi.core.power._
 
   lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
-    case ConfigValue(idle) => idle
-    case _ => 0d
+    case ConfigValue(idle) => idle.W
+    case _ => 0.W
   }
 }
