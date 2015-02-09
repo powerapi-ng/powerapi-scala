@@ -154,7 +154,7 @@ object PowerMeter {
    * @param modules: the list of power modules to be loaded within the PowerMeter.
    * @return the resulting instance of the requested power meter.
    */
-  def load(modules: PowerModule*): PowerMeter = {
+  def loadModule(modules: PowerModule*): PowerMeter = {
     new PowerMeter(modules, system)
   }
 }
