@@ -25,7 +25,13 @@ package org.powerapi.module.cpu.dvfs
 import org.powerapi.PowerModule
 import org.powerapi.core.LinuxHelper
 
-object CpuDvfsModule extends PowerModule {
-  val underlyingSensorsClass  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
-  val underlyingFormulaeClass = Seq((classOf[CpuFormula], Seq()))
+class CpuDvfsModule extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
+  lazy val underlyingFormulaeClasses = Seq((classOf[CpuFormula], Seq()))
+}
+
+object CpuDvfsModule {
+  def apply(): CpuDvfsModule = {
+    new CpuDvfsModule()
+  }
 }

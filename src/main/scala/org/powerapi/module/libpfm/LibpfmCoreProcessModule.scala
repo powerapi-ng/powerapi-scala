@@ -25,7 +25,13 @@ package org.powerapi.module.libpfm
 import org.powerapi.PowerModule
 import org.powerapi.core.LinuxHelper
 
-object LibpfmCoreProcessModule extends PowerModule {
-  val underlyingSensorsClass  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper)))
-  val underlyingFormulaeClass = Seq((classOf[cycles.LibpfmCoreCyclesFormula], Seq()))
+class LibpfmCoreProcessModule extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper)))
+  lazy val underlyingFormulaeClasses = Seq((classOf[cycles.LibpfmCoreCyclesFormula], Seq()))
+}
+
+object LibpfmCoreProcessModule {
+  def apply(): LibpfmCoreProcessModule = {
+    new LibpfmCoreProcessModule()
+  }
 }

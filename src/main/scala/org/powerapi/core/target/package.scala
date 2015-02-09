@@ -22,52 +22,12 @@
  */
 package org.powerapi.core
 
+/**
+ * Implicit conversions.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
 package object target {
-  /**
-   * Targets are system elements that can be monitored by PowerAPI
-   *
-   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
-   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
-   */
-  trait Target
-
-  /**
-   * Monitoring target for a specific Process IDentifier.
-   *
-   * @param pid: process identifier.
-   *
-   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
-   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
-   */
-  case class Process(pid: Int) extends Target
-
-  /**
-   * Monitoring target for a specific application.
-   *
-   * @param name: name of the application.
-   *
-   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
-   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
-   */
-  case class Application(name: String) extends Target
-
-  /**
-   * Target usage ratio.
-   *
-   * @param ratio: usage ratio.
-   *
-   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
-   */
-  case class TargetUsageRatio(ratio: Double)
-
-  /**
-   * Monitoring target for the whole system.
-   *
-   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
-   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
-   */
-  object All extends Target
-
   /**
    * Implicit conversions
    */

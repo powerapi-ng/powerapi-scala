@@ -59,7 +59,8 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
     monitorSupervisor = Some(context.actorOf(Props(classOf[Monitors], eventBus), "monitorSupervisor"))
     
     modules.foreach(module => {
-      module.start(context, eventBus)
+      module(eventBus)
+      module.start(context)
     })
   }
   
@@ -78,6 +79,7 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
       case Some(actorRef) => context.stop(actorRef)
       case _ => log.error("The monitor supervisor is not created")
     }
+
     clockSupervisor match {
       case Some(actorRef) => context.stop(actorRef)
       case _ => log.error("The clock supervisor is not created")
@@ -166,22 +168,33 @@ trait PowerModule {
   import org.powerapi.core.APIComponent
 
   // Underlying classes of a power module, used to create the actors.
-  def underlyingSensorsClass: Seq[(Class[_ <: APIComponent], Seq[Any])]
-  def underlyingFormulaeClass: Seq[(Class[_ <: APIComponent], Seq[Any])]
-  
-  protected var sensors: List[ActorRef]  = List()
-  protected var formulae: List[ActorRef] = List()
+  def underlyingSensorsClasses: Seq[(Class[_ <: APIComponent], Seq[Any])]
+  def underlyingFormulaeClasses: Seq[(Class[_ <: APIComponent], Seq[Any])]
+
+  protected var eventBus: Option[MessageBus] = None
+  private var sensors: List[ActorRef]  = List()
+  private var formulae: List[ActorRef] = List()
+
+  def apply(bus: MessageBus): Unit = {
+    eventBus = Some(bus)
+  }
 
   /**
    * Initiate a power module
    */
-  def start(factory: ActorRefFactory, eventBus: MessageBus) {
-    underlyingSensorsClass.foreach(underlyingSensorClass => {
-      sensors :+= factory.actorOf(Props(underlyingSensorClass._1, eventBus +: underlyingSensorClass._2:_*))
-    })
-    underlyingFormulaeClass.foreach(underlyingFormulaClass => {
-      formulae :+= factory.actorOf(Props(underlyingFormulaClass._1, eventBus +: underlyingFormulaClass._2:_*))
-    })
+  def start(factory: ActorRefFactory) {
+    eventBus match {
+      case Some(bus) => {
+        underlyingSensorsClasses.foreach(underlyingSensorClass => {
+          sensors :+= factory.actorOf(Props(underlyingSensorClass._1, bus +: underlyingSensorClass._2: _*))
+        })
+        underlyingFormulaeClasses.foreach(underlyingFormulaClass => {
+          formulae :+= factory.actorOf(Props(underlyingFormulaClass._1, bus +: underlyingFormulaClass._2: _*))
+        })
+      }
+
+      case _ => {}
+    }
   }
 
   /**
@@ -227,4 +240,3 @@ trait PowerDisplay {
    */
   def display(timestamp: Long, target: Target, device: String, power: Power)
 }
-

@@ -22,17 +22,25 @@
  */
 package org.powerapi.module.powerspy
 
-import akka.actor.{ ActorRefFactory, Props }
-
 import org.powerapi.PowerModule
-import org.powerapi.core.{LinuxHelper, MessageBus}
+import org.powerapi.core.LinuxHelper
 
-object PowerSpyModule extends PowerModule {
-  val underlyingSensorsClass  = Seq()
-  val underlyingFormulaeClass = Seq()
+class PowerSpyModule extends PowerModule {
+  lazy val underlyingClasses = eventBus match {
+    case Some(bus) => {
+      (Seq((classOf[PowerSpySensor], Seq(new PowerSpyPMeter(bus)))), Seq((classOf[PowerSpyFormula], Seq(new LinuxHelper))))
+    }
+    case _ => {
+      (Seq((classOf[PowerSpySensor], Seq())), Seq((classOf[PowerSpyFormula], Seq())))
+    }
+  }
 
-  override def start(factory: ActorRefFactory, eventBus: MessageBus) {
-    sensors  :+= factory.actorOf(Props(classOf[PowerSpySensor], eventBus, new PowerSpyPMeter(eventBus)))
-    formulae :+= factory.actorOf(Props(classOf[PowerSpyFormula], eventBus, new LinuxHelper()))
+  lazy val underlyingSensorsClasses = underlyingClasses._1
+  lazy val underlyingFormulaeClasses = underlyingClasses._2
+}
+
+object PowerSpyModule {
+  def apply(): PowerSpyModule = {
+    new PowerSpyModule()
   }
 }

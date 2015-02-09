@@ -74,15 +74,15 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
     }
   }
 
-  def receive: PartialFunction[Any, Unit] = running(true, Array(0,0,0), 0)
+  def receive: PartialFunction[Any, Unit] = running(true, Array(0,0,0))
 
-  def running(first: Boolean, old: Array[Long], oldScaledVal: Long): Actor.Receive = LoggingReceive {
-    case monitorTick: MonitorTick => collect(monitorTick.muid, monitorTick.target, first, old, oldScaledVal)
+  def running(first: Boolean, old: Array[Long]): Actor.Receive = LoggingReceive {
+    case monitorTick: MonitorTick => collect(monitorTick.muid, monitorTick.target, first, old)
     case msg: MonitorStop => stop()
     case _: MonitorStopAll => stop()
   } orElse default
 
-  def collect(muid: UUID, target: Target, first: Boolean, old: Array[Long], oldScaledVal: Long): Unit = {
+  def collect(muid: UUID, target: Target, first: Boolean, old: Array[Long]): Unit = {
     fd match {
       case Some(fdValue) => {
         val now = LibpfmHelper.readPC(fdValue)
@@ -92,32 +92,18 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
             0l
           }
 
-          // This may appear when the counter exists but it was not stressed, thus the previous value is useless.
-          else if(now(1) == old(1) && now(2) == old(2)) {
-            // Put the ratio to one to get the non scaled value (see the scaling method).
-            val fakeValues: Array[Long] = Array(old(0), now(1) - 1, now(2) - 1)
-
-            LibpfmHelper.scale(now, fakeValues) match {
-              case Some(value) => value
-              case _ => 0l
-            }
-          }
-
-          // This may appear if libpfm was not able to read the correct value (problem for accessing the counter).
-          else if(now(2) == old(2)) {
-            oldScaledVal
-          }
-
-          else {
+          else if(now(1) != old(1) && now(2) != old(2)) {
             LibpfmHelper.scale(now, old) match {
               case Some(value) => value
               case _ => 0l
             }
           }
+
+          else 0l
         }
 
         sender ! scaledValue
-        context.become(running(false, now, scaledValue))
+        context.become(running(false, now))
       }
       case _ => {}
     }

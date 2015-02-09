@@ -25,7 +25,13 @@ package org.powerapi.module.cpu.simple
 import org.powerapi.PowerModule
 import org.powerapi.core.LinuxHelper
 
-object CpuSimpleModule extends PowerModule {
-  val underlyingSensorsClass  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
-  val underlyingFormulaeClass = Seq((classOf[CpuFormula], Seq()))
+class CpuSimpleModule extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
+  lazy val underlyingFormulaeClasses = Seq((classOf[CpuFormula], Seq()))
+}
+
+object CpuSimpleModule {
+  def apply(): CpuSimpleModule = {
+    new CpuSimpleModule()
+  }
 }
