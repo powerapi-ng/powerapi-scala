@@ -11,6 +11,12 @@ scalacOptions in ThisBuild ++= Seq(
   "-deprecation"
 )
 
+// Logging
+libraryDependencies in ThisBuild ++= Seq(
+  "org.apache.logging.log4j" % "log4j-api" % "2.1",
+  "org.apache.logging.log4j" % "log4j-core" % "2.1"
+)
+
 parallelExecution in (ThisBuild, Test) := false
 
 instrumentSettings

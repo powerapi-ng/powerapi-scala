@@ -85,9 +85,11 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
         (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime3, activeElapsedTime3)
       )
 
-      def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
+      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
 
-      def getThreads(process: Process): List[Thread] = List()
+      def getProcesses(application: Application): Iterable[Process] = Iterable(Process(2), Process(3))
+
+      def getThreads(process: Process): Iterable[Thread] = Iterable()
 
       def getProcessCpuTime(process: Process): Option[Long] = {
         targetTimes.getOrElse(process, List()) match {
@@ -166,28 +168,5 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     ret.target should equal(All)
     ret.power should equal((allRatio.ratio * 140).W)
     ret.tick should equal(tickMock)
-
-    /*publishSensorPower(150.W)(eventBus)
-    publishUsageReport(muid, 1, TargetUsageRatio(0.5), tickMock)(eventBus)
-    var ret = expectMsgClass(classOf[PowerReport])
-    ret.muid should equal(muid)
-    ret.target should equal(Process(1))
-    ret.power should equal((150 * 0.5).W)
-    ret.tick should equal(tickMock)
-
-    publishSensorPower(140.W)(eventBus)
-    publishUsageReport(muid, 1, TargetUsageRatio(0.25), tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
-    ret.muid should equal(muid)
-    ret.target should equal(Process(1))
-    ret.power should equal((140 * 0.25).W)
-    ret.tick should equal(tickMock)
-
-    publishUsageReport(muid, 2, TargetUsageRatio(0.25), tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
-    ret.muid should equal(muid)
-    ret.target should equal(Process(2))
-    ret.power should equal((140 * 0.25).W)
-    ret.tick should equal(tickMock)*/
   }
 }

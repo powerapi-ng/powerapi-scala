@@ -109,7 +109,10 @@ class Clocks(eventBus: MessageBus) extends Supervisor {
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: ClockStart => start(msg)
+    case msg: ClockStart => {
+      start(msg)
+      context.become(running)
+    }
   } orElse default
 
   /**
@@ -135,7 +138,6 @@ class Clocks(eventBus: MessageBus) extends Supervisor {
     }
 
     child ! msg
-    context.become(running)
   }
 
   /**

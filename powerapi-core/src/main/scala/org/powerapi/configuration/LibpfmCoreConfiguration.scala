@@ -25,22 +25,33 @@ package org.powerapi.configuration
 import org.powerapi.core.Configuration
 
 /**
- * Processor topology.
+ * Main configuration for LibpfmCore sensors.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait TopologyConfiguration {
+trait LibpfmCoreConfiguration  {
   self: Configuration =>
 
-  import com.typesafe.config.Config
   import org.powerapi.core.ConfigValue
+  import scala.collection.BitSet
   import scala.collection.JavaConversions._
 
-  lazy val topology: Map[Int, Iterable[Int]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toList)).toMap
-  } match {
-    case ConfigValue(values) => values
-    case _ => Map()
+  /**
+   * List of enabled bits for the perf_event_open maccro.
+   * The bits to configure are described in the structure perf_event_attr available below.
+   *
+   * @see http://manpages.ubuntu.com/manpages/trusty/en/man2/perf_event_open.2.html
+   */
+  lazy val configuration =
+    BitSet(
+      (load { _.getIntList("powerapi.libpfm.configuration") } match {
+        case ConfigValue(values) => values.map(_.toInt).toList
+        case _ => List[Int]()
+      }): _*
+    )
+
+  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
+    case ConfigValue(values) => values.map(_.toString).toList
+    case _ => List[String]()
   }
 }

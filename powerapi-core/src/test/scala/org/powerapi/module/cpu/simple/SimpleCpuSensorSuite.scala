@@ -102,9 +102,11 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
         (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime3, activeElapsedTime3)
       )
 
-      def getProcesses(application: Application): List[Process] = List(Process(2), Process(3))
+      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
 
-      def getThreads(process: Process): List[Thread] = List()
+      def getProcesses(application: Application): Iterable[Process] = Iterable(Process(2), Process(3))
+
+      def getThreads(process: Process): Iterable[Thread] = Iterable()
 
       def getProcessCpuTime(process: Process): Option[Long] = {
         targetTimes.getOrElse(process, List()) match {
@@ -202,9 +204,11 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       private var targetTimes = Map[Target, List[Long]](Process(1) -> List(p1ElapsedTime + 10, p1ElapsedTime))
       private var globalTimes = List[(Long, Long)]((globalElapsedTime, activeElapsedTime), (globalElapsedTime, activeElapsedTime))
 
-      def getProcesses(application: Application): List[Process] = List()
+      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
 
-      def getThreads(process: Process): List[Thread] = List()
+      def getProcesses(application: Application): Iterable[Process] = Iterable()
+
+      def getThreads(process: Process): Iterable[Thread] = Iterable()
 
       def getProcessCpuTime(process: Process): Option[Long] = {
         targetTimes.getOrElse(process, List()) match {

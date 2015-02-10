@@ -58,19 +58,25 @@ case class GlobalCpuTime(globalTime: Long, activeTime: Long)
  */
 trait OSHelper {
   import org.powerapi.core.target.{Application, Process, Target}
+
+  /**
+   * Get the list of frequencies available on the CPU.
+   */
+  def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long]
+
   /**
    * Get the list of processes behind an Application.
    *
    * @param application: targeted application.
    */
-  def getProcesses(application: Application): List[Process]
+  def getProcesses(application: Application): Iterable[Process]
 
   /**
    * Get the list of thread behind a Process.
    *
    * @param process: targeted process.
    */
-  def getThreads(process: Process): List[Thread]
+  def getThreads(process: Process): Iterable[Thread]
 
   /**
    * Get the process execution time on the cpu.
@@ -88,7 +94,6 @@ trait OSHelper {
    * Get how many time CPU spent under each frequency.
    */
   def getTimeInStates: TimeInStates
-
 
   /**
    * Get the target cpu time.
@@ -130,6 +135,14 @@ class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration
   private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
 
   /**
+   * This file allows to get all the cpu frequencies with the help of procfs and cpufreq_utils.
+   */
+  lazy val frequenciesPath = load { _.getString("powerapi.procfs.frequencies-path") } match {
+    case ConfigValue(path) if path.contains("%?core") => path
+    case _ => "/sys/devices/system/cpu/cpu%?core/cpufreq/scaling_available_frequencies"
+  }
+
+  /**
    * This file allows to get all threads associated to one PID with the help of the procfs.
    */
   lazy val taskPath = load { _.getString("powerapi.procfs.process-task-path") } match {
@@ -163,22 +176,36 @@ class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration
     case _ => "/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
   }
 
-  def getProcesses(application: Application): List[Process] = {
-    Seq("ps", "-C", application.name, "-o", "pid", "--no-headers").!!.split("\n").toList.map {
+  def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = {
+    (for(index <- topology.values.flatten) yield {
+      try {
+        using(frequenciesPath.replace("%?core", s"$index"))(source => {
+          log.debug("using {} as a frequencies path", frequenciesPath)
+          source.getLines.toIndexedSeq(0).split("\\s").toList.map(_.toLong)
+        })
+      }
+      catch {
+        case ioe: IOException => log.warn("i/o exception: {}", ioe.getMessage); List()
+      }
+    }).flatten.toSet
+  }
+
+  def getProcesses(application: Application): Iterable[Process] = {
+    Seq("ps", "-C", application.name, "-o", "pid", "--no-headers").!!.split("\n").map {
       case PSFormat(pid) => Process(pid.toInt)
     }
   }
 
-  def getThreads(process: Process): List[Thread] = {
+  def getThreads(process: Process): Iterable[Thread] = {
     val pidDirectory = new File(taskPath.replace("%?pid", s"${process.pid}"))
 
     if (pidDirectory.exists && pidDirectory.isDirectory) {
       /**
        * The pid is removed because it corresponds to the main thread.
        */
-      pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").toList.map(dir => Thread(dir.getName.toInt))
+      pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").map(dir => Thread(dir.getName.toInt))
     }
-    else List()
+    else Iterable[Thread]()
   }
 
   def getProcessCpuTime(process: Process): Option[Long] = {

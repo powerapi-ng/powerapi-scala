@@ -22,18 +22,30 @@
  */
 package org.powerapi.sampling
 
+import org.powerapi.core.Configuration
+
 /**
- * Processing phase.
- * Allows to obtain data from the samplesDir, to process them and then to write the results inside a result directory as csv files.
+ * Process the data from the sampling directory and write the resulting csv files inside a directory.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-object Processing {
+class Processing(samplingDir: String, processingDir: String, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String) extends Configuration {
   import org.apache.logging.log4j.LogManager
+  import org.powerapi.core.ConfigValue
 
   private val log = LogManager.getLogger
 
-  def apply(samplesDir: String, prDataDir: String, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String, baseFrequency: Double, maxFrequency: Double): Unit = {
+  lazy val baseFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-base-frequency") } match {
+    case ConfigValue(value) => value
+    case _ => 0d
+  }
+
+  lazy val maxFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-max-frequency") } match {
+    case ConfigValue(value) => value
+    case _ => 0d
+  }
+
+  def run(): Unit = {
     import org.saddle.{Frame, Mat, Vec}
     import org.saddle.io.CsvImplicits.frame2CsvWriter
     import scalax.io.LongTraversable
@@ -53,7 +65,7 @@ object Processing {
     /**
      * Process sample files, keep the data in memory.
      */
-    for(samplePath <- Path("/") / (samplesDir, '/') ** IsDirectory) {
+    for(samplePath <- Path(samplingDir, '/') ** IsDirectory) {
       for(frequencyPath <- samplePath ** IsDirectory) {
         val frequency = frequencyPath.name.toLong
         var powerLines = (frequencyPath / outputPowers).lines()
@@ -135,55 +147,57 @@ object Processing {
     }
 
     /**
-     * Check the buffers length, init. the base coefficients
-     */
-    for(frequency <- frequencies) {
-      if(unhaltedCycleData(frequency).size != powerData(frequency).size || refCycleData(frequency).size != powerData(frequency).size) {
-        log.error("The data processing is wrong")
-        return
-      }
-      else {
-        // Frequencies in KHz
-        val coefficient = frequency.toDouble / (baseFrequency * 1E6)
-        if(coefficient <= maxCoefficient) data += coefficient -> Array()
-      }
-    }
-
-    /**
      * Classify the data with the coefficients
      */
     for(frequency <- frequencies) {
-      for(i <- 0 until powerData(frequency).size) {
-        val power = powerData(frequency)(i).median
-        val unhaltedCycles = unhaltedCycleData(frequency)(i).median
-        val refCycles = refCycleData(frequency)(i).median
-        val coefficient = math.round(unhaltedCycles / refCycles).toDouble
+      // Frequencies in KHz
+      val coefficient = frequency.toDouble / (baseFrequency * 1E6)
 
-        // Frequencies before boost mode
-        if(coefficient <= maxCoefficient) {
-          if(data.contains(coefficient)) {
-            data += coefficient -> (data(coefficient) ++ Array(unhaltedCycles, power))
+      if(unhaltedCycleData(frequency).size == powerData(frequency).size && refCycleData(frequency).size == powerData(frequency).size) {
+        if(coefficient <= maxCoefficient) data += coefficient -> Array()
+
+        for(i <- 0 until powerData(frequency).size) {
+          val power = powerData(frequency)(i).median
+          val unhaltedCycles = unhaltedCycleData(frequency)(i).median
+          val refCycles = refCycleData(frequency)(i).median
+          val coefficient = math.round(unhaltedCycles / refCycles).toDouble
+
+          // Frequencies before boost mode
+          if(coefficient <= maxCoefficient) {
+            if(data.contains(coefficient)) {
+              data += coefficient -> (data(coefficient) ++ Array(unhaltedCycles, power))
+            }
+            else {
+              val coefficientsBefore = data.keys.filter(_ < coefficient)
+              if(coefficientsBefore.size > 0) {
+                data += coefficientsBefore.max -> (data(coefficientsBefore.max) ++ Array(unhaltedCycles, power))
+              }
+            }
           }
+          // Boost mode
           else {
-            val coefficientBefore = data.keys.filter(_ < coefficient).max
-            data += coefficientBefore -> (data(coefficientBefore) ++ Array(unhaltedCycles, power))
+            data += coefficient -> (data.getOrElse(coefficient, Array()) ++ Array(unhaltedCycles, power))
           }
-        }
-        // Boost mode
-        else {
-          data += coefficient -> (data.getOrElse(coefficient, Array()) ++ Array(unhaltedCycles, power))
         }
       }
+
+      else log.error("The sampling was wrong for the frequency: {}, coefficient: {}", s"$frequency", s"$coefficient")
     }
 
-    if((Path("/") / (samplesDir, '/')).exists) {
-      (Path("/") / (prDataDir, '/')).deleteRecursively(force = true)
-      (Path("/") / (prDataDir, '/')).createDirectory(failIfExists = false)
+    if(Path(samplingDir, '/').exists) {
+      Path(processingDir, '/').deleteRecursively(force = true)
+      Path(processingDir, '/').createDirectory()
 
       for((coefficient, values) <- data) {
         val matrix = Mat(values.size / 2, 2, values)
-        Frame("unhalted-cycles" -> matrix.col(0), "P" -> matrix.col(1)).writeCsvFile(s"$prDataDir/$coefficient.csv")
+        Frame("unhalted-cycles" -> matrix.col(0), "P" -> matrix.col(1)).writeCsvFile(s"$processingDir/$coefficient.csv")
       }
     }
+  }
+}
+
+object Processing {
+  def apply(samplingDir: String, processingDir: String, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String): Processing = {
+    new Processing(samplingDir, processingDir, separator, outputPowers, outputUnhaltedCycles, outputRefCycles)
   }
 }

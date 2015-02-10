@@ -224,6 +224,8 @@ trait PowerMonitoring {
    * Configures the power display to use for rendering power estimations.
    */
   def to(output: PowerDisplay): this.type
+  def to(reference: ActorRef): this.type
+  def to(reference: ActorRef, subscribeMethod: MessageBus => ActorRef => Unit): this.type
 
   /**
    * Cancel the subscription and stops the associated monitoring.

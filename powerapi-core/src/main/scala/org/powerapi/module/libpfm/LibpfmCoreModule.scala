@@ -34,3 +34,17 @@ object LibpfmCoreModule {
     new LibpfmCoreModule()
   }
 }
+
+/**
+ * Special module for sampling. The formula is not used.
+ */
+class LibpfmCoreSensorModule extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq()))
+  lazy val underlyingFormulaeClasses = Seq()
+}
+
+object LibpfmCoreSensorModule {
+  def apply(): LibpfmCoreSensorModule = {
+    new LibpfmCoreSensorModule()
+  }
+}

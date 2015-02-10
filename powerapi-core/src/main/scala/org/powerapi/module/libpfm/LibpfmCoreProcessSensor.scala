@@ -23,15 +23,15 @@
 package org.powerapi.module.libpfm
 
 import java.util.UUID
-import org.powerapi.configuration.{TimeoutConfiguration, TopologyConfiguration}
-import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
+import org.powerapi.configuration.{LibpfmCoreConfiguration, TimeoutConfiguration, TopologyConfiguration}
+import org.powerapi.core.{Configuration, OSHelper, APIComponent, MessageBus}
 
 /**
  * Main actor for getting the performance counter value per core/event/process.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
+class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with Configuration with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
   import akka.actor.{Actor, PoisonPill, Props}
   import akka.event.LoggingReceive
   import akka.pattern.ask
@@ -107,7 +107,7 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper) extends 
       }
       case app: Application => {
         (for(process <- osHelper.getProcesses(app)) yield {
-          if(inDepth) osHelper.getThreads(process).map(_.tid) :+ process.pid
+          if(inDepth) osHelper.getThreads(process).map(_.tid) ++ Iterable(process.pid)
           else List(process.pid)
         }).flatten.toSet
       }

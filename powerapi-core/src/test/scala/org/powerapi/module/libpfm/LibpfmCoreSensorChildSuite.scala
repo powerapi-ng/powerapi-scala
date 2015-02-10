@@ -46,20 +46,19 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
 
   "A LibpfmCoreSensorChild" should "collect the performance counter values" ignore new Bus {
     import akka.testkit.TestProbe
-    import java.util.{BitSet, UUID}
+    import java.util.UUID
     import org.powerapi.core.target.All
     import org.powerapi.core.ClockChannel.ClockTick
     import org.powerapi.core.MonitorChannel.MonitorTick
     import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
     import scala.sys.process.stringSeqToProcess
+    import scala.collection.BitSet
 
     val basepath = getClass.getResource("/").getPath
     val pid = Seq("bash", s"${basepath}test-pc.bash").lineStream(0).trim.toInt
     Seq("taskset", "-cp", "0" ,s"$pid").!
 
-    val configuration = new BitSet()
-    configuration.set(0)
-    configuration.set(1)
+    val configuration = BitSet(0, 1)
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
     var msg = 0l

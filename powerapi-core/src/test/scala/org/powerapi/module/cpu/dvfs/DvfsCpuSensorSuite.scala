@@ -62,9 +62,11 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       private var times = List(oldTimeInStates, oldTimeInStates, oldTimeInStates, timeInStates, timeInStates, timeInStates)
 
-      def getProcesses(application: Application): List[Process] = List()
+      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
 
-      def getThreads(process: Process): List[Thread] = List()
+      def getProcesses(application: Application): Iterable[Process] = Iterable()
+
+      def getThreads(process: Process): Iterable[Thread] = Iterable()
 
       def getProcessCpuTime(process: Process): Option[Long] = None
 
@@ -139,6 +141,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       import org.powerapi.core.GlobalCpuTime
 
       private var times = List(oldTimeInStates, timeInStates)
+
+      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
 
       def getProcesses(application: Application): List[Process] = List()
 

@@ -47,7 +47,7 @@ class MonitorChild(eventBus: MessageBus,
                    targets: List[Target]) extends ActorComponent {
 
   import org.powerapi.core.ClockChannel.{ startClock, stopClock, subscribeClockTick, unsubscribeClockTick }
-  import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, publishMonitorTick }
+  import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick }
   import org.powerapi.module.PowerChannel.{ AggregateReport, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
@@ -74,7 +74,6 @@ class MonitorChild(eventBus: MessageBus,
     subscribeClockTick(frequency)(eventBus)(self)
     subscribePowerReport(muid)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
-    context.parent ! MonitorStarted
     context.become(running(AggregateReport(muid, SUM), SUM))
   }
 
@@ -127,8 +126,7 @@ class MonitorChild(eventBus: MessageBus,
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
 class Monitors(eventBus: MessageBus) extends Supervisor with Configuration with TimeoutConfiguration {
-  import akka.pattern.ask
-  import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
+  import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
   import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
   
   override def preStart(): Unit = {
@@ -168,7 +166,8 @@ class Monitors(eventBus: MessageBus) extends Supervisor with Configuration with 
   def start(msg: MonitorStart): Unit = {
     val name = formatMonitorChildName(msg.muid)
     val child = context.actorOf(Props(classOf[MonitorChild], eventBus, msg.muid, msg.frequency, msg.targets), name)
-    sender ! child.ask(msg)(timeout)
+    child ! msg
+    sender ! MonitorStarted
   }
   
   /**
@@ -225,7 +224,19 @@ class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring
     subscribeAggPowerReport(muid)(eventBus)(reporterRef)
     this
   }
-  
+
+  def to(reference: ActorRef): this.type = {
+    import org.powerapi.module.PowerChannel.subscribeAggPowerReport
+
+    subscribeAggPowerReport(muid)(eventBus)(reference)
+    this
+  }
+
+  def to(reference: ActorRef, subscribeMethod: MessageBus => ActorRef => Unit): this.type = {
+    subscribeMethod(eventBus)(reference)
+    this
+  }
+
   def cancel(): Unit = {
     import org.powerapi.core.MonitorChannel.stopMonitor
     

@@ -65,7 +65,12 @@ class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configura
       case Some(pSpy) => {
         pSpy.start()
 
-        while(!pSpy.startRealTime(interval)) java.lang.Thread.sleep(interval.toMillis)
+        log.debug("Trying to establish the connexion ...")
+        while(!pSpy.startRealTime(interval)) {
+          log.error("Failed. Retrying.")
+          java.lang.Thread.sleep(interval.toMillis)
+        }
+        log.debug("Connexion established.")
 
         thread match {
           case None => {

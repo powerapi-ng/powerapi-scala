@@ -22,49 +22,20 @@
  */
 package org.powerapi.module.libpfm
 
-import org.powerapi.configuration.{TopologyConfiguration, TimeoutConfiguration}
+import org.powerapi.configuration.{LibpfmCoreConfiguration, TopologyConfiguration, TimeoutConfiguration}
 import org.powerapi.core.{Configuration, MessageBus}
 import org.powerapi.module.SensorComponent
-import scala.collection.BitSet
-
-/**
- * Main configuration for LibpfmCore sensors.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait LibpfmCoreConfiguration extends Configuration {
-  import org.powerapi.core.ConfigValue
-  import scala.collection.JavaConversions._
-
-  /**
-   * List of enabled bits for the perf_event_open maccro.
-   * The bits to configure are described in the structure perf_event_attr available below.
-   *
-   * @see http://manpages.ubuntu.com/manpages/trusty/en/man2/perf_event_open.2.html
-   */
-  lazy val configuration =
-    BitSet(
-      (load { _.getIntList("powerapi.libpfm.configuration") } match {
-        case ConfigValue(values) => values.map(_.toInt).toList
-        case _ => List[Int]()
-      }): _*
-    )
-
-  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
-    case ConfigValue(values) => values.map(_.toString).toList
-    case _ => List[String]()
-  }
-}
 
 /**
  * Main actor for getting the performance counter value per core/event.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreSensor(eventBus: MessageBus) extends SensorComponent(eventBus) with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
+class LibpfmCoreSensor(eventBus: MessageBus) extends SensorComponent(eventBus) with Configuration with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
   import akka.actor.Props
   import akka.pattern.ask
   import org.powerapi.core.MonitorChannel.MonitorTick
+  import org.powerapi.core.target.All
   import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
   import PerformanceCounterChannel.{formatLibpfmCoreSensorChildName, PCWrapper, publishPCReport}
   import scala.concurrent.Future
@@ -75,26 +46,28 @@ class LibpfmCoreSensor(eventBus: MessageBus) extends SensorComponent(eventBus) w
   }
 
   def sense(monitorTick: MonitorTick): Unit = {
-    var wrappers = Map[(Int, String), PCWrapper]()
+    if(monitorTick.target == All) {
+      var wrappers = Map[(Int, String), PCWrapper]()
 
-    topology.foreach {
-      case (core, indexes) => {
-        indexes.foreach(index => {
-          events.foreach(event => {
-            val name = formatLibpfmCoreSensorChildName(index, event, monitorTick.muid)
+      topology.foreach {
+        case (core, indexes) => {
+          indexes.foreach(index => {
+            events.foreach(event => {
+              val name = formatLibpfmCoreSensorChildName(index, event, monitorTick.muid)
 
-            val actor = context.child(name) match {
-              case Some(ref) => ref
-              case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, None, configuration), name)
-            }
+              val actor = context.child(name) match {
+                case Some(ref) => ref
+                case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, None, configuration), name)
+              }
 
-            wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
+              wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
+            })
           })
-        })
+        }
       }
-    }
 
-    publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
+      publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
+    }
   }
 
   def monitorStopped(msg: MonitorStop): Unit = {

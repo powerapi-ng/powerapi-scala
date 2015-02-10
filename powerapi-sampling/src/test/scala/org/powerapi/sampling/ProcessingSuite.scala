@@ -40,20 +40,23 @@ class ProcessingSuite(system: ActorSystem) extends UnitTest(system) {
 
   val basepath = getClass.getResource("/").getPath
 
-  "The Processing object" should "process the data files from a directory and write results inside CSV files" in {
+  "The Processing step" should "process the data files from a directory and write results inside CSV files" in {
     import org.saddle.io.{CsvFile, CsvParams, CsvParser}
     import scalax.file.Path
 
-    Processing(s"${basepath}samples", "/tmp/pr-data", "=", "output-powers.dat", "output-cpu-clk-unhalted-thread-p.dat", "output-cpu-clk-unhalted-ref-p.dat", 0.133, 2.66)
+    new Processing(s"${basepath}samples", "/tmp/processing", "=", "output-powers.dat", "output-cpu-clk-unhalted-thread-p.dat", "output-cpu-clk-unhalted-ref-p.dat") {
+      override lazy val baseFrequency = 0.133
+      override lazy val maxFrequency = 2.66
+    }.run()
 
-    val expectedPaths = Path("/") / (s"${basepath}pr-data", '/') * "*.csv"
-    val prDataPaths = Path("/") / ("/tmp/pr-data", '/') * "*.csv"
+    val expectedPaths = Path("/") / (s"${basepath}processing", '/') * "*.csv"
+    val prDataPaths = Path("/") / ("/tmp/processing", '/') * "*.csv"
 
     prDataPaths.size should equal(expectedPaths.size)
 
     for(path <- expectedPaths) {
       val expectedCSV = CsvFile(path.path)
-      val prDataCSV = CsvFile(s"/tmp/pr-data/${path.name}")
+      val prDataCSV = CsvFile(s"/tmp/processing/${path.name}")
       val expectedMat = CsvParser.parse(List(1,2), CsvParams(skipLines = 1))(expectedCSV).mapValues(CsvParser.parseDouble).toMat
       val prDataMat = CsvParser.parse(List(1,2), CsvParams(skipLines = 1))(prDataCSV).mapValues(CsvParser.parseDouble).toMat
 

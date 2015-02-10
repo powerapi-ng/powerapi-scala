@@ -20,27 +20,28 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.configuration
+package org.powerapi.core.target
 
-import org.powerapi.core.Configuration
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import org.powerapi.UnitTest
 
-/**
- * Processor topology.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait TopologyConfiguration {
-  self: Configuration =>
+class TargetSuite(system: ActorSystem) extends UnitTest(system) {
+  import akka.util.Timeout
+  import scala.concurrent.duration.DurationDouble
 
-  import com.typesafe.config.Config
-  import org.powerapi.core.ConfigValue
-  import scala.collection.JavaConversions._
+  def this() = this(ActorSystem("TargetSuite"))
 
-  lazy val topology: Map[Int, Iterable[Int]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toList)).toMap
-  } match {
-    case ConfigValue(values) => values
-    case _ => Map()
+  val timeout = Timeout(1.seconds)
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
+
+  "The implicit methods" should "convert an int or a string to the corresponding targets" in {
+    val process: Target = 1
+    process should equal(Process(1))
+    val application: Target = "app"
+    application should equal(Application("app"))
   }
 }

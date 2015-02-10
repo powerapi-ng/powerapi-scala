@@ -40,6 +40,14 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   val basepath = getClass.getResource("/").getPath
 
+  "The method getCPUFrequencies in the LinuxHelper" should "return the list of available frequencies" in {
+    val helper = new LinuxHelper {
+      override lazy val frequenciesPath = s"${basepath}sys/devices/system/cpu/cpu%?core/cpufreq/scaling_available_frequencies"
+    }
+
+    helper.getCPUFrequencies(Map(0 -> List(0,2), 1 -> List(1, 3))) should contain allOf(1596000l, 1729000l, 1862000l, 1995000l, 2128000l, 2261000l, 2394000l, 2527000l, 2660000l)
+  }
+
   "The method getThreads in the LinuxHelper" should "return the threads created by a given process" in {
     val helper = new LinuxHelper {
       override lazy val taskPath =  s"${basepath}proc/%?pid/task"
@@ -50,7 +58,9 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The method getTargetCpuTime in the OSHelper" should "return the cpu usage of the target" in {
     val helper = new OSHelper {
-      def getProcesses(application: Application): List[Process] = application match {
+      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
+
+      def getProcesses(application: Application): Iterable[Process] = application match {
         case Application("app") => List(Process(2), Process(3))
         case Application("bad-app") => List(Process(-1), Process(2))
         case _ => List()
@@ -65,7 +75,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
       def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
 
-      def getThreads(process: Process): List[Thread] = List()
+      def getThreads(process: Process): Iterable[Thread] = List()
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
     }

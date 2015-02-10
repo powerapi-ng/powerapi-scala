@@ -22,12 +22,19 @@
  */
 package org.powerapi.sampling
 
-object PolynomialRegression {
+/**
+ * Compute the CPU formulae.
+ * Process the data from the processing directory, use a polynomial regression of degree 2 to compute the formulae for each frequency and write the resulting configuration file.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+class PolynomialRegression(processingDir: String, computingDir: String) {
   import org.apache.logging.log4j.LogManager
 
   private val log = LogManager.getLogger
+  private val degree = 2
 
-  def apply(prDataDir: String, formulaeDir: String, degree: Int): Unit = {
+  def run(): Unit = {
     import org.ejml.data.DenseMatrix64F
     import org.ejml.ops.CommonOps
     import org.saddle.io.{CsvParams, CsvParser, CsvFile}
@@ -36,7 +43,7 @@ object PolynomialRegression {
 
     var coefficients = Map[Double, Array[Double]]()
 
-    for(path <- Path("/") / (prDataDir, '/') * "*.csv") {
+    for(path <- Path(processingDir, '/') * "*.csv") {
       val coefficient = path.name.replace(".csv", "")
       val data = CsvParser.parse(List(1,2), CsvParams(skipLines = 1))(CsvFile(path.path)).mapValues(CsvParser.parseDouble).toMat
       val unhaltedCycles = data.col(0)
@@ -77,9 +84,9 @@ object PolynomialRegression {
       log.debug(s"coefficient: $coefficient; r^2: $rsquared; mean squared error: $mse; standard deviation: $se")
     }
 
-    if((Path("/") / (prDataDir, '/')).exists) {
-      (Path("/") / (formulaeDir, '/')).deleteRecursively(force = true)
-      (Path("/") / (formulaeDir, '/')).createDirectory(failIfExists = false)
+    if(Path(processingDir, '/').exists) {
+      Path(computingDir, '/').deleteRecursively(force = true)
+      Path(computingDir, '/').createDirectory()
       var lines = List[String]("powerapi.libpfm.formulae.cycles = [")
 
       for(freqCoeff <- coefficients.keys.toList.sorted) {
@@ -88,7 +95,13 @@ object PolynomialRegression {
 
       lines :+= "]"
 
-      (Path("/") / (formulaeDir, '/') / ("libpfm-formula.conf", '/')).writeStrings(lines, "\n")
+      (Path(computingDir, '/') / ("libpfm-formula.conf", '/')).writeStrings(lines, "\n")
     }
+  }
+}
+
+object PolynomialRegression {
+  def apply(processingDir: String, computingDir: String): PolynomialRegression = {
+    new PolynomialRegression(processingDir, computingDir)
   }
 }
