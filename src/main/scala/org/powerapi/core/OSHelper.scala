@@ -211,7 +211,7 @@ class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration
             val globalTime = times.split("\\s").slice(0, 8).foldLeft(0: Long) {
               (acc, x) => acc + x.toLong
             }
-            val activeTime = times.split("\\s")(3).toLong
+            val activeTime = globalTime - times.split("\\s")(3).toLong
 
             GlobalCpuTime(globalTime, activeTime)
           }

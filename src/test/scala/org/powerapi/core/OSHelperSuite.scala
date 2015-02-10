@@ -99,7 +99,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     }
 
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeTime = 25883594
+    val activeTime = globalTime - 25883594
 
     helper.getGlobalCpuTime should equal(GlobalCpuTime(globalTime, activeTime))
     badHelper.getGlobalCpuTime should equal(GlobalCpuTime(0, 0))
