@@ -45,10 +45,11 @@ object PowerMeterMessages {
 /**
  * Represents the main actor of a PowerMeter. Used to handle all the actors created for one PowerMeter.
  */
-class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends ActorComponent {
+class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends ActorComponent with Configuration with TimeoutConfiguration {
+  import akka.pattern.ask
   import PowerMeterMessages._
   import org.powerapi.core.{ Clocks, Monitors }
-  import org.powerapi.core.MonitorChannel.MonitorStart
+  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStarted}
   
   var clockSupervisor: Option[ActorRef] = None
   var monitorSupervisor: Option[ActorRef] = None
@@ -67,7 +68,9 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
   def receive = LoggingReceive {
     case msg: MonitorStart => {
       monitorSupervisor match {
-        case Some(actorRef) => actorRef ! msg
+        case Some(actorRef) => {
+          Await.result(actorRef.ask(msg)(timeout), timeout.duration)
+        }
         case _ => log.error("The monitor supervisor is not created")
       }
     }

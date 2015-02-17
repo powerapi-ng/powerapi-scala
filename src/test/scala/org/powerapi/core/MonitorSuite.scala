@@ -253,9 +253,12 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "publish a message to the sensor actors for let them know that the monitor(s) is/are stopped" in new Bus {
     import akka.actor.Terminated
+    import akka.pattern.ask
     import akka.testkit.TestActorRef
     import java.lang.Thread
+    import org.powerapi.core.MonitorChannel.MonitorStarted
     import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
+    import scala.concurrent.Future
 
     val _system = ActorSystem("MonitorSuiteTest5")
 
@@ -266,7 +269,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val monitor = new Monitor(eventBus, _system)
     val monitor2 = new Monitor(eventBus, _system)
 
-    startMonitor(monitor.muid, 25.milliseconds, List[Target](1))(eventBus)
+    Await.result(monitors ? MonitorStart("", monitor.muid, 25.milliseconds, List[Target](1)), timeout.duration)
     startMonitor(monitor2.muid, 50.milliseconds, List[Target](2))(eventBus)
     Thread.sleep(250)
     val children = monitors.children.toArray.clone()

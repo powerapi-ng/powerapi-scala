@@ -80,6 +80,11 @@ object MonitorChannel extends Channel {
                           targets: List[Target]) extends MonitorMessage
 
   /**
+   * Acknowledgement message.
+   */
+  object MonitorStarted
+
+  /**
    * MonitorStop is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
