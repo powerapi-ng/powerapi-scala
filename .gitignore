@@ -34,4 +34,4 @@ target/
 .worksheet
 
 #bluecove
-lib/bluecove*
+bluecove*
