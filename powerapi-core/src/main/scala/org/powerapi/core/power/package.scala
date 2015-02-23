@@ -52,20 +52,20 @@ package object power {
 	  def MW = Power(value.toDouble, MEGAWATTS)
   }
   
-  def MAX(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).max match {
+  def MAX(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts):_*).max match {
     case Some(max) => max.mW
     case None => 0.mW
   }
-  def MIN(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).min match {
+  def MIN(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts):_*).min match {
     case Some(min) => min.mW
     case None => 0.mW
   }
-  def GEOMEAN(s: Seq[Power])  = Vec(s.map(_.toMilliWatts):_*).geomean.mW
-  def LOGSUM(s: Seq[Power])   = Vec(s.map(_.toMilliWatts):_*).logsum.mW
-  def MEAN(s: Seq[Power])     = Vec(s.map(_.toMilliWatts):_*).mean.mW
-  def MEDIAN(s: Seq[Power])   = Vec(s.map(_.toMilliWatts):_*).median.mW
-  def STDEV(s: Seq[Power])    = Vec(s.map(_.toMilliWatts):_*).stdev.mW
-  def SUM(s: Seq[Power])      = Vec(s.map(_.toMilliWatts):_*).sum.mW
-  def VARIANCE(s: Seq[Power]) = Vec(s.map(_.toMilliWatts):_*).variance.mW
+  def GEOMEAN(s: Seq[Power]): Power  = Vec(s.map(_.toMilliWatts):_*).geomean.mW
+  def LOGSUM(s: Seq[Power]): Power   = Vec(s.map(_.toMilliWatts):_*).logsum.mW
+  def MEAN(s: Seq[Power]): Power     = Vec(s.map(_.toMilliWatts):_*).mean.mW
+  def MEDIAN(s: Seq[Power]): Power   = Vec(s.map(_.toMilliWatts):_*).median.mW
+  def STDEV(s: Seq[Power]): Power    = Vec(s.map(_.toMilliWatts):_*).stdev.mW
+  def SUM(s: Seq[Power]): Power      = Vec(s.map(_.toMilliWatts):_*).sum.mW
+  def VARIANCE(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts):_*).variance.mW
 }
 
