@@ -1,4 +1,7 @@
 # PowerAPI
+[![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg?branch=develop)](https://travis-ci.org/Spirals-Team/powerapi)
+[![Codacy Badge](https://www.codacy.com/project/badge/e0b0e331ca414250a7240b6be74aaa7b)](https://www.codacy.com/public/maximecolmant/powerapi)
+
 PowerAPI is a middleware toolkit for building software-defined power meters.
 Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
 PowerAPI supports the acquisition of raw metrics from a wide diversity of sensors (*eg.*, physical meters, processor interfaces, hardware counters, OS counters) and the delivery of power consumptions via different channels (including file system, network, web, graphical).

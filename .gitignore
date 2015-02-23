@@ -34,4 +34,7 @@ target/
 .worksheet
 
 #bluecove
-bluecove*
+*/*/bluecove*
+
+#tokens
+secrets.tar

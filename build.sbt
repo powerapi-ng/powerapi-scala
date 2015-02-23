@@ -19,4 +19,4 @@ libraryDependencies in ThisBuild ++= Seq(
 
 parallelExecution in (ThisBuild, Test) := false
 
-instrumentSettings
+codacyProjectTokenFile := Some("./codacy-token.txt")
