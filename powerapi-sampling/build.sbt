@@ -14,8 +14,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.2" % "test"
 )
 
-name in Universal := "powerapi-sampling"
-
 lazy val downloadBluecoveSampling = taskKey[File]("download-bluecove-sampling")
 lazy val downloadBluecoveGplSampling = taskKey[File]("download-bluecove-gpl-sampling")
 

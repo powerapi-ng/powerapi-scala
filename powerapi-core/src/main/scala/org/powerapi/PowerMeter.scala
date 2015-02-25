@@ -49,7 +49,7 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
   import akka.pattern.ask
   import PowerMeterMessages._
   import org.powerapi.core.{ Clocks, Monitors }
-  import org.powerapi.core.MonitorChannel.{MonitorStart, MonitorStarted}
+  import org.powerapi.core.MonitorChannel.MonitorStart
   
   var clockSupervisor: Option[ActorRef] = None
   var monitorSupervisor: Option[ActorRef] = None
@@ -68,9 +68,7 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
   def receive = LoggingReceive {
     case msg: MonitorStart => {
       monitorSupervisor match {
-        case Some(actorRef) => {
-          Await.result(actorRef.ask(msg)(timeout), timeout.duration)
-        }
+        case Some(actorRef) => sender ! actorRef.ask(msg)(timeout)
         case _ => log.error("The monitor supervisor is not created")
       }
     }
@@ -101,6 +99,7 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
 class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configuration with TimeoutConfiguration {
+  import akka.pattern.ask
   import org.powerapi.core.Monitor
   import org.powerapi.core.MonitorChannel.MonitorStart
   import PowerMeterMessages._
@@ -117,7 +116,7 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configu
    */
   def monitor(frequency: FiniteDuration)(targets: Target*): PowerMonitoring = {
     val monitor = new Monitor(eventBus, system)
-    powerMeterActor ! MonitorStart("", monitor.muid, frequency, targets.toList)
+    Await.result(powerMeterActor.ask(MonitorStart("", monitor.muid, frequency, targets.toList))(timeout), timeout.duration)
     monitor
   }
 

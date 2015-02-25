@@ -37,7 +37,6 @@ object Application extends App with Configuration {
   import org.powerapi.PowerMeter
   import scala.sys
 
-  @volatile var running = true
   @volatile var powerapi: Option[PowerMeter] = None
   @volatile var externalPMeter: Option[PowerMeter] = None
 
@@ -59,7 +58,6 @@ object Application extends App with Configuration {
     }
 
     org.powerapi.module.libpfm.LibpfmHelper.deinit()
-    running = false
     powerapi = None
     externalPMeter = None
   }
