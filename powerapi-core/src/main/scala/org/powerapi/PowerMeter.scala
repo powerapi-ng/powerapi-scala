@@ -22,18 +22,19 @@
  */
 package org.powerapi
 
-import org.powerapi.configuration.TimeoutConfiguration
-
-import scala.concurrent.{ Await, Future }
-import scala.concurrent.duration.{ FiniteDuration, DurationInt }
-
 import akka.actor.{ ActorRef, ActorRefFactory, ActorSystem, Props }
 import akka.event.LoggingReceive
-import akka.pattern.{ after, gracefulStop }
-
-import org.powerapi.core.{Configuration, ActorComponent, MessageBus}
+import akka.pattern.{ ask, after, gracefulStop }
+import akka.util.Timeout
+import java.util.concurrent.TimeUnit
+import org.powerapi.PowerMeterMessages.StopAll
+import org.powerapi.core.{APIComponent, Monitor}
+import org.powerapi.core.MonitorChannel.MonitorStart
+import org.powerapi.core._
 import org.powerapi.core.target.Target
 import org.powerapi.core.power._
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 
 /**
  * PowerAPI object encapsulates all the messages.
@@ -43,14 +44,19 @@ object PowerMeterMessages {
 }
 
 /**
+ * Main configuration.
+ */
+trait PowerMeterConfiguration extends Configuration {
+  lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
+    case ConfigValue(value) => Timeout(value.milliseconds)
+    case _ => Timeout(1l.seconds)
+  }
+}
+
+/**
  * Represents the main actor of a PowerMeter. Used to handle all the actors created for one PowerMeter.
  */
-class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends ActorComponent with Configuration with TimeoutConfiguration {
-  import akka.pattern.ask
-  import PowerMeterMessages._
-  import org.powerapi.core.{ Clocks, Monitors }
-  import org.powerapi.core.MonitorChannel.MonitorStart
-  
+class PowerMeterActor(eventBus: MessageBus, modules: Seq[PowerModule], timeout: Timeout) extends ActorComponent {
   var clockSupervisor: Option[ActorRef] = None
   var monitorSupervisor: Option[ActorRef] = None
   
@@ -98,14 +104,9 @@ class PowerMeterActor(modules: Seq[PowerModule], eventBus: MessageBus) extends A
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configuration with TimeoutConfiguration {
-  import akka.pattern.ask
-  import org.powerapi.core.Monitor
-  import org.powerapi.core.MonitorChannel.MonitorStart
-  import PowerMeterMessages._
-
+class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configuration with PowerMeterConfiguration {
   private val eventBus = new MessageBus
-  private val powerMeterActor = system.actorOf(Props(classOf[PowerMeterActor], modules, eventBus))
+  private val powerMeterActor = system.actorOf(Props(classOf[PowerMeterActor], eventBus, modules, timeout))
   
   /**
    * Triggers a new power monitoring for a specific set of targets at a given frequency.
@@ -131,7 +132,7 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configu
 
     Await.result(after(duration, using = system.scheduler) {
       Future successful "waitFor completed"
-    }, duration + 1.seconds)
+    }, duration + 1l.seconds)
 
     this
   }
@@ -146,7 +147,7 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configu
 }
 
 object PowerMeter {
-  implicit lazy val system = ActorSystem(s"PowerMeter-${System.nanoTime()}")
+  lazy val system = ActorSystem(s"PowerMeter-${System.nanoTime()}")
   
   /**
    * Loads a specific power module as a tuple (sensor,formula).
@@ -167,8 +168,6 @@ object PowerMeter {
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 trait PowerModule {
-  import org.powerapi.core.APIComponent
-
   // Underlying classes of a power module, used to create the actors.
   def underlyingSensorsClasses: Seq[(Class[_ <: APIComponent], Seq[Any])]
   def underlyingFormulaeClasses: Seq[(Class[_ <: APIComponent], Seq[Any])]
@@ -184,7 +183,7 @@ trait PowerModule {
   /**
    * Initiate a power module
    */
-  def start(factory: ActorRefFactory) {
+  def start(factory: ActorRefFactory): Unit = {
     eventBus match {
       case Some(bus) => {
         underlyingSensorsClasses.foreach(underlyingSensorClass => {
@@ -202,7 +201,7 @@ trait PowerModule {
   /**
    * Stop a power module
    */
-  def stop(factory: ActorRefFactory) {
+  def stop(factory: ActorRefFactory): Unit = {
     sensors.foreach(sensor => factory.stop(sensor))
     formulae.foreach(formula => factory.stop(formula))
   }

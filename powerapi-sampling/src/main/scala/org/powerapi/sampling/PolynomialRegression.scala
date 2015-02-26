@@ -22,6 +22,13 @@
  */
 package org.powerapi.sampling
 
+import org.apache.logging.log4j.LogManager
+import org.ejml.data.DenseMatrix64F
+import org.ejml.ops.CommonOps
+import org.saddle.io.{CsvParams, CsvParser, CsvFile}
+import org.saddle.{Mat, Vec}
+import scalax.file.Path
+
 /**
  * Compute the CPU formulae.
  * Process the data from the processing directory, use a polynomial regression of degree 2 to compute the formulae for each frequency and write the resulting configuration file.
@@ -29,18 +36,10 @@ package org.powerapi.sampling
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class PolynomialRegression(processingDir: String, computingDir: String) {
-  import org.apache.logging.log4j.LogManager
-
   private val log = LogManager.getLogger
   private val degree = 2
 
   def run(): Unit = {
-    import org.ejml.data.DenseMatrix64F
-    import org.ejml.ops.CommonOps
-    import org.saddle.io.{CsvParams, CsvParser, CsvFile}
-    import org.saddle.{Mat, Vec}
-    import scalax.file.Path
-
     var coefficients = Map[Double, Array[Double]]()
 
     for(path <- Path(processingDir, '/') * "*.csv") {
@@ -100,8 +99,8 @@ class PolynomialRegression(processingDir: String, computingDir: String) {
   }
 }
 
-object PolynomialRegression {
-  def apply(processingDir: String, computingDir: String): PolynomialRegression = {
+object PolynomialRegression extends SamplingConfiguration {
+  def apply(): PolynomialRegression = {
     new PolynomialRegression(processingDir, computingDir)
   }
 }

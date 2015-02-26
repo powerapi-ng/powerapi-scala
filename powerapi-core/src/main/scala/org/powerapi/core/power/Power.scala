@@ -22,6 +22,9 @@
  */
 package org.powerapi.core.power
 
+import org.apache.logging.log4j.LogManager
+import RawPower._
+
 object Power {
   def apply(value: Double, unit: PowerUnit): Power = new RawPower(value, unit)
   def apply(value: Double, unit: String): Power    = new RawPower(value, PowerUnitSystem(unit))
@@ -83,9 +86,6 @@ object RawPower {
  * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
  */
 final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
-  import org.apache.logging.log4j.LogManager
-  import RawPower._
-  
   private val log = LogManager.getLogger
   
   private[this] def bounded(max: Double) = 0.0 <= value && value <= max

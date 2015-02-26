@@ -24,11 +24,11 @@ package org.powerapi.core.target
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
+import akka.util.Timeout
 import org.powerapi.UnitTest
+import scala.concurrent.duration.DurationInt
 
 class TargetSuite(system: ActorSystem) extends UnitTest(system) {
-  import akka.util.Timeout
-  import scala.concurrent.duration.DurationDouble
 
   def this() = this(ActorSystem("TargetSuite"))
 

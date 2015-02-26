@@ -22,11 +22,13 @@
  */
 package org.powerapi.core
 
+import akka.actor.ActorRef
 import java.util.UUID
+import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.target.Target
+import org.powerapi.core.power.Power
 import scala.concurrent.duration.FiniteDuration
 
-import akka.actor.ActorRef
 
 /**
  * Monitor channel and messages.
@@ -35,8 +37,6 @@ import akka.actor.ActorRef
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
 object MonitorChannel extends Channel {
-  import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.power.Power
   
   type M = MonitorMessage
 

@@ -22,16 +22,21 @@
  */
 package org.powerapi.core
 
-import java.util.UUID
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.event.LoggingReceive
-import org.powerapi.configuration.TimeoutConfiguration
+import java.util.UUID
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
 import org.powerapi.module.PowerChannel.PowerReport
 import org.powerapi.core.target.Target
-import org.powerapi.{ PowerDisplay, PowerMonitoring }
+import org.powerapi.{PowerDisplay, PowerMonitoring}
+import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
+import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
+import org.powerapi.core.MonitorChannel.{publishMonitorTick, setAggFunction, stopMonitor}
+import org.powerapi.module.PowerChannel.{AggregateReport, render, subscribePowerReport, unsubscribePowerReport, subscribeAggPowerReport}
+import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
+import org.powerapi.reporter.ReporterComponent
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -45,10 +50,6 @@ class MonitorChild(eventBus: MessageBus,
                    muid: UUID,
                    frequency: FiniteDuration,
                    targets: List[Target]) extends ActorComponent {
-
-  import org.powerapi.core.ClockChannel.{ startClock, stopClock, subscribeClockTick, unsubscribeClockTick }
-  import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorStopAll, publishMonitorTick }
-  import org.powerapi.module.PowerChannel.{ AggregateReport, render, subscribePowerReport, unsubscribePowerReport }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case MonitorStart(_, id, freq, targs) if muid == id && frequency == freq && targets == targs => start()
@@ -125,9 +126,7 @@ class MonitorChild(eventBus: MessageBus,
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class Monitors(eventBus: MessageBus) extends Supervisor with Configuration with TimeoutConfiguration {
-  import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
-  import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
+class Monitors(eventBus: MessageBus) extends Supervisor with Configuration  {
   
   override def preStart(): Unit = {
     subscribeMonitorsChannel(eventBus)(self)
@@ -210,24 +209,17 @@ class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring
   val muid = UUID.randomUUID()
   
   def apply(aggregator: Seq[Power] => Power): this.type = {
-    import org.powerapi.core.MonitorChannel.setAggFunction
-    
     setAggFunction(muid, aggregator)(eventBus)
     this
   }
   
   def to(output: PowerDisplay): this.type = {
-    import org.powerapi.module.PowerChannel.subscribeAggPowerReport
-    import org.powerapi.reporter.ReporterComponent
-    
     val reporterRef = system.actorOf(Props(classOf[ReporterComponent], output))
     subscribeAggPowerReport(muid)(eventBus)(reporterRef)
     this
   }
 
   def to(reference: ActorRef): this.type = {
-    import org.powerapi.module.PowerChannel.subscribeAggPowerReport
-
     subscribeAggPowerReport(muid)(eventBus)(reference)
     this
   }
@@ -238,8 +230,6 @@ class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring
   }
 
   def cancel(): Unit = {
-    import org.powerapi.core.MonitorChannel.stopMonitor
-    
     stopMonitor(muid)(eventBus)
   }
 }

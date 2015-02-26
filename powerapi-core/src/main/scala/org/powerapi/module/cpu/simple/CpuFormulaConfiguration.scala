@@ -20,25 +20,33 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.configuration
+package org.powerapi.module.cpu.simple
 
-import org.powerapi.core.Configuration
+import org.powerapi.core.{Configuration, ConfigValue}
 
 /**
- * Timeout configuration.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait TimeoutConfiguration {
-  self: Configuration =>
+trait CpuFormulaConfiguration extends Configuration {
+  /**
+   * CPU Thermal Design Power (TDP) value.
+   *
+   * @see http://en.wikipedia.org/wiki/Thermal_design_power
+   */
+  lazy val tdp = load { _.getDouble("powerapi.cpu.tdp") } match {
+    case ConfigValue(value) => value
+    case _ => 0d
+  }
 
-  import akka.util.Timeout
-  import java.util.concurrent.TimeUnit
-  import org.powerapi.core.ConfigValue
-  import scala.concurrent.duration.DurationDouble
-
-  lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
-    case ConfigValue(value) => Timeout(value.milliseconds)
-    case _ => Timeout(1.seconds)
+  /**
+   * CPU Thermal Design Power (TDP) factor.
+   *
+   * @see [1], JouleSort: A Balanced Energy-Efﬁciency Benchmark, by Rivoire et al.
+   */
+  lazy val tdpFactor = load { _.getDouble("powerapi.cpu.tdp-factor") } match {
+    case ConfigValue(value) => value
+    case _ => 0.7
   }
 }

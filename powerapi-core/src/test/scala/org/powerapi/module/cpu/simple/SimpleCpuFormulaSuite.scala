@@ -22,18 +22,18 @@
  */
 package org.powerapi.module.cpu.simple
 
-import java.util.UUID
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
+import org.powerapi.core.power._
+import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
 import scala.concurrent.duration.DurationInt
-
-class SimpleCpuFormulaMock(messageBus: MessageBus) extends CpuFormula(messageBus) {
-  override lazy val tdp = 220
-  override lazy val tdpFactor = 0.7
-}
 
 class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -46,15 +46,9 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   val eventBus = new MessageBus
-  val formulaMock = TestActorRef(Props(classOf[SimpleCpuFormulaMock], eventBus), "simple-cpuFormula")(system)
+  val formulaMock = TestActorRef(Props(classOf[CpuFormula], eventBus, 220.0, 0.7), "simple-cpuFormula")(system)
 
   "A simple cpu formula" should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
-    import org.powerapi.core.power._
-    import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
-
     val muid = UUID.randomUUID()
     val target: Target = 1
     val targetRatio = TargetUsageRatio(0.4)

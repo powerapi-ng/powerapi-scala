@@ -20,38 +20,21 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.configuration
+package org.powerapi.module.libpfm
 
-import org.powerapi.core.Configuration
+import org.powerapi.core.ConfigValue
 
 /**
- * Main configuration for LibpfmCore sensors.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait LibpfmCoreConfiguration  {
-  self: Configuration =>
-
-  import org.powerapi.core.ConfigValue
-  import scala.collection.BitSet
-  import scala.collection.JavaConversions._
-
+trait LibpfmCoreProcessSensorConfiguration extends LibpfmCoreSensorConfiguration {
   /**
-   * List of enabled bits for the perf_event_open maccro.
-   * The bits to configure are described in the structure perf_event_attr available below.
-   *
-   * @see http://manpages.ubuntu.com/manpages/trusty/en/man2/perf_event_open.2.html
+   * Allows to know if the threads associated to a Target have to be included.
    */
-  lazy val configuration =
-    BitSet(
-      (load { _.getIntList("powerapi.libpfm.configuration") } match {
-        case ConfigValue(values) => values.map(_.toInt).toList
-        case _ => List[Int]()
-      }): _*
-    )
-
-  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
-    case ConfigValue(values) => values.map(_.toString).toList
-    case _ => List[String]()
+  lazy val inDepth = load { _.getBoolean("powerapi.libpfm.in-depth") } match {
+    case ConfigValue(value) => value
+    case _ => false
   }
 }

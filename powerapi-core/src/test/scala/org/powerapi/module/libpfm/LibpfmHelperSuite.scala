@@ -25,6 +25,9 @@ package org.powerapi.module.libpfm
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import org.powerapi.UnitTest
+import org.powerapi.module.libpfm.LibpfmHelper.{BitSet2Long, init, closePC, configurePC, deinit, disablePC, enablePC, readPC, resetPC, scale}
+import scala.collection.BitSet
+import scala.sys.process.stringSeqToProcess
 
 class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
   def this() = this(ActorSystem("LibpfmHelperSuite"))
@@ -34,19 +37,15 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "An implicit method" should "convert a BitSet to a long" in {
-    import scala.collection.mutable.BitSet
-    import LibpfmHelper.BitSet2Long
-
-    val bitset = BitSet()
+    var bitset = BitSet()
     var long: Long = bitset
     long should equal(0L)
-    bitset += 0
-    bitset += 1
+    bitset = BitSet(0, 1)
     // Only 23 bits are allowed
     bitset += 24
     long = bitset
     long should equal((1L << 0) + (1L << 1))
-    bitset.clear()
+    bitset = BitSet()
     bitset += 0
     bitset += 1
     bitset += 2
@@ -55,8 +54,6 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "The scale method" should "scale correctly the values passed as arguments" in {
-    import LibpfmHelper.scale
-
     var now = Array[Long](10, 2, 2)
     var old = Array[Long](1, 1, 1)
     scale(now, old) should equal(Some(9))
@@ -73,10 +70,6 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "The libpfm library" can "be used on linux" ignore {
-    import scala.collection.BitSet
-    import LibpfmHelper.{init, closePC, configurePC, deinit, disablePC, enablePC, readPC, resetPC}
-    import scala.sys.process.stringSeqToProcess
-
     val basepath = getClass.getResource("/").getPath
 
     val pid = Seq("bash", s"${basepath}test-pc.bash").lineStream(0).trim.toInt

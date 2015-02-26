@@ -22,27 +22,27 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
+import akka.actor.{ActorSystem, Props, Terminated}
+import akka.pattern.gracefulStop
 import akka.util.Timeout
+import akka.testkit.{TestActorRef, TestKit, TestProbe}
+import java.util.UUID
 import org.powerapi.UnitTest
-import org.powerapi.core.{OSHelper, MessageBus}
-
+import org.powerapi.core.MessageBus
+import org.powerapi.core.LinuxHelper
+import org.powerapi.core.target.{intToProcess, Process}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.module.SensorChannel.monitorAllStopped
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
 import scala.collection.BitSet
-
-class LibpfmCoreProcessSensorMock(eventBus: MessageBus, osHelper: OSHelper, _timeout: Timeout, _topology: Map[Int, List[Int]], _configuration: BitSet, _events: List[String], _inDepth: Boolean) extends LibpfmCoreProcessSensor(eventBus, osHelper) {
-  override lazy val timeout = _timeout
-  override lazy val topology = _topology
-  override lazy val configuration = _configuration
-  override lazy val events = _events
-  override lazy val inDepth = _inDepth
-}
+import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.sys.process.stringSeqToProcess
+import scala.concurrent.duration.DurationInt
 
 class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system) {
-  import akka.actor.Props
-  import akka.util.Timeout
-  import org.powerapi.core.MessageBus
-  import scala.concurrent.duration.DurationDouble
 
   def this() = this(ActorSystem("LibpfmCoreProcessSensorSuite"))
 
@@ -57,24 +57,9 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
   }
 
   "A LibpfmCoreProcessSensor" should "aggregate the performance counters" ignore new Bus {
-    import akka.actor.Terminated
-    import akka.pattern.gracefulStop
-    import akka.testkit.{TestActorRef, TestProbe}
-    import java.util.UUID
-    import org.powerapi.core.LinuxHelper
-    import org.powerapi.core.target.{intToProcess, Process}
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.MonitorTick
-    import org.powerapi.module.SensorChannel.monitorAllStopped
-    import PerformanceCounterChannel.{PCReport, subscribePCReport}
-    import scala.collection.mutable.{ArrayBuffer, BitSet}
-    import scala.concurrent.{Await, Future}
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import scala.sys.process.stringSeqToProcess
-
     val configuration = BitSet(0, 1)
     val events = List("CPU_CLK_UNHALTED:THREAD_P", "instructions")
-    val topology = Map(0 -> List(0, 1))
+    val topology = Map(0 -> Iterable(0, 1))
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
     val buffer = ArrayBuffer[PCReport]()
@@ -88,7 +73,7 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
     LibpfmHelper.init()
 
     val reaper = TestProbe()(system)
-    val sensor = TestActorRef(Props(classOf[LibpfmCoreProcessSensorMock], eventBus, new LinuxHelper, Timeout(1.seconds), topology, configuration, events, true), "sensor1")(system)
+    val sensor = TestActorRef(Props(classOf[LibpfmCoreProcessSensor], eventBus, new LinuxHelper, Timeout(1.seconds), topology, configuration, events, true), "sensor1")(system)
 
     subscribePCReport(eventBus)(testActor)
 

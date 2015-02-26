@@ -22,7 +22,12 @@
  */
 package org.powerapi.module.powerspy
 
-import org.powerapi.core.{MessageBus, ExternalPMeter, Configuration}
+import fr.inria.powerspy.core.PowerSpy
+import org.powerapi.core.{MessageBus, ExternalPMeter}
+import org.powerapi.core.power._
+import org.powerapi.module.powerspy.PowerSpyChannel.publishExternalPowerSpyPower
+import org.apache.logging.log4j.LogManager
+import scala.concurrent.duration.{FiniteDuration, DurationInt}
 
 /**
  * PowerSpy special helper.
@@ -30,30 +35,13 @@ import org.powerapi.core.{MessageBus, ExternalPMeter, Configuration}
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class PowerSpyPMeter(eventBus: MessageBus) extends ExternalPMeter with Configuration {
-  import java.util.concurrent.TimeUnit
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.core.power._
-  import org.powerapi.module.powerspy.PowerSpyChannel.publishExternalPowerSpyPower
-  import fr.inria.powerspy.core.PowerSpy
-  import org.apache.logging.log4j.LogManager
-  import scala.concurrent.duration.{FiniteDuration, DurationDouble}
+class PowerSpyPMeter(eventBus: MessageBus, mac: String, interval: FiniteDuration) extends ExternalPMeter {
 
   @volatile private var running = true
   @volatile private var thread: Option[java.lang.Thread] = None
   @volatile private var powerspy: Option[PowerSpy] = None
 
   private val log = LogManager.getLogger
-
-  lazy val mac = load { _.getString("powerspy.mac") } match {
-    case ConfigValue(address) => address
-    case _ => ""
-  }
-
-  lazy val interval: FiniteDuration = load { _.getDuration("powerspy.interval", TimeUnit.NANOSECONDS) } match {
-    case ConfigValue(value) => value.nanoseconds
-    case _ => 1.seconds
-  }
 
   def init(): Unit = {
     powerspy = PowerSpy.init(mac)

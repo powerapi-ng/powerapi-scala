@@ -22,24 +22,24 @@
  */
 package org.powerapi.module.libpfm
 
-import org.powerapi.configuration.{LibpfmCoreConfiguration, TopologyConfiguration, TimeoutConfiguration}
-import org.powerapi.core.{Configuration, MessageBus}
+import akka.actor.Props
+import akka.pattern.ask
+import akka.util.Timeout
+import org.powerapi.core.MessageBus
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.core.target.All
 import org.powerapi.module.SensorComponent
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmCoreSensorChildName, PCWrapper, publishPCReport}
+import scala.collection.BitSet
+import scala.concurrent.Future
 
 /**
  * Main actor for getting the performance counter value per core/event.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreSensor(eventBus: MessageBus) extends SensorComponent(eventBus) with Configuration with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
-  import akka.actor.Props
-  import akka.pattern.ask
-  import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.core.target.All
-  import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
-  import PerformanceCounterChannel.{formatLibpfmCoreSensorChildName, PCWrapper, publishPCReport}
-  import scala.concurrent.Future
-
+class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String]) extends SensorComponent(eventBus) {
   override def preStart(): Unit = {
     subscribeSensorsChannel(eventBus)(self)
     super.preStart()

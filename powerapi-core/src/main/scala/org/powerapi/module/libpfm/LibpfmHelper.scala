@@ -22,6 +22,12 @@
  */
 package org.powerapi.module.libpfm
 
+import org.apache.logging.log4j.LogManager
+import org.bridj.Pointer.{allocateCLongs, pointerTo, pointerToCString}
+import perfmon2.libpfm.{LibpfmLibrary, perf_event_attr, pfm_perf_encode_arg_t}
+import perfmon2.libpfm.LibpfmLibrary.pfm_os_t
+import scala.collection.BitSet
+
 /**
  * Internal wrappers
  *
@@ -42,12 +48,6 @@ case class TCID(identifier: Int, core: Int) extends Identifier
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object LibpfmHelper {
-  import scala.collection.BitSet
-  import org.apache.logging.log4j.LogManager
-  import org.bridj.Pointer.{allocateCLongs, pointerTo, pointerToCString}
-  import perfmon2.libpfm.{LibpfmLibrary, perf_event_attr, pfm_perf_encode_arg_t}
-  import perfmon2.libpfm.LibpfmLibrary.pfm_os_t
-
   private val format = LibpfmLibrary.perf_event_read_format.PERF_FORMAT_TOTAL_TIME_ENABLED.value().toInt | LibpfmLibrary.perf_event_read_format.PERF_FORMAT_TOTAL_TIME_RUNNING.value.toInt
   private var initialized = false
 

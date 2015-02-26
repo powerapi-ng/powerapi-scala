@@ -22,14 +22,22 @@
  */
 package org.powerapi.module.cpu.simple
 
-import java.util.UUID
+
 
 import akka.actor.{ActorSystem, Props}
+import akka.pattern.gracefulStop
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-
+import org.powerapi.core.{OSHelper, Thread, TimeInStates}
+import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process, Target, TargetUsageRatio}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.MonitorChannel.publishMonitorTick
+import org.powerapi.module.CacheKey
+import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
 import scala.concurrent.duration.DurationInt
 
 class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
@@ -43,15 +51,6 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A simple CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
-    import akka.pattern.gracefulStop
-    import org.powerapi.core.{OSHelper, Thread, TimeInStates}
-    import org.powerapi.core.target.{All, Application, intToProcess, Process, stringToApplication, Target, TargetUsageRatio}
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.publishMonitorTick
-    import org.powerapi.module.CacheKey
-    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
-
     val eventBus = new MessageBus
 
     val globalElapsedTime1: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
@@ -183,15 +182,6 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle correctly the time differences for computing the TargetUsageRatio" in {
-    import akka.pattern.gracefulStop
-    import org.powerapi.core.{OSHelper, Thread, TimeInStates}
-    import org.powerapi.core.target.{Application, intToProcess, Process, Target, TargetUsageRatio}
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.publishMonitorTick
-    import org.powerapi.module.CacheKey
-    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
-
     val eventBus = new MessageBus
 
     val globalElapsedTime: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0

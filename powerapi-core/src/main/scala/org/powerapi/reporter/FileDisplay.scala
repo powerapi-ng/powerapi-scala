@@ -23,7 +23,9 @@
 package org.powerapi.reporter
 
 import org.powerapi.PowerDisplay
-import org.powerapi.core.Configuration
+import org.powerapi.core.power.Power
+import org.powerapi.core.target.Target
+import scalax.io.Resource
 
 /**
  * Display power information into a given file.
@@ -31,23 +33,8 @@ import org.powerapi.core.Configuration
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-class FileDisplay extends PowerDisplay with Configuration {
-  import scalax.file.Path
-  import scalax.io.Resource
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.core.FileHelper.using
-  import org.powerapi.core.power.Power
-  import org.powerapi.core.target.Target
-  
-  /**
-   * The output file path, build from prefix given by user.
-   * Temporary file as default.
-   */
-  lazy val filePath = load { _.getString("powerapi.reporter.file.prefix") + System.nanoTime() } match {
-    case ConfigValue(path) => path
-    case _ => Path.createTempFile(prefix = "powerapi.reporter-file", deleteOnExit = false).path
-  }
-  
+class FileDisplay extends PowerDisplay with FileDisplayConfiguration {
+
   lazy val output = Resource.fromFile(filePath)
 
   def display(timestamp: Long, target: Target, device: String, power: Power) {

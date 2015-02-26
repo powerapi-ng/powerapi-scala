@@ -20,24 +20,42 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.configuration
+package org.powerapi.module.libpfm.cycles
 
-import org.powerapi.core.Configuration
+import java.util.concurrent.TimeUnit
+
+import com.typesafe.config.Config
+import org.powerapi.core.{Configuration, ConfigValue}
+import scala.collection.JavaConversions._
+import scala.concurrent.duration.DurationLong
+import scala.concurrent.duration.FiniteDuration
 
 /**
- * Sampling configuration.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait SamplingConfiguration {
-  self: Configuration =>
+trait LibpfmCoreCyclesFormulaConfiguration extends Configuration {
+  lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.formulae.cycles-thread") } match {
+    case ConfigValue(value) => value
+    case _ => "CPU_CLK_UNHALTED:THREAD_P"
+  }
 
-  import java.util.concurrent.TimeUnit
-  import org.powerapi.core.ConfigValue
-  import scala.concurrent.duration.{DurationDouble, FiniteDuration}
+  lazy val cyclesRefName: String = load { _.getString("powerapi.libpfm.formulae.cycles-ref") } match {
+    case ConfigValue(value) => value
+    case _ => "CPU_CLK_UNHALTED:REF_P"
+  }
+
+  lazy val formulae: Map[Double, List[Double]] = load { conf =>
+    (for (item: Config <- conf.getConfigList("powerapi.libpfm.formulae.cycles"))
+    yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
+  } match {
+    case ConfigValue(values) => values
+    case _ => Map()
+  }
 
   lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
     case ConfigValue(value) => value.nanoseconds
-    case _ => 1.seconds
+    case _ => 1l.seconds
   }
 }

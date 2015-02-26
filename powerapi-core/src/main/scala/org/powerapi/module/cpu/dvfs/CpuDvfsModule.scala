@@ -22,16 +22,19 @@
  */
 package org.powerapi.module.cpu.dvfs
 
+import com.typesafe.config.Config
 import org.powerapi.PowerModule
-import org.powerapi.core.LinuxHelper
+import org.powerapi.core.{Configuration, ConfigValue, LinuxHelper}
 
-class CpuDvfsModule extends PowerModule {
+import scala.collection.JavaConversions
+
+class CpuDvfsModule(tdp: Double, tdpFactor: Double, frequencies: Map[Int, Double]) extends PowerModule {
   lazy val underlyingSensorsClasses  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
-  lazy val underlyingFormulaeClasses = Seq((classOf[CpuFormula], Seq()))
+  lazy val underlyingFormulaeClasses = Seq((classOf[CpuFormula], Seq(tdp, tdpFactor, frequencies)))
 }
 
-object CpuDvfsModule {
+object CpuDvfsModule extends CpuFormulaConfiguration {
   def apply(): CpuDvfsModule = {
-    new CpuDvfsModule()
+    new CpuDvfsModule(tdp, tdpFactor, frequencies)
   }
 }

@@ -24,8 +24,16 @@ package org.powerapi.module.powerspy
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.power._
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.{OSHelper, MessageBus, Thread, TimeInStates}
+import org.powerapi.core.MonitorChannel.publishMonitorTick
+import org.powerapi.core.target.{All, Application, intToProcess, Process, Target, TargetUsageRatio}
+import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
+import scala.concurrent.duration.DurationInt
 
 class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -36,16 +44,6 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A PowerSpyFormula" should "listen PowerSpyPower/UsageReport messages and produce PowerReport messages" in {
-    import java.util.UUID
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{OSHelper, MessageBus, Thread, TimeInStates}
-    import org.powerapi.core.MonitorChannel.publishMonitorTick
-    import org.powerapi.core.target.{All, Application, intToProcess, Process, Target, TargetUsageRatio}
-    import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
-    import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
-    import scala.concurrent.duration.DurationInt
-
     val eventBus = new MessageBus
 
     val globalElapsedTime1: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
@@ -72,7 +70,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     val processRatio2 = TargetUsageRatio((p2ElapsedTime - oldP2ElapsedTime).toDouble / (activeElapsedTime2 - oldActiveElapsedTime2))
     val allRatio = TargetUsageRatio((activeElapsedTime3 - oldActiveElapsedTime3).toDouble / (activeElapsedTime3 - oldActiveElapsedTime3))
 
-    val formula = TestActorRef(Props(classOf[PowerSpyFormula], eventBus, new OSHelper {
+    TestActorRef(Props(classOf[PowerSpyFormula], eventBus, new OSHelper {
       import org.powerapi.core.GlobalCpuTime
 
       private var targetTimes = Map[Target, List[Long]](
@@ -112,7 +110,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
       }
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
-    }))(system)
+    }, 90.W))(system)
 
     val tickMock = ClockTick("test", 25.milliseconds)
     subscribePowerReport(muid1)(eventBus)(testActor)
@@ -128,21 +126,21 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     var ret = expectMsgClass(classOf[PowerReport])
     ret.muid should equal(muid1)
     ret.target should equal(Process(1))
-    ret.power should equal(0.W)
+    ret.power should equal(90.W)
     ret.tick should equal(tickMock)
 
     publishMonitorTick(muid2, 2, tickMock)(eventBus)
     ret = expectMsgClass(classOf[PowerReport])
     ret.muid should equal(muid2)
     ret.target should equal(Process(2))
-    ret.power should equal(0.W)
+    ret.power should equal(90.W)
     ret.tick should equal(tickMock)
 
     publishMonitorTick(muid3, All, tickMock)(eventBus)
     ret = expectMsgClass(classOf[PowerReport])
     ret.muid should equal(muid3)
     ret.target should equal(All)
-    ret.power should equal(0.W)
+    ret.power should equal(90.W)
     ret.tick should equal(tickMock)
 
     publishPowerSpyPower(150.W)(eventBus)
@@ -151,13 +149,13 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     ret = expectMsgClass(classOf[PowerReport])
     ret.muid should equal(muid1)
     ret.target should equal(Process(1))
-    ret.power should equal((processRatio1.ratio * 150).W)
+    ret.power should equal((90 + processRatio1.ratio * (150 - 90)).W)
     ret.tick should equal(tickMock)
     publishMonitorTick(muid2, 2, tickMock)(eventBus)
     ret = expectMsgClass(classOf[PowerReport])
     ret.muid should equal(muid2)
     ret.target should equal(Process(2))
-    ret.power should equal((processRatio2.ratio * 150).W)
+    ret.power should equal((90 + processRatio2.ratio * (150 - 90)).W)
     ret.tick should equal(tickMock)
 
     publishPowerSpyPower(140.W)(eventBus)
@@ -166,7 +164,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     ret = expectMsgClass(classOf[PowerReport])
     ret.muid should equal(muid3)
     ret.target should equal(All)
-    ret.power should equal((allRatio.ratio * 140).W)
+    ret.power should equal((90 + allRatio.ratio * (140 - 90)).W)
     ret.tick should equal(tickMock)
   }
 }

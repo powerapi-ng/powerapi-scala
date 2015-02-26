@@ -22,19 +22,18 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-
-import scala.concurrent.duration.DurationInt
-
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.testkit.{ TestActorRef, TestKit }
 import akka.util.Timeout
-
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.core.power.Power
-import org.powerapi.core.target.Target
-import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.core.target.{intToProcess, Target}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power._
+import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import scala.concurrent.duration.DurationInt
 
 class ConsoleDisplayMock(testActor: ActorRef) extends ConsoleDisplay {
   override def display(timestamp: Long, target: Target, device: String, power: Power) {
@@ -56,11 +55,6 @@ class ConsoleDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new ConsoleDisplayMock(testActor)), "consoleReporter")(system)
   
   "A console reporter" should "process a PowerReport and then report energy information in a String format" in {
-    import org.powerapi.core.target.intToProcess
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.power._
-    import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
-    
     val muid = UUID.randomUUID()
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)

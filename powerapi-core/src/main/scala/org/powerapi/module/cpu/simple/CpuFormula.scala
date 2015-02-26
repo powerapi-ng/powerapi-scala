@@ -23,9 +23,11 @@
 package org.powerapi.module.cpu.simple
 
 import org.powerapi.core.{Configuration, MessageBus}
-import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-import org.powerapi.module.{PowerChannel, FormulaComponent}
-import org.powerapi.module.cpu.UsageMetricsChannel
+import org.powerapi.core.power._
+import org.powerapi.module.FormulaComponent
+import org.powerapi.module.cpu.UsageMetricsChannel.{subscribeSimpleUsageReport, UsageReport}
+import org.powerapi.module.PowerChannel.publishPowerReport
+
 
 /**
  * Implements a CpuFormula by making the ratio between maximum CPU power (obtained by multiplying
@@ -36,32 +38,7 @@ import org.powerapi.module.cpu.UsageMetricsChannel
  * @author <a href="mailto:aurelien.bourdon@gmail.com">Aurélien Bourdon</a
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class CpuFormula(eventBus: MessageBus) extends FormulaComponent[UsageReport](eventBus) with Configuration {
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.core.power._
-  import UsageMetricsChannel.subscribeSimpleUsageReport
-  import PowerChannel.publishPowerReport
-
-  /**
-   * CPU Thermal Design Power (TDP) value.
-   *
-   * @see http://en.wikipedia.org/wiki/Thermal_design_power
-   */
-  lazy val tdp = load { _.getInt("powerapi.cpu.tdp") } match {
-    case ConfigValue(value) => value
-    case _ => 0
-  }
-
-  /**
-   * CPU Thermal Design Power (TDP) factor.
-   *
-   * @see [1], JouleSort: A Balanced Energy-Efﬁciency Benchmark, by Rivoire et al.
-   */
-  lazy val tdpFactor = load { _.getDouble("powerapi.cpu.tdp-factor") } match {
-    case ConfigValue(value) => value
-    case _ => 0.7
-  }
-
+class CpuFormula(eventBus: MessageBus, tdp: Double, tdpFactor: Double) extends FormulaComponent[UsageReport](eventBus) {
   def subscribeSensorReport(): Unit = {
     subscribeSimpleUsageReport(eventBus)(self)
   }

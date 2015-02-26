@@ -22,8 +22,15 @@
  */
 package org.powerapi.module.powerspy
 
-import org.powerapi.configuration.IdlePowerConfiguration
-import org.powerapi.core.{OSHelper, APIComponent, Configuration, MessageBus}
+import akka.event.LoggingReceive
+import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
+import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+import org.powerapi.core.power._
+import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
+import org.powerapi.module.{Cache, CacheKey}
+import org.powerapi.module.PowerChannel.publishPowerReport
+import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
+import scala.reflect.ClassTag
 
 /**
  * The overall power consumption is distributed among processes if
@@ -33,15 +40,7 @@ import org.powerapi.core.{OSHelper, APIComponent, Configuration, MessageBus}
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with Configuration with IdlePowerConfiguration {
-  import akka.event.LoggingReceive
-  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
-  import org.powerapi.core.power._
-  import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
-  import org.powerapi.module.{Cache, CacheKey}
-  import org.powerapi.module.PowerChannel.publishPowerReport
-  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
-  import scala.reflect.ClassTag
+class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Power) extends APIComponent {
 
   override def preStart(): Unit = {
     subscribePowerSpyPower(eventBus)(self)

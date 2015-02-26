@@ -22,19 +22,20 @@
  */
 package org.powerapi.module.cpu.dvfs
 
-import java.util.UUID
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.module.PowerChannel
+import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+import org.powerapi.core.TimeInStates
+import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power._
+import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
 import scala.concurrent.duration.DurationInt
-
-class DvfsCpuFormulaMock(messageBus: MessageBus) extends CpuFormula(messageBus) {
-  override lazy val tdp = 220
-  override lazy val tdpFactor = 0.7
-}
 
 class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -47,31 +48,22 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   val eventBus = new MessageBus
-  val formulaMock = TestActorRef(Props(classOf[DvfsCpuFormulaMock], eventBus), "dvfs-cpuFormula")(system)
   val frequencies = Map(1800002 -> 1.31, 2100002 -> 1.41, 2400003 -> 1.5)
-
-  "A dvfs cpu formula" should "read frequencies in a configuration file" in {
-    formulaMock.underlyingActor.asInstanceOf[CpuFormula].frequencies should equal(frequencies)
-  }
+  val formula = TestActorRef(Props(classOf[CpuFormula], eventBus, 220.0, 0.7, frequencies), "dvfs-cpuFormula")(system)
 
   it should "compute correctly the constant" in {
-    formulaMock.underlyingActor.asInstanceOf[CpuFormula].constant should equal((220 * 0.7) / (2400003 * math.pow(1.5, 2)))
+    formula.underlyingActor.asInstanceOf[CpuFormula].constant should equal((220 * 0.7) / (2400003 * math.pow(1.5, 2)))
   }
 
   it should "compute powers for each frequency" in {
-    formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers should equal(Map(
-      1800002 -> formulaMock.underlyingActor.asInstanceOf[CpuFormula].constant * 1800002 * math.pow(1.31, 2),
-      2100002 -> formulaMock.underlyingActor.asInstanceOf[CpuFormula].constant * 2100002 * math.pow(1.41, 2),
-      2400003 -> formulaMock.underlyingActor.asInstanceOf[CpuFormula].constant * 2400003 * math.pow(1.5, 2)
+    formula.underlyingActor.asInstanceOf[CpuFormula].powers should equal(Map(
+      1800002 -> formula.underlyingActor.asInstanceOf[CpuFormula].constant * 1800002 * math.pow(1.31, 2),
+      2100002 -> formula.underlyingActor.asInstanceOf[CpuFormula].constant * 2100002 * math.pow(1.41, 2),
+      2400003 -> formula.underlyingActor.asInstanceOf[CpuFormula].constant * 2400003 * math.pow(1.5, 2)
     ))
   }
 
   it should "compute correctly the process' power" in {
-    import org.powerapi.core.TimeInStates
-    import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-
     val topic = "test"
     val muid = UUID.randomUUID()
     val target: Target = 1
@@ -81,34 +73,27 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
     val sensorReport = UsageReport(topic, muid, target, targetRatio, timeInStates, tick)
 
-    formulaMock.underlyingActor.asInstanceOf[CpuFormula].power(sensorReport) should equal(
+    formula.underlyingActor.asInstanceOf[CpuFormula].power(sensorReport) should equal(
       Some(
         (
-          formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(1800002) * 1 +
-          formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(2100002) * 2 +
-          formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(2400003) * 3
+          formula.underlyingActor.asInstanceOf[CpuFormula].powers(1800002) * 1 +
+          formula.underlyingActor.asInstanceOf[CpuFormula].powers(2100002) * 2 +
+          formula.underlyingActor.asInstanceOf[CpuFormula].powers(2400003) * 3
         ) / (1 + 2 + 3)
       )
     )
   }
 
   it should "process a SensorReport and then publish a PowerReport" in {
-    import org.powerapi.core.TimeInStates
-    import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.power._
-    import PowerChannel.{PowerReport, subscribePowerReport}
-    import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
-
     val muid = UUID.randomUUID()
     val target: Target = 1
     val targetRatio = TargetUsageRatio(0.5)
     val timeInStates = TimeInStates(Map(1800002l -> 1l, 2100002l -> 2l, 2400003l -> 3l))
     val tickMock = ClockTick("test", 25.milliseconds)
     val power = ((
-      formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(1800002) * 1 +
-      formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(2100002) * 2 +
-      formulaMock.underlyingActor.asInstanceOf[CpuFormula].powers(2400003) * 3
+      formula.underlyingActor.asInstanceOf[CpuFormula].powers(1800002) * 1 +
+      formula.underlyingActor.asInstanceOf[CpuFormula].powers(2100002) * 2 +
+      formula.underlyingActor.asInstanceOf[CpuFormula].powers(2400003) * 3
     ) / (1 + 2 + 3)).W
 
     subscribePowerReport(muid)(eventBus)(testActor)

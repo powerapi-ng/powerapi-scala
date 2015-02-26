@@ -22,9 +22,13 @@
  */
 package org.powerapi.module.libpfm
 
+import akka.actor.{Actor, PoisonPill}
+import akka.event.LoggingReceive
 import java.util.UUID
 import org.powerapi.core.ActorComponent
 import org.powerapi.core.target.Target
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 import scala.collection.BitSet
 
 /**
@@ -34,11 +38,6 @@ import scala.collection.BitSet
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configuration: BitSet) extends ActorComponent {
-  import akka.actor.{Actor, PoisonPill}
-  import akka.event.LoggingReceive
-  import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-
   private var _fd: Option[Int] = None
 
   def fd: Option[Int] = {

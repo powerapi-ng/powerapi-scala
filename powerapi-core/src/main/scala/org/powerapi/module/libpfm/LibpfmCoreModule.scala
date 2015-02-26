@@ -22,29 +22,36 @@
  */
 package org.powerapi.module.libpfm
 
+import akka.util.Timeout
 import org.powerapi.PowerModule
+import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, LibpfmCoreCyclesFormula}
+import scala.collection.BitSet
+import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreModule extends PowerModule {
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq()))
-  lazy val underlyingFormulaeClasses = Seq((classOf[cycles.LibpfmCoreCyclesFormula], Seq()))
+class LibpfmCoreModule(timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String],
+                       cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(timeout, topology, configuration, events)))
+  lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
 }
 
-object LibpfmCoreModule {
+object LibpfmCoreModule extends LibpfmCoreSensorConfiguration with LibpfmCoreCyclesFormulaConfiguration {
   def apply(): LibpfmCoreModule = {
-    new LibpfmCoreModule()
+    new LibpfmCoreModule(timeout, topology, configuration, events, cyclesThreadName, cyclesThreadName, formulae, samplingInterval)
   }
 }
 
-/**
- * Special module for sampling. The formula is not used.
- */
-class LibpfmCoreSensorModule extends PowerModule {
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq()))
+class LibpfmCoreSensorModule(timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String]) extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(timeout, topology, configuration, events)))
   lazy val underlyingFormulaeClasses = Seq()
 }
 
-object LibpfmCoreSensorModule {
+object LibpfmCoreSensorModule extends LibpfmCoreSensorConfiguration {
   def apply(): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule()
+    new LibpfmCoreSensorModule(timeout, topology, configuration, events)
+  }
+
+  def apply(events: List[String]): LibpfmCoreSensorModule = {
+    new LibpfmCoreSensorModule(timeout, topology, configuration, events)
   }
 }

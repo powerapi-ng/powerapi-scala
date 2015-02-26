@@ -24,6 +24,13 @@ package org.powerapi.module.cpu.simple
 
 import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.SensorComponent
+import org.powerapi.core.GlobalCpuTime
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.core.target.{All, Application, Process, TargetUsageRatio}
+import org.powerapi.module.{Cache, CacheKey}
+import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
+import scala.reflect.ClassTag
 
 /**
  * CPU sensor component that collects data from a /proc and /sys directories
@@ -35,14 +42,6 @@ import org.powerapi.module.SensorComponent
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) {
-  import org.powerapi.core.GlobalCpuTime
-  import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.core.target.{All, Application, Process, TargetUsageRatio}
-  import org.powerapi.module.{Cache, CacheKey}
-  import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
-  import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-  import scala.reflect.ClassTag
-
   lazy val cpuTimesCache = new Cache[(Long, Long)]
 
   def targetCpuUsageRatio(monitorTick: MonitorTick): TargetUsageRatio = {

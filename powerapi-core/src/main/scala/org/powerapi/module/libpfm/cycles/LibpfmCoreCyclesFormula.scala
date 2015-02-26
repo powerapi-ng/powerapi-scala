@@ -22,10 +22,14 @@
  */
 package org.powerapi.module.libpfm.cycles
 
-import org.powerapi.configuration.SamplingConfiguration
-import org.powerapi.core.{Configuration, MessageBus}
+import org.powerapi.core.MessageBus
+import org.powerapi.core.power._
 import org.powerapi.module.FormulaComponent
-import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
+import org.powerapi.module.PowerChannel.publishPowerReport
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * Special implementation of Libpfm Formula.
@@ -36,40 +40,14 @@ import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreCyclesFormula(eventBus: MessageBus) extends FormulaComponent[PCReport](eventBus) with SamplingConfiguration with Configuration {
-  import com.typesafe.config.Config
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.module.libpfm.PerformanceCounterChannel.subscribePCReport
-  import org.powerapi.module.PowerChannel.publishPowerReport
-  import org.powerapi.core.power._
-  import scala.collection.JavaConversions._
-  import scala.concurrent.Future
-
-  lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.formulae.cycles-thread") } match {
-    case ConfigValue(value) => value
-    case _ => "CPU_CLK_UNHALTED:THREAD_P"
-  }
-
-  lazy val cyclesRefName: String = load { _.getString("powerapi.libpfm.formulae.cycles-ref") } match {
-    case ConfigValue(value) => value
-    case _ => "CPU_CLK_UNHALTED:REF_P"
-  }
-
-  lazy val formulae: Map[Double, List[Double]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.libpfm.formulae.cycles"))
-      yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
-  } match {
-    case ConfigValue(values) => values
-    case _ => Map()
-  }
+class LibpfmCoreCyclesFormula(eventBus: MessageBus, cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration)
+  extends FormulaComponent[PCReport](eventBus) {
 
   def subscribeSensorReport(): Unit = {
     subscribePCReport(eventBus)(self)
   }
 
   def compute(sensorReport: PCReport): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-
     val computations: Iterable[Future[Double]] = for((_, wrappers) <- sensorReport.wrappers.groupBy(_.core)) yield {
       if(wrappers.count(_.event == cyclesThreadName) != 1 || wrappers.count(_.event == cyclesRefName) != 1) {
         Future { 0d }

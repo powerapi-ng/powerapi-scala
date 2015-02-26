@@ -22,18 +22,24 @@
  */
 package org.powerapi.core
 
-import java.util.UUID
-import akka.actor._
-import akka.pattern.gracefulStop
+import akka.actor.{Actor, ActorRef, ActorSystem, ActorNotFound, Props, Terminated}
+import akka.pattern.{ask, gracefulStop}
 import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
+import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
+import java.util.UUID
 import org.powerapi.UnitTest
+import org.powerapi.core.ClockChannel.{ ClockTick, formatClockChildName }
+import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorTick, subscribeMonitorTick, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
+import org.powerapi.core.power._
+import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target}
+import org.powerapi.module.PowerChannel.{ PowerReport, publishPowerReport, subscribeAggPowerReport }
+import org.powerapi.module.SensorChannel.subscribeSensorsChannel
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt}
 
 class EchoMonitorTickActor(eventBus: MessageBus, testActor: ActorRef) extends Actor {
-  import org.powerapi.core.MonitorChannel.subscribeMonitorTick
 
   override def preStart(): Unit = {
     subscribeMonitorTick(eventBus)(testActor)
@@ -45,11 +51,6 @@ class EchoMonitorTickActor(eventBus: MessageBus, testActor: ActorRef) extends Ac
 }
 
 class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
-  import ClockChannel.{ ClockTick, formatClockChildName }
-  import MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorTick, subscribeMonitorTick, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
-  import org.powerapi.core.power._
-  import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target}
-  import org.powerapi.module.PowerChannel.{ PowerReport, publishPowerReport, subscribeAggPowerReport }
 
   implicit val timeout = Timeout(1.seconds)
 
@@ -253,11 +254,6 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "publish a message to the sensor actors for let them know that the monitor(s) is/are stopped" in new Bus {
-    import akka.actor.Terminated
-    import akka.pattern.ask
-    import akka.testkit.TestActorRef
-    import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
-
     val _system = ActorSystem("MonitorSuiteTest5")
 
     val monitors = TestActorRef(Props(classOf[Monitors], eventBus), "monitors5")(_system)
@@ -293,10 +289,10 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       reaper.expectMsgClass(classOf[Terminated])
     }
 
-    expectMsgClass(classOf[MonitorStop]) match {
-      case MonitorStop(_, id) => monitor.muid should equal(id)
+    expectMsgClass(classOf[org.powerapi.module.SensorChannel.MonitorStop]) match {
+      case org.powerapi.module.SensorChannel.MonitorStop(_, id) => monitor.muid should equal(id)
     }
-    expectMsgClass(classOf[MonitorStopAll])
+    expectMsgClass(classOf[org.powerapi.module.SensorChannel.MonitorStopAll])
 
     receiveWhile(10.seconds, idle = 2.seconds) {
       case msg: MonitorTick => {}

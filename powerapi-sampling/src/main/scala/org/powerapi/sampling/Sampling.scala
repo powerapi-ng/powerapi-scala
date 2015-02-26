@@ -22,11 +22,21 @@
  */
 package org.powerapi.sampling
 
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import java.util.concurrent.{Executors, ScheduledExecutorService}
+import java.util.concurrent.TimeUnit.MILLISECONDS
+import java.io.{File, FileOutputStream, PrintWriter}
 import org.apache.logging.log4j.LogManager
 import org.powerapi.PowerMeter
-import org.powerapi.configuration.{LibpfmCoreConfiguration, TopologyConfiguration, SamplingConfiguration}
-import org.powerapi.core.{OSHelper, Configuration}
+import org.powerapi.core.OSHelper
+import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{subscribePCReport, PCReport}
+import org.powerapi.core.power._
+import org.powerapi.core.target.All
+import scala.concurrent.duration.{FiniteDuration, DurationInt}
+import scala.sys.process.{ProcessLogger, stringSeqToProcess}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scalax.file.Path
 
 object RENEW
@@ -35,9 +45,6 @@ object RENEW
  * Define specific kinds of reporters to be sure that all data are written inside files.
  */
 class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
-  import java.io.{File, FileOutputStream, PrintWriter}
-  import org.powerapi.module.PowerChannel.PowerReport
-
   var output = new PrintWriter(new FileOutputStream(new File(filepath), true))
 
   override def postStop(): Unit = {
@@ -67,11 +74,6 @@ class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
 }
 
 class CountersDisplay(basepath: String, events: List[String]) extends Actor with ActorLogging  {
-  import java.io.{File, FileOutputStream, PrintWriter}
-  import org.powerapi.module.libpfm.PerformanceCounterChannel.PCReport
-  import scala.concurrent.ExecutionContext.Implicits.global
-  import scala.concurrent.Future
-
   var outputs = (for(event <- events) yield {
     event -> new PrintWriter(new FileOutputStream(new File(s"$basepath${event.toLowerCase().replace('_', '-').replace(':', '-')}.dat"), true))
   }).toMap
@@ -133,43 +135,12 @@ class CountersDisplay(basepath: String, events: List[String]) extends Actor with
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class Sampling(samplingDir: String, separator: String, outputPowers: String, baseOutputCounter: String, osHelper: OSHelper, powerapi: PowerMeter, externalPMeter: PowerMeter)
-  extends Configuration with SamplingConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
-
-  import akka.actor.{Actor, ActorSystem, Props}
-  import java.util.concurrent.{Executors, ScheduledExecutorService}
-  import java.util.concurrent.TimeUnit.MILLISECONDS
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.core.power._
-  import org.powerapi.core.target.All
-  import scala.concurrent.duration.DurationInt
-  import scala.sys.process.{ProcessLogger, stringSeqToProcess}
-  import scalax.file.Path
+class Sampling(samplingDir: String, nbSamples: Int, samplingInterval: FiniteDuration, nbSteps: Int, topology: Map[Int, Iterable[Int]],
+               turbo: Boolean, dvfs: Boolean, nbMessages: Int, events: List[String], separator: String, outputPowers: String, baseOutputCounter: String, osHelper: OSHelper,
+               powerapi: PowerMeter, externalPMeter: PowerMeter) {
 
   private val log = LogManager.getLogger
   private lazy val trash = ProcessLogger(out => {}, err => {})
-
-  lazy val nbSamples: Int = load { _.getInt("powerapi.sampling.nb-samples") } match {
-    case ConfigValue(value) => value
-    case _ => 1
-  }
-
-  lazy val dvfs: Boolean = load { _.getBoolean("powerapi.sampling.dvfs") } match {
-    case ConfigValue(value) => value
-    case _ => false
-  }
-
-  lazy val turbo: Boolean = load { _.getBoolean("powerapi.sampling.turbo") } match {
-    case ConfigValue(value) => value
-    case _ => false
-  }
-
-  lazy val nbMessages: Int = load { _.getInt("powerapi.sampling.nb-messages-per-step") } match {
-    case ConfigValue(value) => value
-    case _ => 10
-  }
-
-  lazy val nbSteps = 100 / 25
 
   def run(): Unit = {
     Path(s"$samplingDir", '/').deleteRecursively(force = true)
@@ -327,8 +298,6 @@ class Sampling(samplingDir: String, separator: String, outputPowers: String, bas
    * Sampling method.
    */
   private def sampling(): Unit = {
-    import org.powerapi.module.libpfm.PerformanceCounterChannel.subscribePCReport
-
     val firstCore = topology.head
     val remainingCores = topology.tail
     /**
@@ -414,8 +383,9 @@ class Sampling(samplingDir: String, separator: String, outputPowers: String, bas
   }
 }
 
-object Sampling {
-  def apply(samplingDir: String, separator: String, outputPowers: String, baseOutputCounter: String, osHelper: OSHelper, powerapi: PowerMeter, externalPMeter: PowerMeter): Sampling = {
-    new Sampling(samplingDir, separator, outputPowers, baseOutputCounter, osHelper, powerapi, externalPMeter)
+object Sampling extends SamplingConfiguration {
+  def apply(powerapi: PowerMeter, externalPMeter: PowerMeter): Sampling = {
+    new Sampling(samplingDir, nbSamples, samplingInterval, nbSteps, topology, turbo, dvfs, nbMessages,
+      events, separator, outputPowers, baseOutputCounter, osHelper, powerapi, externalPMeter)
   }
 }

@@ -26,10 +26,11 @@ import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.powerapi.UnitTest
+import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication}
 import scala.concurrent.duration.DurationInt
 
 class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication}
+
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("OSHelperSuite"))

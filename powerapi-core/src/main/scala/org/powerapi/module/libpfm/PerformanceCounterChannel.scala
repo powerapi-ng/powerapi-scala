@@ -22,7 +22,13 @@
  */
 package org.powerapi.module.libpfm
 
-import org.powerapi.core.Channel
+import akka.actor.ActorRef
+import java.util.UUID
+import org.powerapi.core.{Channel, MessageBus}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.target.Target
+import org.powerapi.module.SensorChannel.SensorReport
+import scala.concurrent.Future
 
 /**
  * PerformanceCounterChannel channel and messages.
@@ -30,14 +36,6 @@ import org.powerapi.core.Channel
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object PerformanceCounterChannel extends Channel {
-  import akka.actor.ActorRef
-  import java.util.UUID
-  import org.powerapi.core.MessageBus
-  import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.target.Target
-  import org.powerapi.module.SensorChannel.SensorReport
-  import scala.concurrent.Future
-
   type M = org.powerapi.module.SensorChannel.M
 
   /**

@@ -22,19 +22,13 @@
  */
 package org.powerapi.core.power
 
-import java.util.UUID
-
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
-import akka.actor.{ ActorSystem, Props }
-import akka.testkit.{ TestActorRef, TestKit }
-import akka.util.Timeout
-
-import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
-import org.powerapi.module.PowerChannel.PowerReport
-
-class PowerSpec(system: ActorSystem) extends UnitTest(system) {
+class PowerSuite(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("PowerSuite"))

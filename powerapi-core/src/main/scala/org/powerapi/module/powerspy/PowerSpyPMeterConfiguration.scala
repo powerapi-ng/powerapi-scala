@@ -20,23 +20,25 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.configuration
+package org.powerapi.module.powerspy
 
-import org.powerapi.core.Configuration
+import java.util.concurrent.TimeUnit
+import org.powerapi.core.{ConfigValue, Configuration}
+import scala.concurrent.duration.{FiniteDuration, DurationLong}
 
 /**
- * Ilde power / Configuration.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait IdlePowerConfiguration {
-  self: Configuration =>
+trait PowerSpyPMeterConfiguration extends Configuration {
+  lazy val mac = load { _.getString("powerspy.mac") } match {
+    case ConfigValue(address) => address
+    case _ => ""
+  }
 
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.core.power._
-
-  lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
-    case ConfigValue(idle) => idle.W
-    case _ => 0.W
+  lazy val interval: FiniteDuration = load { _.getDuration("powerspy.interval", TimeUnit.NANOSECONDS) } match {
+    case ConfigValue(value) => value.nanoseconds
+    case _ => 1l.seconds
   }
 }

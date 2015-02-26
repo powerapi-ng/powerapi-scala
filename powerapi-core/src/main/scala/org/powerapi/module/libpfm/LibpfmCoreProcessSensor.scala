@@ -22,35 +22,26 @@
  */
 package org.powerapi.module.libpfm
 
+import akka.actor.{Actor, PoisonPill, Props}
+import akka.event.LoggingReceive
+import akka.pattern.ask
+import akka.util.Timeout
 import java.util.UUID
-import org.powerapi.configuration.{LibpfmCoreConfiguration, TimeoutConfiguration, TopologyConfiguration}
-import org.powerapi.core.{Configuration, OSHelper, APIComponent, MessageBus}
+import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
+import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
+import scala.collection.BitSet
+import scala.concurrent.Future
+import scala.reflect.ClassTag
 
 /**
  * Main actor for getting the performance counter value per core/event/process.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper) extends APIComponent with Configuration with TimeoutConfiguration with TopologyConfiguration with LibpfmCoreConfiguration {
-  import akka.actor.{Actor, PoisonPill, Props}
-  import akka.event.LoggingReceive
-  import akka.pattern.ask
-  import org.powerapi.core.ConfigValue
-  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
-  import org.powerapi.core.target.{Application, Process, Target}
-  import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
-  import PerformanceCounterChannel.{formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
-  import scala.concurrent.Future
-  import scala.reflect.ClassTag
-
-  /**
-   * Allows to know if the threads associated to a Target have to be included.
-   */
-  lazy val inDepth = load { _.getBoolean("powerapi.libpfm.in-depth") } match {
-    case ConfigValue(value) => value
-    case _ => false
-  }
-
+class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String], inDepth: Boolean) extends APIComponent {
   val processClaz = implicitly[ClassTag[Process]].runtimeClass
   val appClaz = implicitly[ClassTag[Application]].runtimeClass
 

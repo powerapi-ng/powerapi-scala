@@ -22,18 +22,17 @@
  */
 package org.powerapi.core
 
-import akka.actor._
+import akka.actor.{Actor, ActorNotFound, ActorRef, ActorSystem, Props}
 import akka.pattern.gracefulStop
 import akka.testkit.{EventFilter, TestKit, TestProbe}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.powerapi.UnitTest
+import org.powerapi.core.ClockChannel.{ClockTick, ClockStart, ClockStop, formatClockChildName, startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
 class EchoClockTickActor(eventBus: MessageBus, testActor: ActorRef, frequency: FiniteDuration) extends Actor {
-  import org.powerapi.core.ClockChannel.subscribeClockTick
-
   override def preStart(): Unit = {
     subscribeClockTick(frequency)(eventBus)(testActor)
   }
@@ -44,7 +43,7 @@ class EchoClockTickActor(eventBus: MessageBus, testActor: ActorRef, frequency: F
 }
 
 class ClockSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.ClockChannel.{ClockTick, ClockStart, ClockStop, formatClockChildName, startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
+
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("ClockSuite"))

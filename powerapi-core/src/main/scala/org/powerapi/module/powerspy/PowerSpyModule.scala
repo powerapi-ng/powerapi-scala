@@ -24,23 +24,23 @@ package org.powerapi.module.powerspy
 
 import org.powerapi.PowerModule
 import org.powerapi.core.LinuxHelper
+import org.powerapi.core.power.Power
+import scala.concurrent.duration.FiniteDuration
 
-class PowerSpyModule extends PowerModule {
+class PowerSpyModule(mac: String, interval: FiniteDuration, idlePower: Power) extends PowerModule {
   lazy val underlyingClasses = eventBus match {
     case Some(bus) => {
-      (Seq((classOf[PowerSpySensor], Seq(new PowerSpyPMeter(bus)))), Seq((classOf[PowerSpyFormula], Seq(new LinuxHelper))))
+      (Seq((classOf[PowerSpySensor], Seq(new PowerSpyPMeter(bus, mac, interval)))), Seq((classOf[PowerSpyFormula], Seq(new LinuxHelper, idlePower))))
     }
-    case _ => {
-      (Seq((classOf[PowerSpySensor], Seq())), Seq((classOf[PowerSpyFormula], Seq())))
-    }
+    case _ => (Seq(), Seq())
   }
 
   lazy val underlyingSensorsClasses = underlyingClasses._1
   lazy val underlyingFormulaeClasses = underlyingClasses._2
 }
 
-object PowerSpyModule {
+object PowerSpyModule extends PowerSpyPMeterConfiguration with PowerSpyFormulaConfiguration {
   def apply(): PowerSpyModule = {
-    new PowerSpyModule()
+    new PowerSpyModule(mac, interval, idlePower)
   }
 }

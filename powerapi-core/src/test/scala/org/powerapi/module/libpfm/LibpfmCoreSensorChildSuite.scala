@@ -22,15 +22,21 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
-import akka.testkit.{TestActorRef, TestKit}
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{TestActorRef, TestKit, TestProbe}
+import akka.util.Timeout
+import java.util.UUID
+import org.powerapi.core.MessageBus
 import org.powerapi.UnitTest
+import org.powerapi.core.target.All
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
+import scala.sys.process.stringSeqToProcess
+import scala.collection.BitSet
+import scala.concurrent.duration.DurationInt
 
 class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
-  import akka.actor.Props
-  import akka.util.Timeout
-  import org.powerapi.core.MessageBus
-  import scala.concurrent.duration.DurationDouble
 
   def this() = this(ActorSystem("LibpfmCoreSensorChildSuite"))
 
@@ -45,15 +51,6 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A LibpfmCoreSensorChild" should "collect the performance counter values" ignore new Bus {
-    import akka.testkit.TestProbe
-    import java.util.UUID
-    import org.powerapi.core.target.All
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.MonitorTick
-    import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-    import scala.sys.process.stringSeqToProcess
-    import scala.collection.BitSet
-
     val basepath = getClass.getResource("/").getPath
     val pid = Seq("bash", s"${basepath}test-pc.bash").lineStream(0).trim.toInt
     Seq("taskset", "-cp", "0" ,s"$pid").!

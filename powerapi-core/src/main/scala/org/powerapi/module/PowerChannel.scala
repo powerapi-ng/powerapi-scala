@@ -22,10 +22,13 @@
  */
 package org.powerapi.module
 
-import java.util.UUID
-import scala.concurrent.duration.DurationInt
 import akka.actor.ActorRef
-import org.powerapi.core.{MessageBus, Channel}
+import java.util.UUID
+import org.powerapi.core.{Message, MessageBus, Channel}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power._
+import org.powerapi.core.target.{intToProcess, Target}
+import scala.concurrent.duration.DurationInt
 
 /**
  * PowerChannel channel and messages.
@@ -35,10 +38,6 @@ import org.powerapi.core.{MessageBus, Channel}
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  */
 object PowerChannel extends Channel {
-  import org.powerapi.core.Message
-  import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.power._
-  import org.powerapi.core.target.{intToProcess, Target}
 
   type M = PowerReport
 

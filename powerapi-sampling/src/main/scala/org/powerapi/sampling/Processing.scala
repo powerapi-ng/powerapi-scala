@@ -22,36 +22,22 @@
  */
 package org.powerapi.sampling
 
-import org.powerapi.core.Configuration
+import org.apache.logging.log4j.LogManager
+import org.saddle.{Frame, Mat, Vec}
+import org.saddle.io.CsvImplicits.frame2CsvWriter
+import scalax.io.LongTraversable
+import scalax.file.Path
+import scalax.file.PathMatcher.IsDirectory
 
 /**
  * Process the data from the sampling directory and write the resulting csv files inside a directory.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class Processing(samplingDir: String, processingDir: String, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String) extends Configuration {
-  import org.apache.logging.log4j.LogManager
-  import org.powerapi.core.ConfigValue
-
+class Processing(samplingDir: String, processingDir: String, baseFrequency: Double, maxFrequency: Double, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String)  {
   private val log = LogManager.getLogger
 
-  lazy val baseFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-base-frequency") } match {
-    case ConfigValue(value) => value
-    case _ => 0d
-  }
-
-  lazy val maxFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-max-frequency") } match {
-    case ConfigValue(value) => value
-    case _ => 0d
-  }
-
   def run(): Unit = {
-    import org.saddle.{Frame, Mat, Vec}
-    import org.saddle.io.CsvImplicits.frame2CsvWriter
-    import scalax.io.LongTraversable
-    import scalax.file.Path
-    import scalax.file.PathMatcher.IsDirectory
-
     val maxCoefficient = maxFrequency.toDouble / baseFrequency
     var frequencies = Set[Long]()
 
@@ -196,8 +182,8 @@ class Processing(samplingDir: String, processingDir: String, separator: String, 
   }
 }
 
-object Processing {
-  def apply(samplingDir: String, processingDir: String, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String): Processing = {
-    new Processing(samplingDir, processingDir, separator, outputPowers, outputUnhaltedCycles, outputRefCycles)
+object Processing extends SamplingConfiguration {
+  def apply(): Processing = {
+    new Processing(samplingDir, processingDir, baseFrequency, maxFrequency, separator, outputPowers, outputUnhaltedCycles, outputRefCycles)
   }
 }

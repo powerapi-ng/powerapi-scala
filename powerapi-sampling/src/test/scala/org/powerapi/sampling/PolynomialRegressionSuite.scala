@@ -24,11 +24,11 @@ package org.powerapi.sampling
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
+import akka.util.Timeout
 import org.powerapi.UnitTest
+import scala.concurrent.duration.DurationInt
 
 class PolynomialRegressionSuite(system: ActorSystem) extends UnitTest(system) {
-  import akka.util.Timeout
-  import scala.concurrent.duration.DurationDouble
 
   def this() = this(ActorSystem("PolynomialRegressionSuite"))
 
@@ -60,7 +60,7 @@ class PolynomialRegressionSuite(system: ActorSystem) extends UnitTest(system) {
   "The PolynomialRegression object" should "process the data files from a directory and write the formulae inside a result file" in new Formulae {
     import scalax.file.Path
 
-    PolynomialRegression(s"${basepath}processing", "/tmp/formulae").run()
+    new PolynomialRegression(s"${basepath}processing", "/tmp/formulae").run()
     (Path("/") / ("/tmp/formulae/libpfm-formula.conf", '/')).lines().toList should contain theSameElementsAs formulae
   }
 }

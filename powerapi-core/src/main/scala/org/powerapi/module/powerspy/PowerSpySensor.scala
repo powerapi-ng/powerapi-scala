@@ -22,7 +22,9 @@
  */
 package org.powerapi.module.powerspy
 
+import akka.event.LoggingReceive
 import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
+import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishPowerSpyPower, subscribeExternalPowerSpyPower}
 
 /**
  * PowerSpySensor's implementation by using an helper.
@@ -30,8 +32,6 @@ import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
-  import akka.event.LoggingReceive
-  import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishPowerSpyPower, subscribeExternalPowerSpyPower}
 
   override def preStart(): Unit = {
     subscribeExternalPowerSpyPower(eventBus)(self)

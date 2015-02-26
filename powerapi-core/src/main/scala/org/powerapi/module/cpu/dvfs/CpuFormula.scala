@@ -22,12 +22,10 @@
  */
 package org.powerapi.module.cpu.dvfs
 
-import com.typesafe.config.Config
 import org.powerapi.core.MessageBus
-import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-import org.powerapi.module.PowerChannel
-import org.powerapi.module.cpu.UsageMetricsChannel
-import scala.collection.JavaConversions
+import org.powerapi.core.power._
+import org.powerapi.module.cpu.UsageMetricsChannel.{subscribeDvfsUsageReport, UsageReport}
+import org.powerapi.module.PowerChannel.publishPowerReport
 
 /**
  * CPU formula component giving CPU energy of a given process in computing the ratio between
@@ -43,25 +41,9 @@ import scala.collection.JavaConversions
  * @author <a href="mailto:aurelien.bourdon@gmail.com">Aurélien Bourdon</a
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class CpuFormula(eventBus: MessageBus) extends org.powerapi.module.cpu.simple.CpuFormula(eventBus) {
-  import org.powerapi.core.ConfigValue
-  import UsageMetricsChannel.subscribeDvfsUsageReport
-  import PowerChannel.publishPowerReport
-  import org.powerapi.core.power._
-
+class CpuFormula(eventBus: MessageBus, tdp: Double, tdpFactor: Double, frequencies: Map[Int, Double]) extends org.powerapi.module.cpu.simple.CpuFormula(eventBus, tdp, tdpFactor) {
   lazy val constant = (tdp * tdpFactor) / (frequencies.max._1 * math.pow(frequencies.max._2, 2))
   lazy val powers = frequencies.map(frequency => (frequency._1, constant * frequency._1 * math.pow(frequency._2, 2)))
-
-  /**
-   * Map of frequencies and their associated voltages.
-   */
-  lazy val frequencies = load { conf =>
-    (for (item <- JavaConversions.asScalaBuffer(conf.getConfigList("powerapi.cpu.frequencies")))
-      yield (item.asInstanceOf[Config].getInt("value"), item.asInstanceOf[Config].getDouble("voltage"))).toMap
-  } match {
-    case ConfigValue(freqs) => freqs
-    case _ => Map[Int, Double]()
-  }
 
   override def subscribeSensorReport(): Unit = {
     subscribeDvfsUsageReport(eventBus)(self)

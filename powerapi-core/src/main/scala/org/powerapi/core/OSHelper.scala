@@ -22,7 +22,13 @@
  */
 package org.powerapi.core
 
-import org.powerapi.configuration.TopologyConfiguration
+import com.typesafe.config.Config
+import java.io.{IOException, File}
+import org.apache.logging.log4j.LogManager
+import org.powerapi.core.FileHelper.using
+import org.powerapi.core.target.{Application, Process, Target}
+import scala.collection.JavaConversions._
+import scala.sys.process.stringSeqToProcess
 
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
@@ -57,8 +63,6 @@ case class GlobalCpuTime(globalTime: Long, activeTime: Long)
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait OSHelper {
-  import org.powerapi.core.target.{Application, Process, Target}
-
   /**
    * Get the list of frequencies available on the CPU.
    */
@@ -121,13 +125,7 @@ trait OSHelper {
  π
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration {
-  import java.io.{IOException, File}
-  import org.apache.logging.log4j.LogManager
-  import org.powerapi.core.FileHelper.using
-  import org.powerapi.core.target.{Application, Process}
-  import scala.sys.process.stringSeqToProcess
-
+class LinuxHelper extends OSHelper with Configuration {
   private val log = LogManager.getLogger
 
   private val PSFormat = """^\s*(\d+)""".r
@@ -174,6 +172,17 @@ class LinuxHelper extends OSHelper with Configuration with TopologyConfiguration
   lazy val timeInStatePath = load { _.getString("powerapi.sysfs.timeinstates-path") } match {
     case ConfigValue(path) => path
     case _ => "/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
+  }
+
+  /**
+   * CPU's topology.
+   */
+  lazy val topology: Map[Int, Iterable[Int]] = load { conf =>
+    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
+      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toList)).toMap
+  } match {
+    case ConfigValue(values) => values
+    case _ => Map()
   }
 
   def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = {

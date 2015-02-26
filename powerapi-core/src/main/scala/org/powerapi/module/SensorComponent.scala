@@ -24,6 +24,8 @@ package org.powerapi.module
 
 import akka.event.LoggingReceive
 import org.powerapi.core.{APIComponent, MessageBus}
+import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
 
 /**
  * Base trait for each PowerAPI sensor.
@@ -32,8 +34,6 @@ import org.powerapi.core.{APIComponent, MessageBus}
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
-  import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
-  import SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
 
   override def preStart(): Unit = {
     subscribeMonitorTick(eventBus)(self)

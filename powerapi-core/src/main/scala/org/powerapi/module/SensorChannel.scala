@@ -22,7 +22,11 @@
  */
 package org.powerapi.module
 
-import org.powerapi.core.Channel
+import akka.actor.ActorRef
+import java.util.UUID
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.{Channel, Message, MessageBus}
+import org.powerapi.core.target.Target
 
 /**
  * Base channel for the Sensor components.
@@ -30,11 +34,6 @@ import org.powerapi.core.Channel
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object SensorChannel extends Channel {
-  import akka.actor.ActorRef
-  import java.util.UUID
-  import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.{Message, MessageBus}
-  import org.powerapi.core.target.Target
 
   type M = SensorMessage
 

@@ -22,18 +22,20 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-
-import scala.concurrent.duration._
-
 import akka.actor.{ ActorSystem, Props }
 import akka.testkit.{ TestActorRef, TestKit }
 import akka.util.Timeout
-
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.core.target.intToProcess
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power._
+import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import scala.concurrent.duration.DurationInt
 
 class JFreeChartDisplaySuite(system: ActorSystem) extends UnitTest(system) {
+
   implicit val timeout = Timeout(1.seconds)
 
   def this() = this(ActorSystem("JFreeChartDisplaySuite"))
@@ -45,11 +47,6 @@ class JFreeChartDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   val eventBus = new MessageBus
 
   "A JFreeChart reporter" should "process a power report and then report energy information in a chart" ignore {
-    import org.powerapi.core.target.intToProcess
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.power._
-    import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
-    
     val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new JFreeChartDisplay), "jfreechartReporter")(system)
     
     val muid = UUID.randomUUID()
@@ -60,7 +57,7 @@ class JFreeChartDisplaySuite(system: ActorSystem) extends UnitTest(system) {
     val begin = System.currentTimeMillis
     var current = begin
 
-    while(current <= (begin + (5.seconds).toMillis)) {
+    while(current <= (begin + 5.seconds.toMillis)) {
       render(AggregateReport(muid, aggFunction) += RawPowerReport("topictest",
                                                                   muid,
                                                                   1,

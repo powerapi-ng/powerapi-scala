@@ -22,12 +22,20 @@
  */
 package org.powerapi.module.cpu.dvfs
 
-import java.util.UUID
 import akka.actor.{ActorSystem, Props}
+import akka.pattern.gracefulStop
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.{OSHelper, Thread, TimeInStates}
+import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process}
+import org.powerapi.core.MonitorChannel.publishMonitorTick
+import org.powerapi.module.CacheKey
+import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
+import org.powerapi.module.cpu.UsageMetricsChannel.subscribeDvfsUsageReport
 
 import scala.concurrent.duration.DurationInt
 
@@ -44,16 +52,6 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   val eventBus = new MessageBus
 
   "A dvfs CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
-    import akka.pattern.gracefulStop
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{OSHelper, Thread}
-    import org.powerapi.core.target.{All, Application, intToProcess, Process, stringToApplication, Target}
-    import org.powerapi.core.MonitorChannel.publishMonitorTick
-    import org.powerapi.core.TimeInStates
-    import org.powerapi.module.CacheKey
-    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeDvfsUsageReport
-
     val oldTimeInStates = TimeInStates(Map(4000000l -> 10l, 3000000l -> 10l, 2000000l -> 6l, 1000000l -> 2l))
     val timeInStates = TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
 
@@ -124,16 +122,6 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "handle correctly the TimeInStates differences for computing the current TimeInStates" in {
-    import akka.pattern.gracefulStop
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.{OSHelper, Thread}
-    import org.powerapi.core.target.{Application, intToProcess, Process}
-    import org.powerapi.core.MonitorChannel.publishMonitorTick
-    import org.powerapi.core.TimeInStates
-    import org.powerapi.module.CacheKey
-    import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
-    import org.powerapi.module.cpu.UsageMetricsChannel.subscribeDvfsUsageReport
-
     val oldTimeInStates = TimeInStates(Map(4000000l -> 20l, 3000000l -> 20l, 2000000l -> 20l, 1000000l -> 20l))
     val timeInStates = TimeInStates(Map(4000000l -> 16l, 3000000l -> 12l, 2000000l -> 8l, 1000000l -> 4l))
 

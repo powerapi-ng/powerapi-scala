@@ -22,21 +22,24 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-
-import scala.concurrent.duration.DurationInt
-
-import akka.actor.{ ActorRef, ActorSystem, Props }
+import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
-
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.core.target.Target
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power._
+import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import scala.concurrent.duration.DurationInt
 
 class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
 
   def this() = this(ActorSystem("ReporterComponentSuite"))
+
+  implicit val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
@@ -47,11 +50,6 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A reporter component" should "process PowerReport messages" in new Bus {
-    import org.powerapi.core.target.Target
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.power._
-    import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
-    
     val muid = UUID.randomUUID()
     val target: Target = 1
     val device = "mock"

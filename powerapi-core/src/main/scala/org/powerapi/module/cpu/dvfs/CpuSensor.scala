@@ -23,7 +23,10 @@
 package org.powerapi.module.cpu.dvfs
 
 import org.powerapi.core.{TimeInStates, MessageBus, OSHelper}
-import org.powerapi.module.Cache
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.module.{Cache, CacheKey}
+import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 
 /**
  * CPU sensor component that collects data from a /proc and /sys directories
@@ -35,11 +38,6 @@ import org.powerapi.module.Cache
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends org.powerapi.module.cpu.simple.CpuSensor(eventBus, osHelper) {
-  import org.powerapi.core.MonitorChannel.MonitorTick
-  import org.powerapi.module.CacheKey
-  import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
-  import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-
   lazy val frequenciesCache = new Cache[TimeInStates]
 
   def timeInStates(monitorTick: MonitorTick): TimeInStates = {

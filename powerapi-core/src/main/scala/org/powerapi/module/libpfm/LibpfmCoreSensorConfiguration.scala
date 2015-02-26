@@ -20,21 +20,27 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.configuration
+package org.powerapi.module.libpfm
 
-import org.powerapi.core.Configuration
+import java.util.concurrent.TimeUnit
+
+import akka.util.Timeout
+import com.typesafe.config.Config
+import org.powerapi.core.{ConfigValue, Configuration}
+import scala.collection.BitSet
+import scala.collection.JavaConversions._
+import scala.concurrent.duration.DurationLong
 
 /**
- * Processor topology.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait TopologyConfiguration {
-  self: Configuration =>
-
-  import com.typesafe.config.Config
-  import org.powerapi.core.ConfigValue
-  import scala.collection.JavaConversions._
+trait LibpfmCoreSensorConfiguration extends Configuration {
+  lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
+    case ConfigValue(value) => Timeout(value.milliseconds)
+    case _ => Timeout(1l.seconds)
+  }
 
   lazy val topology: Map[Int, Iterable[Int]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
@@ -42,5 +48,24 @@ trait TopologyConfiguration {
   } match {
     case ConfigValue(values) => values
     case _ => Map()
+  }
+
+  /**
+   * List of enabled bits for the perf_event_open maccro.
+   * The bits to configure are described in the structure perf_event_attr available below.
+   *
+   * @see http://manpages.ubuntu.com/manpages/trusty/en/man2/perf_event_open.2.html
+   */
+  lazy val configuration =
+    BitSet(
+      (load { _.getIntList("powerapi.libpfm.configuration") } match {
+        case ConfigValue(values) => values.map(_.toInt).toList
+        case _ => List[Int]()
+      }): _*
+    )
+
+  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
+    case ConfigValue(values) => values.map(_.toString).toList
+    case _ => List[String]()
   }
 }

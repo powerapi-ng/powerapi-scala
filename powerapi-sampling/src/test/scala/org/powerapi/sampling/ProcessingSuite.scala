@@ -26,7 +26,9 @@ import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.powerapi.UnitTest
+import org.saddle.io.{CsvFile, CsvParams, CsvParser}
 import scala.concurrent.duration.DurationInt
+import scalax.file.Path
 
 class ProcessingSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -41,13 +43,7 @@ class ProcessingSuite(system: ActorSystem) extends UnitTest(system) {
   val basepath = getClass.getResource("/").getPath
 
   "The Processing step" should "process the data files from a directory and write results inside CSV files" in {
-    import org.saddle.io.{CsvFile, CsvParams, CsvParser}
-    import scalax.file.Path
-
-    new Processing(s"${basepath}samples", "/tmp/processing", "=", "output-powers.dat", "output-cpu-clk-unhalted-thread-p.dat", "output-cpu-clk-unhalted-ref-p.dat") {
-      override lazy val baseFrequency = 0.133
-      override lazy val maxFrequency = 2.66
-    }.run()
+    new Processing(s"${basepath}samples", "/tmp/processing", 0.133, 2.66, "=", "output-powers.dat", "output-cpu-clk-unhalted-thread-p.dat", "output-cpu-clk-unhalted-ref-p.dat").run()
 
     val expectedPaths = Path("/") / (s"${basepath}processing", '/') * "*.csv"
     val prDataPaths = Path("/") / ("/tmp/processing", '/') * "*.csv"

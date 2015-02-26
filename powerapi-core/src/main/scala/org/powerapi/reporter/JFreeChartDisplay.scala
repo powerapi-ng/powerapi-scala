@@ -23,7 +23,6 @@
 package org.powerapi.reporter
 
 import javax.swing.SwingUtilities
-
 import org.powerapi.PowerDisplay
 import org.powerapi.core.power.Power
 import org.powerapi.core.target.Target
@@ -32,6 +31,7 @@ import org.powerapi.core.target.Target
  * Display power information into a JFreeChart graph.
  *
  * @see http://www.jfree.org/jfreechart
+ *
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */

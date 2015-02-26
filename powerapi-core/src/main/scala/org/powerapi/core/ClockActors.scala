@@ -25,6 +25,7 @@ package org.powerapi.core
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, Cancellable, PoisonPill, Props}
 import akka.event.LoggingReceive
+import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, subscribeClockChannel, publishClockTick}
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
@@ -34,7 +35,6 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorComponent {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, publishClockTick}
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case ClockStart(_, freq) if frequency == freq => start()
@@ -94,7 +94,6 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorC
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class Clocks(eventBus: MessageBus) extends Supervisor {
-  import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, subscribeClockChannel}
 
   override def preStart(): Unit = {
     subscribeClockChannel(eventBus)(self)

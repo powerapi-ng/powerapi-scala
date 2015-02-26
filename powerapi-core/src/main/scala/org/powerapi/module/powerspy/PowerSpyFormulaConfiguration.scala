@@ -20,28 +20,19 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.powerspy
 
-import akka.event.LoggingReceive
-import org.powerapi.PowerDisplay
-import org.powerapi.core.APIComponent
-import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.core.{Configuration, ConfigValue}
+import org.powerapi.core.power._
 
 /**
- * Base class for reporters which are part of the API.
+ * Main configuration.
  *
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class ReporterComponent(output: PowerDisplay) extends APIComponent {
-
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerReport => report(msg)
-  } orElse default
-
-  def report(aggPowerReport: PowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp,
-                   aggPowerReport.target,
-                   aggPowerReport.device,
-                   aggPowerReport.power)
+trait PowerSpyFormulaConfiguration extends Configuration {
+  lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
+    case ConfigValue(idle) => idle.W
+    case _ => 0.W
   }
 }

@@ -22,7 +22,9 @@
  */
 package org.powerapi.module.powerspy
 
-import org.powerapi.core.Channel
+import akka.actor.ActorRef
+import org.powerapi.core.{Channel, Message, MessageBus}
+import org.powerapi.core.power.Power
 
 /**
  * PowerSpyChannel channel and messages.
@@ -30,9 +32,6 @@ import org.powerapi.core.Channel
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object PowerSpyChannel extends Channel {
-  import akka.actor.ActorRef
-  import org.powerapi.core.{Message, MessageBus}
-  import org.powerapi.core.power.Power
 
   type M = PowerSpyPower
 

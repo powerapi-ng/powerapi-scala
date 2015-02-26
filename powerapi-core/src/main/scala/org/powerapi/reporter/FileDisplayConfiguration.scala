@@ -22,26 +22,21 @@
  */
 package org.powerapi.reporter
 
-import akka.event.LoggingReceive
-import org.powerapi.PowerDisplay
-import org.powerapi.core.APIComponent
-import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.core.{ConfigValue, Configuration}
+import scalax.file.Path
 
 /**
- * Base class for reporters which are part of the API.
+ * Main configuration.
  *
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class ReporterComponent(output: PowerDisplay) extends APIComponent {
-
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerReport => report(msg)
-  } orElse default
-
-  def report(aggPowerReport: PowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp,
-                   aggPowerReport.target,
-                   aggPowerReport.device,
-                   aggPowerReport.power)
+trait FileDisplayConfiguration extends Configuration {
+  /**
+   * The output file path, build from prefix given by user.
+   * Temporary file as default.
+   */
+  lazy val filePath = load { _.getString("powerapi.reporter.file.prefix") + System.nanoTime() } match {
+    case ConfigValue(path) => path
+    case _ => Path.createTempFile(prefix = "powerapi.reporter-file", deleteOnExit = false).path
   }
 }

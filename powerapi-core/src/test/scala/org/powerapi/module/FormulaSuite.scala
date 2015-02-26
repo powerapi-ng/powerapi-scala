@@ -28,13 +28,13 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
 import org.powerapi.core.{Channel, MessageBus}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.target.{intToProcess,Target}
 import org.powerapi.module.SensorChannel.SensorReport
-import org.powerapi.module.SensorMockChannel.SensorMockReport
+import org.powerapi.module.SensorMockChannel.{subscribeMockMessage, publishSensorMockReport, SensorMockReport}
+import scala.concurrent.duration.DurationInt
 
 object SensorMockChannel extends Channel {
-  import org.powerapi.core.ClockChannel.ClockTick
-  import org.powerapi.core.target.Target
-
   type M = org.powerapi.module.SensorChannel.M
 
   private val topic = "test"
@@ -51,8 +51,6 @@ object SensorMockChannel extends Channel {
 }
 
 class FormulaMock(eventBus: MessageBus, actorRef: ActorRef, coeff: Double) extends FormulaComponent[SensorMockReport](eventBus) {
-  import org.powerapi.module.SensorMockChannel.subscribeMockMessage
-
   def subscribeSensorReport(): Unit = {
     subscribeMockMessage(eventBus)(self)
   }
@@ -75,11 +73,6 @@ class FormulaSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Formula" should "process SensorReport messages" in new Bus {
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.target.intToProcess
-    import org.powerapi.module.SensorMockChannel.publishSensorMockReport
-    import scala.concurrent.duration.DurationInt
-
     val coeff = 10d
     val formulaMock = TestActorRef(Props(classOf[FormulaMock], eventBus, testActor, coeff))(system)
 

@@ -22,26 +22,27 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Props, Terminated}
 import akka.testkit.TestKit
 import akka.util.Timeout
+import akka.pattern.gracefulStop
+import akka.testkit.{TestActorRef, TestProbe}
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
+import org.powerapi.core.target.All
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.MonitorChannel.MonitorTick
+import org.powerapi.module.SensorChannel.monitorAllStopped
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
 import scala.collection.BitSet
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationDouble
-
-class LibpfmCoreSensorMock(eventBus: MessageBus, _timeout: Timeout, _topology: Map[Int, List[Int]], _configuration: BitSet, _events: List[String]) extends LibpfmCoreSensor(eventBus) {
-  override lazy val timeout = _timeout
-  override lazy val topology = _topology
-  override lazy val configuration = _configuration
-  override lazy val events = _events
-}
+import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.sys.process.stringSeqToProcess
 
 class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
-  import akka.actor.Props
-  import akka.util.Timeout
-  import org.powerapi.core.MessageBus
 
   def this() = this(ActorSystem("LibpfmCoreSensorSuite"))
 
@@ -56,20 +57,6 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A LibpfmCoreSensor" should "aggregate the performance counters" ignore new Bus {
-    import akka.actor.Terminated
-    import akka.pattern.gracefulStop
-    import akka.testkit.{TestActorRef, TestProbe}
-    import java.util.UUID
-    import org.powerapi.core.target.All
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.MonitorChannel.MonitorTick
-    import org.powerapi.module.SensorChannel.monitorAllStopped
-    import PerformanceCounterChannel.{PCReport, subscribePCReport}
-    import scala.collection.mutable.{ArrayBuffer, BitSet}
-    import scala.concurrent.Await
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import scala.sys.process.stringSeqToProcess
-
     val configuration = BitSet(0, 1)
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
@@ -86,7 +73,7 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
     LibpfmHelper.init()
 
     val reaper = TestProbe()(system)
-    val sensor = TestActorRef(Props(classOf[LibpfmCoreSensorMock], eventBus, Timeout(1.seconds), topology, configuration, events), "sensor1")(system)
+    val sensor = TestActorRef(Props(classOf[LibpfmCoreSensor], eventBus, Timeout(1.seconds), topology, configuration, events), "sensor1")(system)
 
     subscribePCReport(eventBus)(testActor)
 

@@ -20,28 +20,26 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.cpu.dvfs
 
-import akka.event.LoggingReceive
-import org.powerapi.PowerDisplay
-import org.powerapi.core.APIComponent
-import org.powerapi.module.PowerChannel.PowerReport
+import com.typesafe.config.Config
+import org.powerapi.core.ConfigValue
+import scala.collection.JavaConversions
 
 /**
- * Base class for reporters which are part of the API.
+ * Main configuration.
  *
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class ReporterComponent(output: PowerDisplay) extends APIComponent {
-
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerReport => report(msg)
-  } orElse default
-
-  def report(aggPowerReport: PowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp,
-                   aggPowerReport.target,
-                   aggPowerReport.device,
-                   aggPowerReport.power)
+trait CpuFormulaConfiguration extends org.powerapi.module.cpu.simple.CpuFormulaConfiguration {
+  /**
+   * Map of frequencies and their associated voltages.
+   */
+  lazy val frequencies = load { conf =>
+    (for (item <- JavaConversions.asScalaBuffer(conf.getConfigList("powerapi.cpu.frequencies")))
+      yield (item.asInstanceOf[Config].getInt("value"), item.asInstanceOf[Config].getDouble("voltage"))).toMap
+  } match {
+    case ConfigValue(freqs) => freqs
+    case _ => Map[Int, Double]()
   }
 }

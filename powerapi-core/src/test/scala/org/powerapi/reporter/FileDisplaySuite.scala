@@ -22,25 +22,18 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-
-import scala.concurrent.duration.DurationInt
-
-import akka.actor.{ ActorSystem, Props }
-import akka.testkit.{ TestActorRef, TestKit }
+import akka.actor.{ActorSystem, Props }
+import akka.testkit.{ TestActorRef, TestKit}
 import akka.util.Timeout
-
+import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.module.PowerChannel.PowerReport
-
-object ConfigurationMock {
-  val testPath = "powerapi-reporter-file-test"
-}
-
-class FileDisplayMock extends FileDisplay {
-  override lazy val filePath = ConfigurationMock.testPath
-}
+import org.powerapi.core.target.intToProcess
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.power._
+import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import scala.concurrent.duration.DurationInt
+import scalax.file.Path
 
 class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   implicit val timeout = Timeout(1.seconds)
@@ -52,21 +45,17 @@ class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   val eventBus = new MessageBus
-  val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new FileDisplayMock), "fileReporter")(system)
+  val reporter = TestActorRef(Props(classOf[ReporterComponent], new FileDisplay() {
+    override lazy val filePath = "powerapi-reporter-file-test"
+  }), "fileReporter")(system)
 
   "A file reporter" should "process a power report and then report energy information in a file" in {
-    import scalax.file.Path
-    import org.powerapi.core.target.intToProcess
-    import org.powerapi.core.ClockChannel.ClockTick
-    import org.powerapi.core.power._
-    import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
-    
     val muid = UUID.randomUUID()
     val device = "mock"
     val tickMock = ClockTick("ticktest", 25.milliseconds)
     val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
   
-    subscribeAggPowerReport(muid)(eventBus)(reporterMock)
+    subscribeAggPowerReport(muid)(eventBus)(reporter)
     
     val aggR1 = AggregateReport(muid, aggFunction)
     aggR1 += RawPowerReport("topictest", muid, 1, 3.W, device, tickMock)
@@ -81,7 +70,7 @@ class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
 
-    val testFile = Path.fromString(ConfigurationMock.testPath)
+    val testFile = Path.fromString("powerapi-reporter-file-test")
     testFile.isFile should be (true)
     testFile.size.get should be > 0L
     testFile.lines() should (

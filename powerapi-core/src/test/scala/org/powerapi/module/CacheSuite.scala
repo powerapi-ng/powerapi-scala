@@ -25,7 +25,9 @@ package org.powerapi.module
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
+import java.util.UUID
 import org.powerapi.UnitTest
+import org.powerapi.core.target.intToProcess
 
 import scala.concurrent.duration.DurationInt
 
@@ -39,9 +41,6 @@ class CacheSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "A Cache" can "be parametrized, updated" in {
-    import java.util.UUID
-    import org.powerapi.core.target.intToProcess
-
     val cache = new Cache[(Double, Double)]
     val muid = UUID.randomUUID()
     val muid2 = UUID.randomUUID()

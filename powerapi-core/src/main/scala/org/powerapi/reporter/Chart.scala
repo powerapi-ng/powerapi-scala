@@ -24,7 +24,6 @@ package org.powerapi.reporter
 
 import java.awt.BasicStroke
 import java.awt.Dimension
-
 import org.jfree.chart.ChartFactory
 import org.jfree.chart.ChartPanel
 import org.jfree.data.time.FixedMillisecond
