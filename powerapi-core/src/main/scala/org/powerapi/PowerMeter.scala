@@ -28,13 +28,13 @@ import akka.pattern.{ ask, after, gracefulStop }
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import org.powerapi.PowerMeterMessages.StopAll
-import org.powerapi.core.{APIComponent, Monitor}
+import org.powerapi.core.{ActorComponent, Clocks, ConfigValue, Configuration, APIComponent, Monitor, Monitors, MessageBus}
 import org.powerapi.core.MonitorChannel.MonitorStart
-import org.powerapi.core._
 import org.powerapi.core.target.Target
 import org.powerapi.core.power._
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
+import scala.concurrent.ExecutionContext.Implicits._
 
 /**
  * PowerAPI object encapsulates all the messages.
@@ -128,8 +128,6 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configu
    * @return the instance of the power meter.
    */
   def waitFor(duration: FiniteDuration): this.type = {
-    import scala.concurrent.ExecutionContext.Implicits._
-
     Await.result(after(duration, using = system.scheduler) {
       Future successful "waitFor completed"
     }, duration + 1l.seconds)
@@ -173,8 +171,8 @@ trait PowerModule {
   def underlyingFormulaeClasses: Seq[(Class[_ <: APIComponent], Seq[Any])]
 
   protected var eventBus: Option[MessageBus] = None
-  private var sensors: List[ActorRef]  = List()
-  private var formulae: List[ActorRef] = List()
+  private val sensors = scala.collection.mutable.ListBuffer[ActorRef]()
+  private val formulae = scala.collection.mutable.ListBuffer[ActorRef]()
 
   def apply(bus: MessageBus): Unit = {
     eventBus = Some(bus)
@@ -186,12 +184,12 @@ trait PowerModule {
   def start(factory: ActorRefFactory): Unit = {
     eventBus match {
       case Some(bus) => {
-        underlyingSensorsClasses.foreach(underlyingSensorClass => {
-          sensors :+= factory.actorOf(Props(underlyingSensorClass._1, bus +: underlyingSensorClass._2: _*))
-        })
-        underlyingFormulaeClasses.foreach(underlyingFormulaClass => {
-          formulae :+= factory.actorOf(Props(underlyingFormulaClass._1, bus +: underlyingFormulaClass._2: _*))
-        })
+        for((sensorClass, sensorParameters) <- underlyingSensorsClasses) {
+          sensors += factory.actorOf(Props(sensorClass, bus +: sensorParameters: _*))
+        }
+        for((formulaClass, formulaParameters) <- underlyingFormulaeClasses) {
+          formulae += factory.actorOf(Props(formulaClass, bus +: formulaParameters: _*))
+        }
       }
 
       case _ => {}

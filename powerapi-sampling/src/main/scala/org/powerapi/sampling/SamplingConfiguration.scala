@@ -25,7 +25,6 @@ package org.powerapi.sampling
 import java.util.concurrent.TimeUnit
 import com.typesafe.config.Config
 import org.powerapi.core.{LinuxHelper, ConfigValue, Configuration}
-import scala.collection.BitSet
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.collection.JavaConversions._
 
@@ -79,14 +78,6 @@ trait SamplingConfiguration extends Configuration {
     case ConfigValue(values) => values
     case _ => Map()
   }
-
-  lazy val configuration =
-    BitSet(
-      (load { _.getIntList("powerapi.libpfm.configuration") } match {
-        case ConfigValue(values) => values.map(_.toInt).toList
-        case _ => List[Int]()
-      }): _*
-    )
 
   lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
     case ConfigValue(values) => values.map(_.toString).toList

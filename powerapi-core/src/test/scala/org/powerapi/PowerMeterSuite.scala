@@ -53,6 +53,11 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
     })
   }
 
+  "The PowerMeter configuration" should "be correctly read from a resource file" in {
+    val configuration = new PowerMeterConfiguration {}
+    configuration.timeout should equal(Timeout(10.seconds))
+  }
+
   "The PowerMeter actor" should "load the CpuSimpleModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(CpuSimpleModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)

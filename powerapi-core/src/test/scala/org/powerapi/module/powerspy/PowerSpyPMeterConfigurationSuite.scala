@@ -20,23 +20,27 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.powerspy
 
-import org.powerapi.core.{ConfigValue, Configuration}
-import scalax.file.Path
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.powerapi.UnitTest
+import scala.concurrent.duration.DurationInt
 
-/**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait FileDisplayConfiguration extends Configuration {
-  /**
-   * The output file path, build from prefix given by user.
-   * Temporary file as default.
-   */
-  lazy val filePath = load { _.getString("powerapi.display.file.prefix") + System.nanoTime() } match {
-    case ConfigValue(path) => path
-    case _ => Path.createTempFile(prefix = "powerapi.reporter-file", deleteOnExit = false).path
+class PowerSpyPMeterConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+
+  implicit val timeout = Timeout(1.seconds)
+
+  def this() = this(ActorSystem("PowerSpyPMeterConfigurationSuite"))
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
+
+  "The PowerSpyPMeterConfiguration" should "read correctly the values from a resource file" in {
+    val configuration = new PowerSpyPMeterConfiguration {}
+    configuration.mac should equal("00:0B:CE:07:1E:9B")
+    configuration.interval should equal(250.milliseconds)
   }
 }

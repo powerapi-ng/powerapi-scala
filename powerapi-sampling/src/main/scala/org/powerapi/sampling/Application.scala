@@ -22,7 +22,6 @@
  */
 package org.powerapi.sampling
 
-import org.powerapi.core.LinuxHelper
 import org.powerapi.module.libpfm.LibpfmCoreSensorModule
 import org.powerapi.module.powerspy.PowerSpyModule
 import org.powerapi.PowerMeter
