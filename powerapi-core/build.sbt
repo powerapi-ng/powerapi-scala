@@ -1,4 +1,10 @@
+import SonatypeKeys._
+
+sonatypeSettings
+
 name := "powerapi-core"
+
+organization := "org.powerapi"
 
 // App
 libraryDependencies ++= Seq(
@@ -17,6 +23,47 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
   "org.scalatest" %% "scalatest" % "2.2.2" % "test"
 )
+
+startYear := Some(2014)
+
+licenses := Seq("AGPL-3.0" -> url("http://www.gnu.org/licenses/agpl-3.0.txt"))
+
+pomExtra := {
+  <url>http://www.powerapi.org/</url>
+  <scm>
+    <url>github.com/Spirals-Team/powerapi</url>
+    <connection>scm:git:git@github.com:Spirals-Team/powerapi.git</connection>
+    <developerConnection>scm:git:git@github.com:Spirals-Team/powerapi.git</developerConnection>
+  </scm>
+  <developers>
+    <developer>
+      <id>mcolmant</id>
+      <name>Maxime Colmant</name>
+      <url>http://researchers.lille.inria.fr/colmant/</url>
+    </developer>
+    <developer>
+      <id>rouvoy</id>
+      <name>Romain Rouvoy</name>
+      <url>http://www.lifl.fr/~rouvoy/</url>
+    </developer>
+    <developer>
+      <id>lhuertas</id>
+      <name>Loïc Huertas</name>
+    </developer>
+  </developers>
+}
+
+publishMavenStyle := true
+
+publishArtifact in Test := false
+
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
 
 val downloadBluecoveLibs = TaskKey[Seq[File]]("download-bluecove")
 

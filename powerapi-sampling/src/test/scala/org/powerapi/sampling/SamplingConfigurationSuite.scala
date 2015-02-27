@@ -26,7 +26,6 @@ import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import scala.collection.BitSet
 import scala.concurrent.duration.DurationInt
 
 class SamplingConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
