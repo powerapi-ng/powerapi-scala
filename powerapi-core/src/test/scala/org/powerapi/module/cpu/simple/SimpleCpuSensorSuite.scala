@@ -128,6 +128,8 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       }
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+      
+      def getRAPLEnergy: Double = 0.0
     }), "simple-CpuSensor1")(system)
 
     subscribeSimpleUsageReport(eventBus)(testActor)
@@ -221,6 +223,8 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       }
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+      
+      def getRAPLEnergy: Double = 0.0
     }), "simple-CpuSensor2")(system)
 
     val oldP1ElapsedTime = p1ElapsedTime / 2

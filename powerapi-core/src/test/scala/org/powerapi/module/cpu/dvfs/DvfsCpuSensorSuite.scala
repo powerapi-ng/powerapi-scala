@@ -79,6 +79,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => TimeInStates(Map())
         }
       }
+      
+      def getRAPLEnergy: Double = 0.0
     }), "dvfs-CpuSensor1")(system)
 
     val muid = UUID.randomUUID()
@@ -149,6 +151,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => TimeInStates(Map())
         }
       }
+      
+      def getRAPLEnergy: Double = 0.0
     }), "dvfs-CpuSensor2")(system)
 
     val muid = UUID.randomUUID()
