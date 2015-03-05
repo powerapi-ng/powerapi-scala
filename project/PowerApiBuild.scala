@@ -24,8 +24,9 @@ import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
 import sbt._
 
 object PowerApiBuild extends Build {
-  lazy val powerapi = Project(id = "powerapi", base = file(".")).aggregate(powerapiCore, powerapiSampling)
+  lazy val powerapi = Project(id = "powerapi", base = file(".")).aggregate(powerapiCore, powerapiCli, powerapiSampling)
 
   lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core"))
+  lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 }
