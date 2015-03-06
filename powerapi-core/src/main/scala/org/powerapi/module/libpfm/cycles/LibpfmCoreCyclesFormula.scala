@@ -26,7 +26,7 @@ import org.powerapi.core.MessageBus
 import org.powerapi.core.power._
 import org.powerapi.module.FormulaComponent
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
-import org.powerapi.module.PowerChannel.publishPowerReport
+import org.powerapi.module.PowerChannel.publishRawPowerReport
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
@@ -86,14 +86,14 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus, cyclesThreadName: String, cy
     future onSuccess {
       case powers: List[Double] => {
         lazy val power = powers.foldLeft(0d)((acc, power) => acc + power).W
-        publishPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
+        publishRawPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
       }
     }
 
     future onFailure {
       case ex: Throwable => {
         log.warning("An error occurred: {}", ex.getMessage)
-        publishPowerReport(sensorReport.muid, sensorReport.target, 0.W, "cpu", sensorReport.tick)(eventBus)
+        publishRawPowerReport(sensorReport.muid, sensorReport.target, 0.W, "cpu", sensorReport.tick)(eventBus)
       }
     }
   }

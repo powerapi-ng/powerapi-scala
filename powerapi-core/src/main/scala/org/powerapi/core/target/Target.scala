@@ -38,7 +38,9 @@ trait Target
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-case class Process(pid: Int) extends Target
+case class Process(pid: Int) extends Target {
+  override def toString(): String = s"$pid"
+}
 
 /**
  * Monitoring target for a specific application.
@@ -48,7 +50,9 @@ case class Process(pid: Int) extends Target
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-case class Application(name: String) extends Target
+case class Application(name: String) extends Target {
+  override def toString(): String = name
+}
 
 /**
  * Target usage ratio.

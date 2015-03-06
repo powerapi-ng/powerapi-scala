@@ -28,13 +28,12 @@ import akka.event.LoggingReceive
 import java.util.UUID
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.PowerReport
 import org.powerapi.core.target.Target
 import org.powerapi.{PowerDisplay, PowerMonitoring}
 import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
 import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
 import org.powerapi.core.MonitorChannel.{publishMonitorTick, setAggFunction, stopMonitor}
-import org.powerapi.module.PowerChannel.{AggregateReport, render, subscribePowerReport, unsubscribePowerReport, subscribeAggPowerReport}
+import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, render, subscribeRawPowerReport, unsubscribeRawPowerReport, subscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
 import org.powerapi.reporter.ReporterComponent
 import scala.concurrent.duration.FiniteDuration
@@ -58,10 +57,10 @@ class MonitorChild(eventBus: MessageBus,
   /**
    * Running state.
    */
-  def running(aggR: AggregateReport, aggFunction: Seq[Power] => Power): Actor.Receive = LoggingReceive {
+  def running(aggR: AggregatePowerReport, aggFunction: Seq[Power] => Power): Actor.Receive = LoggingReceive {
     case tick: ClockTick => produceMessages(tick)
     case MonitorAggFunction(_, id, aggF) if muid == id => setAggregatingFunction(aggR, aggF)
-    case powerReport: PowerReport => aggregate(aggR, powerReport, aggFunction)
+    case powerReport: RawPowerReport => aggregate(aggR, powerReport, aggFunction)
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -73,15 +72,15 @@ class MonitorChild(eventBus: MessageBus,
   def start(): Unit = {
     startClock(frequency)(eventBus)
     subscribeClockTick(frequency)(eventBus)(self)
-    subscribePowerReport(muid)(eventBus)(self)
+    subscribeRawPowerReport(muid)(eventBus)(self)
     log.info("monitor is started, muid: {}", muid)
-    context.become(running(AggregateReport(muid, SUM), SUM))
+    context.become(running(AggregatePowerReport(muid, SUM), SUM))
   }
 
   /**
    * Change the aggregating function for this monitor
    */
-  def setAggregatingFunction(aggR: AggregateReport, aggF: Seq[Power] => Power): Unit = {
+  def setAggregatingFunction(aggR: AggregatePowerReport, aggF: Seq[Power] => Power): Unit = {
     log.info("aggregating function is changed")
     context.become(running(aggR, aggF))
   }
@@ -97,11 +96,11 @@ class MonitorChild(eventBus: MessageBus,
    * Wait to retrieve power reports of all targets from a same monitor to aggregate them
    * into once power report.
    */
-  def aggregate(aggR: AggregateReport, powerReport: PowerReport, aggF: Seq[Power] => Power): Unit = {
+  def aggregate(aggR: AggregatePowerReport, powerReport: RawPowerReport, aggF: Seq[Power] => Power): Unit = {
     aggR += powerReport
     if (aggR.size >= targets.size) {
       render(aggR)(eventBus)
-      context.become(running(AggregateReport(muid, aggF), aggF))
+      context.become(running(AggregatePowerReport(muid, aggF), aggF))
     }
     else
       context.become(running(aggR, aggF))
@@ -114,7 +113,7 @@ class MonitorChild(eventBus: MessageBus,
   def stop(): Unit = {
     stopClock(frequency)(eventBus)
     unsubscribeClockTick(frequency)(eventBus)(self)
-    unsubscribePowerReport(muid)(eventBus)(self)
+    unsubscribeRawPowerReport(muid)(eventBus)(self)
     log.info("monitor is stopped, muid: {}", muid)
     self ! PoisonPill
   }

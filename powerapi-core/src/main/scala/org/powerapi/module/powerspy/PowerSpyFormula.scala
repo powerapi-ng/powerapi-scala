@@ -28,7 +28,7 @@ import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
 import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
 import org.powerapi.module.{Cache, CacheKey}
-import org.powerapi.module.PowerChannel.publishPowerReport
+import org.powerapi.module.PowerChannel.publishRawPowerReport
 import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
 import scala.reflect.ClassTag
 
@@ -75,7 +75,6 @@ class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Power
 
         (targetCpuTime, activeCpuTime)
       }
-      case All => (activeCpuTime, activeCpuTime)
     }
 
     val old = cpuTimesCache(key)(now)
@@ -102,8 +101,12 @@ class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Power
   def compute(pSpyPower: Option[PowerSpyPower], monitorTick: MonitorTick): Unit = {
     pSpyPower match {
       case Some(pPower) => {
-        val dynamicP = if(pPower.power.toMilliWatts - idlePower.toMilliWatts > 0) pPower.power - idlePower else 0.W
-        publishPowerReport(monitorTick.muid, monitorTick.target, idlePower + (dynamicP * targetCpuUsageRatio(monitorTick).ratio), "PowerSpy", monitorTick.tick)(eventBus)
+        lazy val dynamicP = if(pPower.power.toMilliWatts - idlePower.toMilliWatts > 0) pPower.power - idlePower else 0.W
+
+        monitorTick.target match {
+          case All => publishRawPowerReport(monitorTick.muid, monitorTick.target, pPower.power, "PowerSpy", monitorTick.tick)(eventBus)
+          case _ => publishRawPowerReport(monitorTick.muid, monitorTick.target, dynamicP * targetCpuUsageRatio(monitorTick).ratio, "PowerSpy", monitorTick.tick)(eventBus)
+        }
       }
       case _ => log.debug("{}", "no PowerSpyPower message received")
     }

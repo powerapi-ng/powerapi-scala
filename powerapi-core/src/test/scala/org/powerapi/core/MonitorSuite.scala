@@ -34,7 +34,7 @@ import org.powerapi.core.ClockChannel.{ ClockTick, formatClockChildName }
 import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorTick, subscribeMonitorTick, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
 import org.powerapi.core.power._
 import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target}
-import org.powerapi.module.PowerChannel.{ PowerReport, publishPowerReport, subscribeAggPowerReport }
+import org.powerapi.module.PowerChannel.{AggregatePowerReport, publishRawPowerReport, subscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.subscribeSensorsChannel
 import scala.concurrent.Await
 import scala.concurrent.duration.{Duration, DurationInt}
@@ -358,23 +358,23 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       monitor ! MonitorStart("test", muid, frequency, targets)
     })(_system)
     
-    publishPowerReport(muid, 1, 4.W, device, tickMock)(eventBus)
-    publishPowerReport(muid, 2, 5.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 1, 4.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 2, 5.W, device, tickMock)(eventBus)
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorAggFunction("test", muid, MAX)
     })(_system)
-    publishPowerReport(muid, 3, 6.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 3, 6.W, device, tickMock)(eventBus)
 
-    publishPowerReport(muid, 1, 11.W, device, tickMock)(eventBus)
-    publishPowerReport(muid, 2, 10.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 1, 11.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 2, 10.W, device, tickMock)(eventBus)
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorAggFunction("test", muid, MIN)
     })(_system)
-    publishPowerReport(muid, 3, 12.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 3, 12.W, device, tickMock)(eventBus)
     
-    publishPowerReport(muid, 1, 9.W, device, tickMock)(eventBus)
-    publishPowerReport(muid, 2, 3.W, device, tickMock)(eventBus)
-    publishPowerReport(muid, 3, 7.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 1, 9.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 2, 3.W, device, tickMock)(eventBus)
+    publishRawPowerReport(muid, 3, 7.W, device, tickMock)(eventBus)
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorStop("test", muid)
@@ -384,9 +384,9 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(monitor)
     }, 20.seconds)
 
-    expectMsgClass(classOf[PowerReport]).power should equal(15.W)
-    expectMsgClass(classOf[PowerReport]).power should equal(12.W)
-    expectMsgClass(classOf[PowerReport]).power should equal(3.W)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(15.W)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(12.W)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(3.W)
 
     receiveWhile(10.seconds, idle = 2.seconds) {
       case msg: MonitorTick => {}
@@ -422,7 +422,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     })(_system)
 
     for(i <- 1 to 150) {
-      publishPowerReport(muid, i, (i * 3.0).W, device, tickMock)(eventBus)
+      publishRawPowerReport(muid, i, (i * 3.0).W, device, tickMock)(eventBus)
     }
 
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
@@ -433,9 +433,9 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       watcher.expectTerminated(monitor)
     }, 20.seconds)
 
-    expectMsgClass(classOf[PowerReport]).power should equal(3825.W)
-    expectMsgClass(classOf[PowerReport]).power should equal(11325.W)
-    expectMsgClass(classOf[PowerReport]).power should equal(18825.W)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(3825.W)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(11325.W)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(18825.W)
 
     receiveWhile(10.seconds, idle = 2.seconds) {
       case msg: MonitorTick => {}

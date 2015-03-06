@@ -60,8 +60,8 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val configuration = BitSet(0, 1)
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
-    val events = List("CPU_CLK_UNHALTED:THREAD_P", "instructions")
-    val topology = Map(0 -> List(0, 1))
+    val events = Set("CPU_CLK_UNHALTED:THREAD_P", "instructions")
+    val topology = Map(0 -> Set(0, 1))
     val buffer = ArrayBuffer[PCReport]()
 
     val basepath = getClass.getResource("/").getPath

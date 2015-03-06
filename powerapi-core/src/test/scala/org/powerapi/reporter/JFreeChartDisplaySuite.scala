@@ -31,7 +31,7 @@ import org.powerapi.core.MessageBus
 import org.powerapi.core.target.intToProcess
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import org.powerapi.module.PowerChannel.{ AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport }
 import scala.concurrent.duration.DurationInt
 
 class JFreeChartDisplaySuite(system: ActorSystem) extends UnitTest(system) {
@@ -58,15 +58,9 @@ class JFreeChartDisplaySuite(system: ActorSystem) extends UnitTest(system) {
     var current = begin
 
     while(current <= (begin + 5.seconds.toMillis)) {
-      render(AggregateReport(muid, aggFunction) += RawPowerReport("topictest",
-                                                                  muid,
-                                                                  1,
-                                                                  Math.random.W,
-                                                                  "mock",
-                                                                  ClockTick("ticktest", 25.milliseconds, current)))(eventBus)
+      render(AggregatePowerReport(muid, aggFunction) += RawPowerReport("topictest", muid, 1, Math.random.W, "mock", ClockTick("ticktest", 25.milliseconds, current)))(eventBus)
       current += 1.seconds.toMillis
       Thread.sleep(1.seconds.toMillis)
     }
   }
 }
-

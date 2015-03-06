@@ -42,9 +42,9 @@ trait LibpfmCoreSensorConfiguration extends Configuration {
     case _ => Timeout(1l.seconds)
   }
 
-  lazy val topology: Map[Int, Iterable[Int]] = load { conf =>
+  lazy val topology: Map[Int, Set[Int]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toList)).toMap
+      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toSet)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
@@ -65,7 +65,7 @@ trait LibpfmCoreSensorConfiguration extends Configuration {
     )
 
   lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
-    case ConfigValue(values) => values.map(_.toString).toList
-    case _ => List[String]()
+    case ConfigValue(values) => values.map(_.toString).toSet
+    case _ => Set[String]()
   }
 }

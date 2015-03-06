@@ -31,7 +31,7 @@ import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
 import org.powerapi.core.target.{intToProcess, Process}
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{publishPCReport, PCWrapper}
-import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -68,7 +68,7 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
     val actor = TestActorRef(Props(classOf[LibpfmCoreCyclesFormula], eventBus, "CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P", formulae, 1.seconds), "libpfm-cycles-formula1")(system)
     val muid = UUID.randomUUID()
     val tick = ClockTick("clock", 1.seconds)
-    subscribePowerReport(muid)(eventBus)(testActor)
+    subscribeRawPowerReport(muid)(eventBus)(testActor)
 
     var wrappers = List[PCWrapper]()
     wrappers :+= PCWrapper(0, "CPU_CLK_UNHALTED:THREAD_P", List(Future[Long] {2606040442l}, Future[Long] {2606040442l}))
@@ -93,7 +93,7 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
 
     publishPCReport(muid, 1, wrappers, tick)(eventBus)
 
-    val ret = expectMsgClass(classOf[PowerReport])
+    val ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid)
     ret.target should equal(Process(1))
     ret.power should equal(power.W)

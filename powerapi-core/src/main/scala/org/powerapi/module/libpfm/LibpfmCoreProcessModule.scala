@@ -29,7 +29,7 @@ import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, 
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreProcessModule(timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String], inDepth: Boolean,
+class LibpfmCoreProcessModule(timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
                               cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
 
   lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper, timeout, topology, configuration, events, inDepth)))

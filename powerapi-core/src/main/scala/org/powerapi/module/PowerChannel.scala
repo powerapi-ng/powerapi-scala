@@ -27,7 +27,7 @@ import java.util.UUID
 import org.powerapi.core.{Message, MessageBus, Channel}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.core.target.{intToProcess, Target}
+import org.powerapi.core.target.Target
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -41,18 +41,12 @@ object PowerChannel extends Channel {
 
   type M = PowerReport
 
-  case object PowerReport
-
   /**
    * Base trait for each power report
    */
   trait PowerReport extends Message {
     def muid: UUID
-    def target: Target
-    def power: Power
-    def device: String
     def tick: ClockTick
-    override def toString() = s"timestamp=${tick.timestamp};target=$target;device=$device;value=$power"
   }
 
   /**
@@ -73,46 +67,37 @@ object PowerChannel extends Channel {
                             tick: ClockTick) extends PowerReport
                          
   /**
-   * Used to represent an aggregated PowerReport.
-   *
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param aggFunction: aggregate power estimation for a specific sample of power reports.
+   * AggregatePowerReport is represented as a dedicated type of message.
    */
-  case class AggregateReport(muid: UUID, aggFunction: Seq[Power] => Power) extends PowerReport {
-    private val values: collection.mutable.Buffer[Power] = collection.mutable.Buffer.empty
-    private lazy val agg = aggFunction(values.seq)
-    private var lastPowerReport: PowerReport = RawPowerReport(aggPowerReportTopic(muid),
-                                                              muid,
-                                                              -1,
-                                                              0.W,
-                                                              "none",
-                                                              ClockTick("none", 0.milliseconds))
+  case class AggregatePowerReport(muid: UUID, aggFunction: Seq[Power] => Power) extends PowerReport {
+    private val reports = collection.mutable.Buffer[RawPowerReport]()
+    private lazy val agg = aggFunction(for(report <- reports) yield report.power)
     
-    def size: Int = values.size
-    def +=(value: PowerReport):AggregateReport = {
-      values append value.power
-      lastPowerReport = value
+    def size: Int = reports.size
+
+    def +=(report: RawPowerReport): AggregatePowerReport = {
+      reports += report
       this
     }
     
     val topic: String = aggPowerReportTopic(muid)
-    def target: Target = lastPowerReport.target
+    def targets: Set[Target] = (for(report <- reports) yield report.target).toSet
     def power: Power = agg
-    def device: String = lastPowerReport.device
-    def tick: ClockTick = lastPowerReport.tick
+    def devices: Set[String] = (for(report <- reports) yield report.device).toSet
+    def tick: ClockTick = if(reports.nonEmpty) reports.last.tick else ClockTick("", 0.seconds)
   }
 
   /**
-   * Publish a power report in the event bus.
+   * Publish a raw power report in the event bus.
    */
-  def publishPowerReport(muid: UUID, target: Target, power: Power, device: String, tick: ClockTick): MessageBus => Unit = {
-    publish(RawPowerReport(powerReportMuid(muid), muid, target, power, device, tick))
+  def publishRawPowerReport(muid: UUID, target: Target, power: Power, device: String, tick: ClockTick): MessageBus => Unit = {
+    publish(RawPowerReport(rawPowerReportMuid(muid), muid, target, power, device, tick))
   }
   
   /**
    * Publish an aggregated power report in the event bus.
    */
-  def render(aggR: AggregateReport): MessageBus => Unit = {
+  def render(aggR: AggregatePowerReport): MessageBus => Unit = {
     publish(aggR)
   }
   
@@ -130,18 +115,18 @@ object PowerChannel extends Channel {
   /**
    * External method used by the MonitorChild actors for interacting with the bus.
    */
-  def subscribePowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
-    subscribe(powerReportMuid(muid))
+  def subscribeRawPowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
+    subscribe(rawPowerReportMuid(muid))
   }
 
-  def unsubscribePowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
-    unsubscribe(powerReportMuid(muid))
+  def unsubscribeRawPowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
+    unsubscribe(rawPowerReportMuid(muid))
   }
   
   /**
    * Use to format a MUID to an associated topic.
    */
-  private def powerReportMuid(muid: UUID): String  = {
+  private def rawPowerReportMuid(muid: UUID): String  = {
     s"power:$muid"
   }
   

@@ -31,7 +31,7 @@ import org.powerapi.core.MessageBus
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
 import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
 import scala.concurrent.duration.DurationInt
 
@@ -55,10 +55,10 @@ class SimpleCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     val tickMock = ClockTick("test", 25.milliseconds)
     val power = (220 * 0.7 * targetRatio.ratio).W
 
-    subscribePowerReport(muid)(eventBus)(testActor)
+    subscribeRawPowerReport(muid)(eventBus)(testActor)
     publishUsageReport(muid, target, targetRatio, tickMock)(eventBus)
     
-    val ret = expectMsgClass(classOf[PowerReport])
+    val ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid)
     ret.target should equal(target)
     ret.power should equal(power)

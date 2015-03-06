@@ -71,17 +71,17 @@ trait SamplingConfiguration extends Configuration {
 
   lazy val nbSteps = 100 / 25
 
-  lazy val topology: Map[Int, Iterable[Int]] = load { conf =>
+  lazy val topology: Map[Int, Set[Int]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toList)).toMap
+      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toSet)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
   }
 
   lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
-    case ConfigValue(values) => values.map(_.toString).toList
-    case _ => List[String]()
+    case ConfigValue(values) => values.map(_.toString).toSet
+    case _ => Set[String]()
   }
 
   lazy val samplingDir: String = load { _.getString("powerapi.sampling.sampling-directory") } match {

@@ -34,8 +34,8 @@ import org.powerapi.core.target.Target
  */
 class ConsoleDisplay extends PowerDisplay {
 
-  def display(timestamp: Long, target: Target, device: String, power: Power) {
-    println(s"timestamp=$timestamp;target=$target;device=$device;value=$power")
+  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    println(s"timestamp=$timestamp;target=${targets.mkString(";")};devices=${devices.mkString(",")};power=${power.toWatts}")
   }
 }
 

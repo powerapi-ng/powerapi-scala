@@ -60,11 +60,11 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       private var times = List(oldTimeInStates, oldTimeInStates, oldTimeInStates, timeInStates, timeInStates, timeInStates)
 
-      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
+      def getCPUFrequencies: Set[Long] = Set()
 
-      def getProcesses(application: Application): Iterable[Process] = Iterable()
+      def getProcesses(application: Application): Set[Process] = Set()
 
-      def getThreads(process: Process): Iterable[Thread] = Iterable()
+      def getThreads(process: Process): Set[Thread] = Set()
 
       def getProcessCpuTime(process: Process): Option[Long] = None
 
@@ -130,11 +130,11 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       private var times = List(oldTimeInStates, timeInStates)
 
-      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
+      def getCPUFrequencies: Set[Long] = Set()
 
-      def getProcesses(application: Application): List[Process] = List()
+      def getProcesses(application: Application): Set[Process] = Set()
 
-      def getThreads(process: Process): List[Thread] = List()
+      def getThreads(process: Process): Set[Thread] = Set()
 
       def getProcessCpuTime(process: Process): Option[Long] = None
 

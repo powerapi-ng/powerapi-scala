@@ -33,12 +33,11 @@ import scalax.io.Resource
  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
  * @author Loïc Huertas <l.huertas.pro@gmail.com>
  */
-class FileDisplay extends PowerDisplay with FileDisplayConfiguration {
+class FileDisplay(filepath: String) extends PowerDisplay  {
 
-  lazy val output = Resource.fromFile(filePath)
+  lazy val output = Resource.fromFile(filepath)
 
-  def display(timestamp: Long, target: Target, device: String, power: Power) {
-    output.append(s"timestamp=$timestamp;target=$target;device=$device;value=$power\n")
+  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    output.append(s"timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}\n")
   }
 }
-

@@ -43,8 +43,7 @@ class JFreeChartDisplay extends PowerDisplay {
     }
   })
 
-  def display(timestamp: Long, target: Target, device: String, power: Power) {
-    Chart.process(Map(target.toString -> power.toWatts), timestamp)
+  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    Chart.process(Map(s"${targets.mkString(",")}" -> power.toWatts), timestamp)
   }
 }
-

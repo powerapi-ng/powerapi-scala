@@ -26,7 +26,7 @@ import org.powerapi.core.{Configuration, MessageBus}
 import org.powerapi.core.power._
 import org.powerapi.module.FormulaComponent
 import org.powerapi.module.cpu.UsageMetricsChannel.{subscribeSimpleUsageReport, UsageReport}
-import org.powerapi.module.PowerChannel.publishPowerReport
+import org.powerapi.module.PowerChannel.publishRawPowerReport
 
 
 /**
@@ -45,6 +45,6 @@ class CpuFormula(eventBus: MessageBus, tdp: Double, tdpFactor: Double) extends F
 
   def compute(sensorReport: UsageReport): Unit = {
     lazy val power = ((tdp * tdpFactor) * sensorReport.targetRatio.ratio).W
-    publishPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
+    publishRawPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
   }
 }

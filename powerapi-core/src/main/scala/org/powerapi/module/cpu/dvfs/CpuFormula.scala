@@ -25,7 +25,7 @@ package org.powerapi.module.cpu.dvfs
 import org.powerapi.core.MessageBus
 import org.powerapi.core.power._
 import org.powerapi.module.cpu.UsageMetricsChannel.{subscribeDvfsUsageReport, UsageReport}
-import org.powerapi.module.PowerChannel.publishPowerReport
+import org.powerapi.module.PowerChannel.publishRawPowerReport
 
 /**
  * CPU formula component giving CPU energy of a given process in computing the ratio between
@@ -71,6 +71,6 @@ class CpuFormula(eventBus: MessageBus, tdp: Double, tdpFactor: Double, frequenci
       case _ => 0d.W
     }
 
-    publishPowerReport(sensorReport.muid, sensorReport.target, p, "cpu", sensorReport.tick)(eventBus)
+    publishRawPowerReport(sensorReport.muid, sensorReport.target, p, "cpu", sensorReport.tick)(eventBus)
   }
 }

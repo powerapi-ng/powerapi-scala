@@ -42,8 +42,8 @@ class LibpfmCoreSensorConfigurationSuite(system: ActorSystem) extends UnitTest(s
   "The LibpfmCoreSensorConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new LibpfmCoreSensorConfiguration {}
     configuration.timeout should equal(Timeout(10.seconds))
-    configuration.topology should equal(Map(0 -> Iterable(0, 4), 1 -> Iterable(1, 5), 2 -> Iterable(2, 6), 3 -> Iterable(3, 7)))
-    configuration.events should equal(List("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
+    configuration.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    configuration.events should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
     configuration.configuration should equal(BitSet(0, 1, 2, 10))
   }
 }

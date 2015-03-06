@@ -58,8 +58,8 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
 
   "A LibpfmCoreProcessSensor" should "aggregate the performance counters" ignore new Bus {
     val configuration = BitSet(0, 1)
-    val events = List("CPU_CLK_UNHALTED:THREAD_P", "instructions")
-    val topology = Map(0 -> Iterable(0, 1))
+    val events = Set("CPU_CLK_UNHALTED:THREAD_P", "instructions")
+    val topology = Map(0 -> Set(0, 1))
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
     val buffer = ArrayBuffer[PCReport]()

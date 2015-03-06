@@ -32,12 +32,12 @@ import org.powerapi.core.power.Power
 import org.powerapi.core.target.{intToProcess, Target}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import org.powerapi.module.PowerChannel.{ AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport }
 import scala.concurrent.duration.DurationInt
 
 class ConsoleDisplayMock(testActor: ActorRef) extends ConsoleDisplay {
-  override def display(timestamp: Long, target: Target, device: String, power: Power) {
-    testActor ! s"timestamp=$timestamp;target=$target;device=$device;value=$power"
+  override def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    testActor ! s"timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}"
   }
 }
 
@@ -62,22 +62,23 @@ class ConsoleDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   
     subscribeAggPowerReport(muid)(eventBus)(reporterMock)
     
-    val aggR1 = AggregateReport(muid, aggFunction)
+    val aggR1 = AggregatePowerReport(muid, aggFunction)
     aggR1 += RawPowerReport("topictest", muid, 1, 3.W, device, tickMock)
     
-    val aggR2 = AggregateReport(muid, aggFunction)
+    val aggR2 = AggregatePowerReport(muid, aggFunction)
     aggR2 += RawPowerReport("topictest", muid, 2, 1.W, device, tickMock)
     
-    val aggR3 = AggregateReport(muid, aggFunction)
+    val aggR3 = AggregatePowerReport(muid, aggFunction)
     aggR3 += RawPowerReport("topictest", muid, 3, 2.W, device, tickMock)
+    aggR3 += RawPowerReport("topictest", muid, 4, 4.W, device, tickMock)
     
     render(aggR1)(eventBus)
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
     
-    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(1)};device=$device;value=${3.W}")
-    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(2)};device=$device;value=${1.W}")
-    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};target=${intToProcess(3)};device=$device;value=${2.W}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}")
+    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
   }
 }
 

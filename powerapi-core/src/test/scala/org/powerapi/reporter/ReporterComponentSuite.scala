@@ -28,11 +28,10 @@ import akka.util.Timeout
 import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.module.PowerChannel.PowerReport
-import org.powerapi.core.target.Target
+import org.powerapi.core.target.{Process, Target}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import org.powerapi.module.PowerChannel.{ AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport }
 import scala.concurrent.duration.DurationInt
 
 class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
@@ -58,14 +57,17 @@ class ReporterComponentSuite(system: ActorSystem) extends UnitTest(system) {
   
     subscribeAggPowerReport(muid)(eventBus)(testActor)
     
-    val aggR = AggregateReport(muid, aggFunction)
-    aggR += RawPowerReport("topictest", muid, target, 1.W, device, tickMock)
-    aggR += RawPowerReport("topictest", muid, target, 2.W, device, tickMock)
-    aggR += RawPowerReport("topictest", muid, target, 3.W, device, tickMock)
+    val aggR = AggregatePowerReport(muid, aggFunction)
+    aggR += RawPowerReport("topictest", muid, Process(1), 1.W, device, tickMock)
+    aggR += RawPowerReport("topictest", muid, Process(2), 2.W, device, tickMock)
+    aggR += RawPowerReport("topictest", muid, Process(3), 3.W, device, tickMock)
     
     render(aggR)(eventBus)
     
-    expectMsgClass(classOf[PowerReport]).power should equal(6.W)
+    val msg = expectMsgClass(classOf[AggregatePowerReport])
+    msg.targets should equal(Set(Process(1), Process(2), Process(3)))
+    msg.devices should equal(Set("mock"))
+    msg.power should equal(6.W)
   }
 }
 

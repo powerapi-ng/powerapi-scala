@@ -31,7 +31,7 @@ import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.{OSHelper, MessageBus, Thread, TimeInStates}
 import org.powerapi.core.MonitorChannel.publishMonitorTick
 import org.powerapi.core.target.{All, Application, intToProcess, Process, Target, TargetUsageRatio}
-import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
 import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
 import scala.concurrent.duration.DurationInt
 
@@ -50,8 +50,6 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     val activeElapsedTime1: Long = globalElapsedTime1 - 25883594
     val globalElapsedTime2: Long = 43173 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
     val activeElapsedTime2: Long = globalElapsedTime2 - 25883594
-    val globalElapsedTime3: Long = 43175 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeElapsedTime3: Long = globalElapsedTime3 - 25883594
     val p1ElapsedTime: Long = 33 + 2
     val p2ElapsedTime: Long = 10 + 5
 
@@ -64,11 +62,9 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
     val (oldGlobalElapsedTime1, oldActiveElapsedTime1) = (globalElapsedTime1 / 2, activeElapsedTime1 / 2)
     val (oldGlobalElapsedTime2, oldActiveElapsedTime2) = (globalElapsedTime2 / 2, activeElapsedTime2 / 2)
-    val (oldGlobalElapsedTime3, oldActiveElapsedTime3) = (globalElapsedTime3 / 2, activeElapsedTime3 / 2)
 
     val processRatio1 = TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (activeElapsedTime1 - oldActiveElapsedTime1))
     val processRatio2 = TargetUsageRatio((p2ElapsedTime - oldP2ElapsedTime).toDouble / (activeElapsedTime2 - oldActiveElapsedTime2))
-    val allRatio = TargetUsageRatio((activeElapsedTime3 - oldActiveElapsedTime3).toDouble / (activeElapsedTime3 - oldActiveElapsedTime3))
 
     TestActorRef(Props(classOf[PowerSpyFormula], eventBus, new OSHelper {
       import org.powerapi.core.GlobalCpuTime
@@ -79,15 +75,15 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
       )
 
       private var globalTimes = List[(Long, Long)](
-        (oldGlobalElapsedTime1, oldActiveElapsedTime1), (oldGlobalElapsedTime2, oldActiveElapsedTime2), (oldGlobalElapsedTime3, oldActiveElapsedTime3),
-        (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime3, activeElapsedTime3)
+        (oldGlobalElapsedTime1, oldActiveElapsedTime1), (oldGlobalElapsedTime2, oldActiveElapsedTime2),
+        (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2)
       )
 
-      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
+      def getCPUFrequencies: Set[Long] = Set()
 
-      def getProcesses(application: Application): Iterable[Process] = Iterable(Process(2), Process(3))
+      def getProcesses(application: Application): Set[Process] = Set(Process(2), Process(3))
 
-      def getThreads(process: Process): Iterable[Thread] = Iterable()
+      def getThreads(process: Process): Set[Thread] = Set()
 
       def getProcessCpuTime(process: Process): Option[Long] = {
         targetTimes.getOrElse(process, List()) match {
@@ -113,58 +109,58 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     }, 90.W))(system)
 
     val tickMock = ClockTick("test", 25.milliseconds)
-    subscribePowerReport(muid1)(eventBus)(testActor)
-    subscribePowerReport(muid2)(eventBus)(testActor)
-    subscribePowerReport(muid3)(eventBus)(testActor)
+    subscribeRawPowerReport(muid1)(eventBus)(testActor)
+    subscribeRawPowerReport(muid2)(eventBus)(testActor)
+    subscribeRawPowerReport(muid3)(eventBus)(testActor)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
     expectNoMsg(3.seconds)
 
-    publishPowerSpyPower(90.W)(eventBus)
+    publishPowerSpyPower(120.W)(eventBus)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
-    var ret = expectMsgClass(classOf[PowerReport])
+    var ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid1)
     ret.target should equal(Process(1))
-    ret.power should equal(90.W)
+    ret.power should equal(0.W)
     ret.tick should equal(tickMock)
 
     publishMonitorTick(muid2, 2, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
+    ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid2)
     ret.target should equal(Process(2))
-    ret.power should equal(90.W)
+    ret.power should equal(0.W)
     ret.tick should equal(tickMock)
 
     publishMonitorTick(muid3, All, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
+    ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid3)
     ret.target should equal(All)
-    ret.power should equal(90.W)
+    ret.power should equal(120.W)
     ret.tick should equal(tickMock)
 
     publishPowerSpyPower(150.W)(eventBus)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
+    ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid1)
     ret.target should equal(Process(1))
-    ret.power should equal((90 + processRatio1.ratio * (150 - 90)).W)
+    ret.power should equal(((150 - 90) * processRatio1.ratio).W)
     ret.tick should equal(tickMock)
     publishMonitorTick(muid2, 2, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
+    ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid2)
     ret.target should equal(Process(2))
-    ret.power should equal((90 + processRatio2.ratio * (150 - 90)).W)
+    ret.power should equal((processRatio2.ratio * (150 - 90)).W)
     ret.tick should equal(tickMock)
 
     publishPowerSpyPower(140.W)(eventBus)
 
     publishMonitorTick(muid3, All, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[PowerReport])
+    ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid3)
     ret.target should equal(All)
-    ret.power should equal((90 + allRatio.ratio * (140 - 90)).W)
+    ret.power should equal(140.W)
     ret.tick should equal(tickMock)
   }
 }

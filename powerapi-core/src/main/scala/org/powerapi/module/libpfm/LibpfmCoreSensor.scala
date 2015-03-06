@@ -39,7 +39,7 @@ import scala.concurrent.Future
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String]) extends SensorComponent(eventBus) {
+class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends SensorComponent(eventBus) {
   override def preStart(): Unit = {
     subscribeSensorsChannel(eventBus)(self)
     super.preStart()

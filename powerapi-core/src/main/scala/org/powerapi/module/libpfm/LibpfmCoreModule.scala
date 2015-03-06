@@ -28,7 +28,7 @@ import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, 
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreModule(timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String],
+class LibpfmCoreModule(timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
                        cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
 
   lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(timeout, topology, configuration, events)))
@@ -37,11 +37,11 @@ class LibpfmCoreModule(timeout: Timeout, topology: Map[Int, Iterable[Int]], conf
 
 object LibpfmCoreModule extends LibpfmCoreSensorConfiguration with LibpfmCoreCyclesFormulaConfiguration {
   def apply(): LibpfmCoreModule = {
-    new LibpfmCoreModule(timeout, topology, configuration, events, cyclesThreadName, cyclesThreadName, formulae, samplingInterval)
+    new LibpfmCoreModule(timeout, topology, configuration, events, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
   }
 }
 
-class LibpfmCoreSensorModule(timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String]) extends PowerModule {
+class LibpfmCoreSensorModule(timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends PowerModule {
   lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(timeout, topology, configuration, events)))
   lazy val underlyingFormulaeClasses = Seq()
 }
@@ -51,7 +51,7 @@ object LibpfmCoreSensorModule extends LibpfmCoreSensorConfiguration {
     new LibpfmCoreSensorModule(timeout, topology, configuration, events)
   }
 
-  def apply(events: List[String]): LibpfmCoreSensorModule = {
+  def apply(events: Set[String]): LibpfmCoreSensorModule = {
     new LibpfmCoreSensorModule(timeout, topology, configuration, events)
   }
 }

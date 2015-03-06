@@ -20,23 +20,28 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.cpu.dvfs
 
-import org.powerapi.core.{ConfigValue, Configuration}
-import scalax.file.Path
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.powerapi.UnitTest
+import scala.concurrent.duration.DurationInt
 
-/**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait FileDisplayConfiguration extends Configuration {
-  /**
-   * The output file path, build from prefix given by user.
-   * Temporary file as default.
-   */
-  lazy val filePath = load { _.getString("powerapi.display.file.prefix") + System.nanoTime() } match {
-    case ConfigValue(path) => path
-    case _ => Path.createTempFile(prefix = "powerapi.reporter-file", deleteOnExit = false).path
+class DvfsCpuFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+
+  implicit val timeout = Timeout(1.seconds)
+
+  def this() = this(ActorSystem("DvfsCpuFormulaConfigurationSuite"))
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
+
+  "The CpuFormulaConfiguration" should "read correctly the values from a resource file" in {
+    val configuration = new CpuFormulaConfiguration {}
+    configuration.tdp should equal(120)
+    configuration.tdpFactor should equal(0.80)
+    configuration.frequencies should equal(Map(1800002 -> 1.31, 2100002 -> 1.41, 2400003 -> 1.5))
   }
 }

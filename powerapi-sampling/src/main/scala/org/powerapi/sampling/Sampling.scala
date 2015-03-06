@@ -29,7 +29,7 @@ import java.io.{File, FileOutputStream, PrintWriter}
 import org.apache.logging.log4j.LogManager
 import org.powerapi.PowerMeter
 import org.powerapi.core.OSHelper
-import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{subscribePCReport, PCReport}
 import org.powerapi.core.power._
 import org.powerapi.core.target.All
@@ -53,7 +53,7 @@ class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
   }
 
   def receive: Actor.Receive = {
-    case msg: PowerReport => report(msg)
+    case msg: AggregatePowerReport => report(msg)
     case msg: String => append(msg)
     case RENEW => {
       output.close()
@@ -62,7 +62,7 @@ class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
     }
   }
 
-  def report(msg: PowerReport): Unit = {
+  def report(msg: AggregatePowerReport): Unit = {
     output.append(s"${msg.power.toWatts}\n")
     output.flush()
   }
@@ -73,7 +73,7 @@ class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
   }
 }
 
-class CountersDisplay(basepath: String, events: List[String]) extends Actor with ActorLogging  {
+class CountersDisplay(basepath: String, events: Set[String]) extends Actor with ActorLogging  {
   var outputs = (for(event <- events) yield {
     event -> new PrintWriter(new FileOutputStream(new File(s"$basepath${event.toLowerCase().replace('_', '-').replace(':', '-')}.dat"), true))
   }).toMap
@@ -135,8 +135,8 @@ class CountersDisplay(basepath: String, events: List[String]) extends Actor with
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class Sampling(samplingDir: String, nbSamples: Int, samplingInterval: FiniteDuration, nbSteps: Int, topology: Map[Int, Iterable[Int]],
-               turbo: Boolean, dvfs: Boolean, nbMessages: Int, events: List[String], separator: String, outputPowers: String, baseOutputCounter: String, osHelper: OSHelper,
+class Sampling(samplingDir: String, nbSamples: Int, samplingInterval: FiniteDuration, nbSteps: Int, topology: Map[Int, Set[Int]],
+               turbo: Boolean, dvfs: Boolean, nbMessages: Int, events: Set[String], separator: String, outputPowers: String, baseOutputCounter: String, osHelper: OSHelper,
                powerapi: PowerMeter, externalPMeter: PowerMeter) {
 
   private val log = LogManager.getLogger
@@ -147,7 +147,7 @@ class Sampling(samplingDir: String, nbSamples: Int, samplingInterval: FiniteDura
     Path("/tmp/sampling", '/').deleteRecursively(force = true)
     Path("/tmp/sampling", '/').createDirectory()
 
-    var frequencies = osHelper.getCPUFrequencies(topology).toArray.sorted
+    var frequencies = osHelper.getCPUFrequencies.toArray.sorted
     var turboFreq: Option[Long] = None
 
     if(turbo) {

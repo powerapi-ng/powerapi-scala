@@ -28,11 +28,11 @@ import akka.util.Timeout
 import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
-class SimpleCpuFormulaConfiguration(system: ActorSystem) extends UnitTest(system) {
+class SimpleCpuFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("SimpleCpuFormulaConfiguration"))
+  def this() = this(ActorSystem("SimpleCpuFormulaConfigurationSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)

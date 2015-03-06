@@ -25,7 +25,7 @@ package org.powerapi.reporter
 import akka.event.LoggingReceive
 import org.powerapi.PowerDisplay
 import org.powerapi.core.APIComponent
-import org.powerapi.module.PowerChannel.PowerReport
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 
 /**
  * Base class for reporters which are part of the API.
@@ -35,13 +35,10 @@ import org.powerapi.module.PowerChannel.PowerReport
 class ReporterComponent(output: PowerDisplay) extends APIComponent {
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerReport => report(msg)
+    case msg: AggregatePowerReport => report(msg)
   } orElse default
 
-  def report(aggPowerReport: PowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp,
-                   aggPowerReport.target,
-                   aggPowerReport.device,
-                   aggPowerReport.power)
+  def report(aggPowerReport: AggregatePowerReport): Unit = {
+    output.display(aggPowerReport.tick.timestamp, aggPowerReport.targets, aggPowerReport.devices, aggPowerReport.power)
   }
 }

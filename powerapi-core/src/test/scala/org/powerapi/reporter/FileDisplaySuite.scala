@@ -31,7 +31,7 @@ import org.powerapi.core.MessageBus
 import org.powerapi.core.target.intToProcess
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{ AggregateReport, RawPowerReport, render, subscribeAggPowerReport }
+import org.powerapi.module.PowerChannel.{RawPowerReport, AggregatePowerReport, subscribeAggPowerReport, render}
 import scala.concurrent.duration.DurationInt
 import scalax.file.Path
 
@@ -45,9 +45,7 @@ class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   val eventBus = new MessageBus
-  val reporter = TestActorRef(Props(classOf[ReporterComponent], new FileDisplay() {
-    override lazy val filePath = "powerapi-reporter-file-test"
-  }), "fileReporter")(system)
+  val reporter = TestActorRef(Props(classOf[ReporterComponent], new FileDisplay("powerapi-reporter-file-test")), "fileReporter")(system)
 
   "A file reporter" should "process a power report and then report energy information in a file" in {
     val muid = UUID.randomUUID()
@@ -57,14 +55,15 @@ class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
   
     subscribeAggPowerReport(muid)(eventBus)(reporter)
     
-    val aggR1 = AggregateReport(muid, aggFunction)
+    val aggR1 = AggregatePowerReport(muid, aggFunction)
     aggR1 += RawPowerReport("topictest", muid, 1, 3.W, device, tickMock)
     
-    val aggR2 = AggregateReport(muid, aggFunction)
+    val aggR2 = AggregatePowerReport(muid, aggFunction)
     aggR2 += RawPowerReport("topictest", muid, 2, 1.W, device, tickMock)
     
-    val aggR3 = AggregateReport(muid, aggFunction)
+    val aggR3 = AggregatePowerReport(muid, aggFunction)
     aggR3 += RawPowerReport("topictest", muid, 3, 2.W, device, tickMock)
+    aggR3 += RawPowerReport("topictest", muid, 4, 4.W, device, tickMock)
     
     render(aggR1)(eventBus)
     render(aggR2)(eventBus)
@@ -75,11 +74,10 @@ class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
     testFile.size.get should be > 0L
     testFile.lines() should (
       have size 3 and
-      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(1)};device=$device;value=${3.W}") and
-      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(2)};device=$device;value=${1.W}") and
-      contain(s"timestamp=${tickMock.timestamp};target=${intToProcess(3)};device=$device;value=${2.W}")
+      contain(s"timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}") and
+      contain(s"timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}") and
+      contain(s"timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
     )
     testFile.delete(true)
   }
 }
-

@@ -33,7 +33,7 @@ import org.powerapi.core.TimeInStates
 import org.powerapi.core.target.{intToProcess, Target, TargetUsageRatio}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{PowerReport, subscribePowerReport}
+import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
 import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
 import scala.concurrent.duration.DurationInt
 
@@ -96,10 +96,10 @@ class DvfsCpuFormulaSuite(system: ActorSystem) extends UnitTest(system) {
       formula.underlyingActor.asInstanceOf[CpuFormula].powers(2400003) * 3
     ) / (1 + 2 + 3)).W
 
-    subscribePowerReport(muid)(eventBus)(testActor)
+    subscribeRawPowerReport(muid)(eventBus)(testActor)
     publishUsageReport(muid, target, targetRatio, timeInStates, tickMock)(eventBus)
 
-    val ret = expectMsgClass(classOf[PowerReport])
+    val ret = expectMsgClass(classOf[RawPowerReport])
     ret.muid should equal(muid)
     ret.target should equal(target)
     ret.power should equal(power)

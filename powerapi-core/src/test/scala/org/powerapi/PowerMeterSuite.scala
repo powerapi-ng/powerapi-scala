@@ -76,7 +76,7 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
   it should "load the LibpfmCoreSensorModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(3)
-    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(List("cycles", "instructions"))), Timeout(1.seconds)))(system)
+    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(Set("cycles", "instructions"))), Timeout(1.seconds)))(system)
     actor2.children.size should equal(3)
   }
 

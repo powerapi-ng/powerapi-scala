@@ -41,7 +41,7 @@ import scala.reflect.ClassTag
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout, topology: Map[Int, Iterable[Int]], configuration: BitSet, events: List[String], inDepth: Boolean) extends APIComponent {
+class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean) extends APIComponent {
   val processClaz = implicitly[ClassTag[Process]].runtimeClass
   val appClaz = implicitly[ClassTag[Application]].runtimeClass
 

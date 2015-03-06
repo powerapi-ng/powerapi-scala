@@ -24,9 +24,7 @@ package org.powerapi.module.libpfm
 
 import akka.actor.{Actor, PoisonPill}
 import akka.event.LoggingReceive
-import java.util.UUID
 import org.powerapi.core.ActorComponent
-import org.powerapi.core.target.Target
 import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 import scala.collection.BitSet
@@ -76,12 +74,12 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
   def receive: PartialFunction[Any, Unit] = running(true, Array(0,0,0))
 
   def running(first: Boolean, old: Array[Long]): Actor.Receive = LoggingReceive {
-    case monitorTick: MonitorTick => collect(monitorTick.muid, monitorTick.target, first, old)
+    case monitorTick: MonitorTick => collect(first, old)
     case msg: MonitorStop => stop()
     case _: MonitorStopAll => stop()
   } orElse default
 
-  def collect(muid: UUID, target: Target, first: Boolean, old: Array[Long]): Unit = {
+  def collect(first: Boolean, old: Array[Long]): Unit = {
     fd match {
       case Some(fdValue) => {
         val now = LibpfmHelper.readPC(fdValue)

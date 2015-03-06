@@ -46,7 +46,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val frequenciesPath = s"${basepath}sys/devices/system/cpu/cpu%?core/cpufreq/scaling_available_frequencies"
     }
 
-    helper.getCPUFrequencies(Map(0 -> List(0,2), 1 -> List(1, 3))) should contain allOf(1596000l, 1729000l, 1862000l, 1995000l, 2128000l, 2261000l, 2394000l, 2527000l, 2660000l)
+    helper.getCPUFrequencies should contain allOf(1596000l, 1729000l, 1862000l, 1995000l, 2128000l, 2261000l, 2394000l, 2527000l, 2660000l)
   }
 
   "The method getThreads in the LinuxHelper" should "return the threads created by a given process" in {
@@ -59,12 +59,12 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The method getTargetCpuTime in the OSHelper" should "return the cpu usage of the target" in {
     val helper = new OSHelper {
-      def getCPUFrequencies(topology: Map[Int, Iterable[Int]]): Iterable[Long] = Iterable()
+      def getCPUFrequencies: Set[Long] = Set()
 
-      def getProcesses(application: Application): Iterable[Process] = application match {
-        case Application("app") => List(Process(2), Process(3))
-        case Application("bad-app") => List(Process(-1), Process(2))
-        case _ => List()
+      def getProcesses(application: Application): Set[Process] = application match {
+        case Application("app") => Set(Process(2), Process(3))
+        case Application("bad-app") => Set(Process(-1), Process(2))
+        case _ => Set()
       }
 
       def getProcessCpuTime(process: Process): Option[Long] = process match {
@@ -76,7 +76,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
       def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
 
-      def getThreads(process: Process): Iterable[Thread] = List()
+      def getThreads(process: Process): Set[Thread] = Set()
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
     }
@@ -119,12 +119,12 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
   "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
     val helper = new LinuxHelper {
       override lazy val timeInStatePath = s"${basepath}sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
-      override lazy val topology = Map(0 -> List(0), 1 -> List(1), 2 -> List(2), 3 -> List(3))
+      override lazy val topology = Map(0 -> Set(0), 1 -> Set(1), 2 -> Set(2), 3 -> Set(3))
     }
 
     val badHelper = new LinuxHelper {
       override lazy val timeInStatePath = s"${basepath}sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_states"
-      override lazy val topology = Map(0 -> List(0), 1 -> List(1), 2 -> List(2), 3 -> List(3))
+      override lazy val topology = Map(0 -> Set(0), 1 -> Set(1), 2 -> Set(2), 3 -> Set(3))
     }
 
     helper.getTimeInStates should equal(
