@@ -53,8 +53,6 @@ object PowerAPI extends App {
   @volatile var monitors = Seq[PowerMonitoring]()
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
-    println("It's the time for sleeping! ...")
-
     monitors.foreach(monitor => monitor.cancel())
     monitors = Seq()
     powerMeters.foreach(powerMeter => powerMeter.shutdown())
@@ -125,13 +123,13 @@ object PowerAPI extends App {
         |
         |Build a software-defined power meter. Do not forget to configure correctly the modules (see the documentation).
         |
-        |usage: ./powerapi-cli modules [cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-proces|powerspy, ...]
-        |                              monitor --frequency [ms] --targets [pid, ..., app, ...)|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart]
-        |                      duration [s]
+        |usage: ./powerapi modules [cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-proces|powerspy, ...] \
+        |                          monitor --frequency [ms] --targets [pid, ..., app, ...)|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart] \
+        |                  duration [s]
         |
-        |example: ./powerapi-cli modules cpu-simple monitor --frequency 1000 --targets firefox --agg max --console monitor --targets chrome --agg max --console
-        |                        modules powerspy monitor --frequency 1000 --targets all --agg max --console
-        |                        duration 30
+        |example: ./powerapi modules cpu-simple monitor --frequency 1000 --targets firefox --agg max --console monitor --targets chrome --agg max --console \
+        |                    modules powerspy monitor --frequency 1000 --targets all --agg max --console \
+        |                    duration 30
       """.stripMargin
 
     println(str)
