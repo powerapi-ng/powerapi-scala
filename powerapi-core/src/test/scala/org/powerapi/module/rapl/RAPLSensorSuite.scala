@@ -20,36 +20,41 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.rapl
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
+import akka.util.Timeout
 import java.util.UUID
 import org.powerapi.UnitTest
+import org.powerapi.core.{MessageBus, OSHelper, Thread, TimeInStates}
 import org.powerapi.core.power._
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{OSHelper, MessageBus, Thread, TimeInStates}
-import org.powerapi.core.MonitorChannel.publishMonitorTick
 import org.powerapi.core.target.{All, Application, intToProcess, Process, Target, TargetUsageRatio}
-import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
-import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.core.MonitorChannel.publishMonitorTick
+import org.powerapi.module.rapl.RAPLChannel.RAPLPower
+import org.powerapi.module.rapl.RAPLChannel.subscribeRAPLPower
 import scala.concurrent.duration.DurationInt
 
-class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
+class RAPLSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
-  def this() = this(ActorSystem("PowerSpyFormulaSuite"))
+  implicit val timeout = Timeout(1.seconds)
+
+  def this() = this(ActorSystem("RAPLSensorSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
-  "A PowerSpyFormula" should "listen PowerSpyPower/UsageReport messages and produce PowerReport messages" in {
+  "A RAPL Sensor" should "process a MonitorTick message and then publish a RAPLPower report" in {
     val eventBus = new MessageBus
 
     val globalElapsedTime1: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
     val activeElapsedTime1: Long = globalElapsedTime1 - 25883594
     val globalElapsedTime2: Long = 43173 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
     val activeElapsedTime2: Long = globalElapsedTime2 - 25883594
+    val globalElapsedTime3: Long = 43175 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
+    val activeElapsedTime3: Long = globalElapsedTime3 - 25883594
     val p1ElapsedTime: Long = 33 + 2
     val p2ElapsedTime: Long = 10 + 5
 
@@ -62,11 +67,13 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
     val (oldGlobalElapsedTime1, oldActiveElapsedTime1) = (globalElapsedTime1 / 2, activeElapsedTime1 / 2)
     val (oldGlobalElapsedTime2, oldActiveElapsedTime2) = (globalElapsedTime2 / 2, activeElapsedTime2 / 2)
+    val (oldGlobalElapsedTime3, oldActiveElapsedTime3) = (globalElapsedTime3 / 2, activeElapsedTime3 / 2)
 
     val processRatio1 = TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (activeElapsedTime1 - oldActiveElapsedTime1))
     val processRatio2 = TargetUsageRatio((p2ElapsedTime - oldP2ElapsedTime).toDouble / (activeElapsedTime2 - oldActiveElapsedTime2))
+    val allRatio = TargetUsageRatio((activeElapsedTime3 - oldActiveElapsedTime3).toDouble / (activeElapsedTime3 - oldActiveElapsedTime3))
 
-    TestActorRef(Props(classOf[PowerSpyFormula], eventBus, new OSHelper {
+    TestActorRef(Props(classOf[RAPLSensor], eventBus, new OSHelper {
       import org.powerapi.core.GlobalCpuTime
 
       private var targetTimes = Map[Target, List[Long]](
@@ -75,8 +82,8 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
       )
 
       private var globalTimes = List[(Long, Long)](
-        (oldGlobalElapsedTime1, oldActiveElapsedTime1), (oldGlobalElapsedTime2, oldActiveElapsedTime2),
-        (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2)
+        (oldGlobalElapsedTime1, oldActiveElapsedTime1), (oldGlobalElapsedTime2, oldActiveElapsedTime2), (oldGlobalElapsedTime3, oldActiveElapsedTime3),
+        (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime3, activeElapsedTime3)
       )
 
       def getCPUFrequencies: Set[Long] = Set()
@@ -106,63 +113,65 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
       }
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
-      
-      def getRAPLEnergy: Double = 0.0
-    }, 90.W))(system)
 
-    val tickMock = ClockTick("test", 25.milliseconds)
-    subscribeRawPowerReport(muid1)(eventBus)(testActor)
-    subscribeRawPowerReport(muid2)(eventBus)(testActor)
-    subscribeRawPowerReport(muid3)(eventBus)(testActor)
+    }, new RAPLHelper {
+      var energy = 2
+      override def getRAPLEnergy: Double = {
+        val res = energy
+        energy *= 7
+        res
+      }
+    }))(system)
+
+    val tickMock = ClockTick("test", 2.seconds)
+    subscribeRAPLPower(eventBus)(testActor)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
-    expectNoMsg(3.seconds)
-
-    publishPowerSpyPower(120.W)(eventBus)
-
-    publishMonitorTick(muid1, 1, tickMock)(eventBus)
-    var ret = expectMsgClass(classOf[RawPowerReport])
+    var ret = expectMsgClass(classOf[RAPLPower])
     ret.muid should equal(muid1)
     ret.target should equal(Process(1))
     ret.power should equal(0.W)
+    ret.targetRatio should equal(TargetUsageRatio(0.0))
     ret.tick should equal(tickMock)
-
+    
     publishMonitorTick(muid2, 2, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[RawPowerReport])
+    ret = expectMsgClass(classOf[RAPLPower])
     ret.muid should equal(muid2)
     ret.target should equal(Process(2))
     ret.power should equal(0.W)
+    ret.targetRatio should equal(TargetUsageRatio(0.0))
     ret.tick should equal(tickMock)
-
+    
     publishMonitorTick(muid3, All, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[RawPowerReport])
+    ret = expectMsgClass(classOf[RAPLPower])
     ret.muid should equal(muid3)
     ret.target should equal(All)
-    ret.power should equal(120.W)
+    ret.power should equal(0.W)
+    ret.targetRatio should equal(TargetUsageRatio(0.0))
     ret.tick should equal(tickMock)
-
-    publishPowerSpyPower(150.W)(eventBus)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[RawPowerReport])
+    ret = expectMsgClass(classOf[RAPLPower])
     ret.muid should equal(muid1)
     ret.target should equal(Process(1))
-    ret.power should equal(((150 - 90) * processRatio1.ratio).W)
+    ret.power should equal(342.W)
+    ret.targetRatio should equal(processRatio1)
     ret.tick should equal(tickMock)
+    
     publishMonitorTick(muid2, 2, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[RawPowerReport])
+    ret = expectMsgClass(classOf[RAPLPower])
     ret.muid should equal(muid2)
     ret.target should equal(Process(2))
-    ret.power should equal((processRatio2.ratio * (150 - 90)).W)
+    ret.power should equal(2394.W)
+    ret.targetRatio should equal(processRatio2)
     ret.tick should equal(tickMock)
-
-    publishPowerSpyPower(140.W)(eventBus)
-
+    
     publishMonitorTick(muid3, All, tickMock)(eventBus)
-    ret = expectMsgClass(classOf[RawPowerReport])
+    ret = expectMsgClass(classOf[RAPLPower])
     ret.muid should equal(muid3)
     ret.target should equal(All)
-    ret.power should equal(140.W)
+    ret.power should equal(16758.W)
+    ret.targetRatio should equal(allRatio)
     ret.tick should equal(tickMock)
   }
 }

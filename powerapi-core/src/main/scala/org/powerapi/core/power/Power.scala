@@ -22,12 +22,15 @@
  */
 package org.powerapi.core.power
 
+import scala.concurrent.duration._
 import org.apache.logging.log4j.LogManager
 import RawPower._
 
 object Power {
   def apply(value: Double, unit: PowerUnit): Power = new RawPower(value, unit)
   def apply(value: Double, unit: String): Power    = new RawPower(value, PowerUnitSystem(unit))
+
+  def fromJoule(joule: Double, duration: FiniteDuration = 1.second) = new RawPower(joule / (duration.toMillis / 1000.0), WATTS)
 
   /**
    * The natural ordering of powers matches the natural ordering for Double.

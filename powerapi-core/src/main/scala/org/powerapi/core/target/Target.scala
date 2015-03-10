@@ -69,4 +69,6 @@ case class TargetUsageRatio(ratio: Double)
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-object All extends Target
+object All extends Target {
+  override def toString = "All"
+}

@@ -79,6 +79,8 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       def getThreads(process: Process): Set[Thread] = Set()
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+      
+      def getRAPLEnergy: Double = 0.0
     }
 
     val p1Time = 33 + 2

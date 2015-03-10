@@ -28,7 +28,7 @@ import org.apache.logging.log4j.LogManager
 import org.powerapi.core.FileHelper.using
 import org.powerapi.core.target.{Application, Process, Target}
 import scala.collection.JavaConversions._
-import scala.sys.process.stringSeqToProcess
+import scala.sys.process._
 
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
