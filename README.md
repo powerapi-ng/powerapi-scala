@@ -1,5 +1,5 @@
 # PowerAPI
-[![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg?branch=develop)](https://travis-ci.org/Spirals-Team/powerapi)
+[![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg)](https://travis-ci.org/Spirals-Team/powerapi)
 [![Codacy Badge](https://www.codacy.com/project/badge/e0b0e331ca414250a7240b6be74aaa7b)](https://www.codacy.com/public/maximecolmant/powerapi)
 
 PowerAPI is a middleware toolkit for building software-defined power meters.
