@@ -1,6 +1,6 @@
 name := "powerapi"
 
-version in ThisBuild := "3.0"
+version in ThisBuild := "3.1"
 
 scalaVersion in ThisBuild := "2.11.4"
 
