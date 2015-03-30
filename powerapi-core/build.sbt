@@ -6,6 +6,10 @@ name := "powerapi-core"
 
 organization := "org.powerapi"
 
+resolvers ++= Seq(
+  "JBoss Thirdparty Uploads" at "https://repository.jboss.org/nexus/content/repositories/thirdparty-uploads/"
+)
+
 // App
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.6",
@@ -15,7 +19,8 @@ libraryDependencies ++= Seq(
   "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
   "org.jfree" % "jfreechart" % "1.0.19",
-  "org.scala-saddle" %% "saddle-core" % "1.3.3"
+  "org.scala-saddle" %% "saddle-core" % "1.3.3",
+  "org.hyperic" % "sigar" % "1.6.5.132"
 )
 
 // Tests

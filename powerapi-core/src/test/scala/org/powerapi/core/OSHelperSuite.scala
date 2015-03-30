@@ -25,6 +25,7 @@ package org.powerapi.core
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
+import org.hyperic.sigar.SigarException
 import org.powerapi.UnitTest
 import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication}
 import scala.concurrent.duration.DurationInt
@@ -141,5 +142,16 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     val timesRight = TimeInStates(Map(1l -> 1l, 2l -> 2l, 3l -> 3l, 100l -> 100l))
 
     (timesLeft - timesRight) should equal(TimeInStates(Map(1l -> 9l, 2l -> 18l, 3l -> 27l, 4l -> 15l)))
+  }
+  
+  "The Sigar helper funtions" should "return consistent value" in {
+    val helper = new SigarHelper
+    
+    intercept[SigarException] { helper.getCPUFrequencies }
+    helper.getProcesses(Application("java")).size should be > 0
+    intercept[SigarException] { helper.getThreads(Process(1)) }
+    helper.getProcessCpuTime(Process(1)).get should be > 0L
+    helper.getGlobalCpuTime.globalTime should be > 0L
+    intercept[SigarException] { helper.getTimeInStates }
   }
 }
