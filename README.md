@@ -41,6 +41,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [JFreeChart](http://www.jfree.org/jfreechart/) (version 1.0.19 under [LGPL license](https://www.gnu.org/licenses/lgpl.html)), for creation of interactive and animated charts.
 * [Scala IO](http://jesseeichar.github.io/scala-io-doc/0.4.3/index.html#!/overview) (version 0.4.3 under [3-clause BSD license](http://www.scala-lang.org/license.html)), for an extensions of IO.
 * [Saddle](http://saddle.github.io/) (version 1.3.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for data manipulation.
+* [Sigar](https://support.hyperic.com/display/SIGAR/Home) (version 1.6.5 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a portable interface for gathering system information.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.
