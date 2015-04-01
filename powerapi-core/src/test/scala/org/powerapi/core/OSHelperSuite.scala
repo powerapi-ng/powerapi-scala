@@ -145,7 +145,9 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
   }
   
   "The Sigar helper funtions" should "return consistent value" in {
-    val helper = new SigarHelper
+    val helper = new SigarHelper {
+      override lazy val libNativePath = "./powerapi-core/lib"
+    }
     
     intercept[SigarException] { helper.getCPUFrequencies }
     helper.getProcesses(Application("java")).size should be > 0

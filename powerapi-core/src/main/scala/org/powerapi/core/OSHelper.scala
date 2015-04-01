@@ -294,14 +294,24 @@ class LinuxHelper extends OSHelper with Configuration {
  *
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class SigarHelper extends OSHelper {
+class SigarHelper extends OSHelper with Configuration {
   private val log = LogManager.getLogger
+
+  /**
+   * Sigar native libraries
+   */
+  lazy val libNativePath = load { _.getString("powerapi.sigar.native-path") } match {
+    case ConfigValue(path) => path
+    case _ => "./lib"
+  }
 
   /**
    * SIGAR's proxy instance.
    */
-  System.setProperty("java.library.path", "./powerapi-core/lib")
-  lazy val sigar = SigarProxyCache.newInstance(new Sigar(), 100)
+  lazy val sigar = {
+    System.setProperty("java.library.path", libNativePath)
+    SigarProxyCache.newInstance(new Sigar(), 100)
+  }
 
   def getCPUFrequencies: Set[Long] = throw new SigarException("sigar cannot be able to get CPU frequencies")
 
