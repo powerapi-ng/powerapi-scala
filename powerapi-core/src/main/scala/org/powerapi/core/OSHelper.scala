@@ -25,6 +25,8 @@ package org.powerapi.core
 import com.typesafe.config.Config
 import java.io.{IOException, File}
 import org.apache.logging.log4j.LogManager
+import org.hyperic.sigar.{Sigar, SigarException, SigarProxyCache}
+import org.hyperic.sigar.ptql.ProcessFinder
 import org.powerapi.core.FileHelper.using
 import org.powerapi.core.target.{Application, Process, Target}
 import scala.collection.JavaConversions._
@@ -122,7 +124,7 @@ trait OSHelper {
 
 /**
  * Linux special helper.
- π
+ *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LinuxHelper extends OSHelper with Configuration {
@@ -285,4 +287,58 @@ class LinuxHelper extends OSHelper with Configuration {
 
     TimeInStates(result.toMap[Long, Long])
   }
+}
+
+/**
+ * SIGAR special helper.
+ *
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+ */
+class SigarHelper extends OSHelper with Configuration {
+  private val log = LogManager.getLogger
+
+  /**
+   * Sigar native libraries
+   */
+  lazy val libNativePath = load { _.getString("powerapi.sigar.native-path") } match {
+    case ConfigValue(path) => path
+    case _ => "./lib"
+  }
+
+  /**
+   * SIGAR's proxy instance.
+   */
+  lazy val sigar = {
+    System.setProperty("java.library.path", libNativePath)
+    SigarProxyCache.newInstance(new Sigar(), 100)
+  }
+
+  def getCPUFrequencies: Set[Long] = throw new SigarException("sigar cannot be able to get CPU frequencies")
+
+  def getProcesses(application: Application): Set[Process] = Set(ProcessFinder.find(sigar, "State.Name.eq="+application.name).map(l => Process(l.toInt)):_*)
+
+  def getThreads(process: Process): Set[Thread] = throw new SigarException("sigar cannot be able to get process threads")
+
+  def getProcessCpuTime(process: Process): Option[Long] = {
+    try {
+      Some(sigar.getProcTime(process.pid.toLong).getTotal)
+    }
+    catch {
+      case se: SigarException => log.warn("sigar exception: {}", se.getMessage); None
+    }
+  }
+
+  def getGlobalCpuTime: GlobalCpuTime = {
+    try {
+      val globalTime = sigar.getCpu.getTotal
+      val activeTime = globalTime - sigar.getCpu.getIdle
+
+      GlobalCpuTime(globalTime, activeTime)
+    }
+    catch {
+      case se: SigarException => log.warn("sigar exception: {}", se.getMessage); GlobalCpuTime(0, 0)
+    }
+  }
+
+  def getTimeInStates: TimeInStates = throw new SigarException("sigar cannot be able to get how many time CPU spent under each frequency")
 }

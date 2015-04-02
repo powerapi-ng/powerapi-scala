@@ -26,6 +26,7 @@ import java.lang.management.ManagementFactory
 
 import org.powerapi.core.target.{Application, All, Process, Target}
 import org.powerapi.module.rapl.RAPLModule
+import org.powerapi.module.sigar.SigarModule
 import org.powerapi.reporter.{FileDisplay, JFreeChartDisplay, ConsoleDisplay}
 import org.powerapi.{PowerMonitoring, PowerMeter, PowerModule}
 import org.powerapi.core.power._
@@ -44,7 +45,7 @@ import scala.sys.process.stringSeqToProcess
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
 object PowerAPI extends App {
-  val modulesR = """(cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl)(,(cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl))*""".r
+  val modulesR = """(cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl|sigar)(,(cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl|sigar))*""".r
   val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
   val durationR = """\d+""".r
   val pidR = """(\d+)""".r
@@ -74,6 +75,7 @@ object PowerAPI extends App {
         case "libpfm-core-process" => LibpfmCoreProcessModule()
         case "powerspy" => PowerSpyModule()
         case "rapl" => RAPLModule()
+        case "sigar" => SigarModule()
       }
     }).toSeq
   }
