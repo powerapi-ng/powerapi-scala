@@ -29,6 +29,11 @@ When submitting code, please make every effort to follow existing conventions an
 * **[Runtime Monitoring of Software Energy Hotspots](https://hal.inria.fr/hal-00715331)**: A. Noureddine, A. Bourdon, R. Rouvoy, L. Seinturier. *International Conference on Automated Software Engineering* (ASE), Sep 2012, Essen, Germany. pp.160-169.
 * **[A Preliminary Study of the Impact of Software Engineering on GreenIT](https://hal.inria.fr/hal-00681560)**: A. Noureddine, A. Bourdon, R. Rouvoy, L. Seinturier. *International Workshop on Green and Sustainable Software* (GREENS), Jun 2012, Zurich, Switzerland. pp.21-27.
 
+## Use Cases
+PowerAPI is used in a variety of projects to address key challenges of GreenIT:
+* [BitWatts](http://bitwatts.powerapi.org) provides process-level power estimation of applications running in virtual machines
+* [Web Energy Archive](http://webenergyarchive.com) ranks popular websites based on the energy footpring they imposes to browsers
+* [Greenspector](http://greenspector.com) optimises the power consumption of software by identifying potential energy leaks in the source code.
 
 ## Acknowledgments
 We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.4 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
