@@ -24,6 +24,7 @@ package org.powerapi.sampling
 
 import java.util.concurrent.TimeUnit
 import com.typesafe.config.Config
+import org.joda.time.format.PeriodFormatterBuilder
 import org.powerapi.core.{LinuxHelper, ConfigValue, Configuration}
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.collection.JavaConversions._
@@ -33,7 +34,7 @@ import scala.collection.JavaConversions._
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait SamplingConfiguration extends Configuration {
+class SamplingConfiguration extends Configuration {
   lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
@@ -54,9 +55,14 @@ trait SamplingConfiguration extends Configuration {
     case _ => false
   }
 
-  lazy val nbMessages: Int = load { _.getInt("powerapi.sampling.nb-messages-per-step") } match {
+  lazy val steps: List[Int] = load { _.getIntList("powerapi.sampling.steps") } match {
+    case ConfigValue(values) => values.map(_.toInt).toList.sortWith(_>_)
+    case _ => List(100, 25)
+  }
+
+  lazy val stepDuration: Int = load { _.getInt("powerapi.sampling.step-duration") } match {
     case ConfigValue(value) => value
-    case _ => 10
+    case _ => 2
   }
 
   lazy val baseFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-base-frequency") } match {
@@ -69,19 +75,12 @@ trait SamplingConfiguration extends Configuration {
     case _ => 0d
   }
 
-  lazy val nbSteps = 100 / 25
-
   lazy val topology: Map[Int, Set[Int]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
       yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toSet)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
-  }
-
-  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
-    case ConfigValue(values) => values.map(_.toString).toSet
-    case _ => Set[String]()
   }
 
   lazy val samplingDir: String = load { _.getString("powerapi.sampling.sampling-directory") } match {
@@ -99,10 +98,30 @@ trait SamplingConfiguration extends Configuration {
     case _ => "formulae"
   }
 
+  lazy val unhaltedCycles = load { _.getString("powerapi.sampling.unhalted-cycles-event") } match {
+    case ConfigValue(value) => value
+    case _ => "CPU_CLK_UNHALTED:THREAD_P"
+  }
+
+  lazy val refCycles = load { _.getString("powerapi.sampling.ref-cycles-event") } match {
+    case ConfigValue(value) => value
+    case _ => "CPU_CLK_UNHALTED:REF_P"
+  }
+
+  lazy val events = Set(unhaltedCycles, refCycles)
   lazy val outputPowers = "output-powers.dat"
   lazy val baseOutputCounter = "output-"
-  lazy val outputUnhaltedCycles = s"${baseOutputCounter}cpu-clk-unhalted-thread-p.dat"
-  lazy val outputRefCycles = s"${baseOutputCounter}cpu-clk-unhalted-ref-p.dat"
+  lazy val outputUnhaltedCycles = s"${baseOutputCounter}${unhaltedCycles.toLowerCase().replace('_', '-').replace(':', '-')}.dat"
+  lazy val outputRefCycles = s"${baseOutputCounter}${refCycles.toLowerCase().replace('_', '-').replace(':', '-')}.dat"
   lazy val separator = "="
+  lazy val formatter = new PeriodFormatterBuilder().appendHours()
+    .appendSuffix("H ")
+    .appendMinutes()
+    .appendSuffix("m ")
+    .appendSeconds()
+    .appendSuffix("s ")
+    .appendMillis()
+    .appendSuffix("ms ")
+    .toFormatter
   lazy val osHelper = new LinuxHelper()
 }
