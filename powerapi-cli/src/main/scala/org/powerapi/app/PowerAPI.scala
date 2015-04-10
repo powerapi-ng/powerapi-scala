@@ -123,7 +123,7 @@ object PowerAPI extends App {
   def printHelp(): Unit = {
     val str =
       """
-        |PowerAPI, Spirals Team"
+        |PowerAPI, Spirals Team
         |
         |Build a software-defined power meter. Do not forget to configure correctly the modules (see the documentation).
         |

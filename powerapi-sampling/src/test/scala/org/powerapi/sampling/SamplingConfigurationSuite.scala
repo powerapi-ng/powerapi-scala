@@ -40,15 +40,16 @@ class SamplingConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The SamplingConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new SamplingConfiguration {}
+    configuration.events should equal(Set("THREAD_P", "REF_P"))
     configuration.samplingInterval should equal(250.milliseconds)
     configuration.nbSamples should equal(3)
     configuration.dvfs should equal(true)
     configuration.turbo should equal(true)
-    configuration.nbMessages should equal(15)
+    configuration.steps should equal(List(100, 75, 25))
+    configuration.stepDuration should equal(3)
     configuration.baseFrequency should equal(0.133)
     configuration.maxFrequency should equal(2.66)
     configuration.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    configuration.events should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
     configuration.samplingDir should equal("test-samples")
     configuration.processingDir should equal("test-processing")
     configuration.computingDir should equal("test-computing")
