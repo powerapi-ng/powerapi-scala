@@ -1,5 +1,7 @@
 name := "powerapi-sampling"
 
+NativePackagerKeys.executableScriptName := "sampling"
+
 // App
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.6",

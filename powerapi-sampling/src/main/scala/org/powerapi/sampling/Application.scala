@@ -22,9 +22,6 @@
  */
 package org.powerapi.sampling
 
-import org.powerapi.module.libpfm.LibpfmCoreSensorModule
-import org.powerapi.module.powerspy.PowerSpyModule
-import org.powerapi.PowerMeter
 import scala.sys
 
 /**
@@ -33,39 +30,62 @@ import scala.sys
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-object Application extends App with SamplingConfiguration {
-  @volatile var powerapi: Option[PowerMeter] = None
-  @volatile var externalPMeter: Option[PowerMeter] = None
+object Application extends App {
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
     println("It's the time for sleeping! ...")
 
-    powerapi match {
+    Sampling.powerapi match {
       case Some(papi) => {
         papi.shutdown()
       }
       case _ => {}
     }
 
-    externalPMeter match {
+    Sampling.externalPMeter match {
       case Some(ePMeter) => {
         ePMeter.shutdown()
       }
       case _ => {}
     }
-
-    org.powerapi.module.libpfm.LibpfmHelper.deinit()
-    powerapi = None
-    externalPMeter = None
   }
 
-  org.powerapi.module.libpfm.LibpfmHelper.init()
-  powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule()))
-  externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule()))
+  lazy val configuration = new SamplingConfiguration
+  lazy val regression = new PolynomialRegression
 
-  Sampling(powerapi.get, externalPMeter.get).run()
-  Processing().run()
-  PolynomialRegression().run()
+  def printHelp(): Unit = {
+    val str =
+      """
+        |PowerAPI, Spirals Team
+        |
+        |Infers the CPU power model. You have to be a sudoer to run this program.
+        |Do not forget to configure correctly the modules (see the documentation).
+        |
+        |usage: sudo ./bin/sampling --[all|processing [sampling-path]]
+      """.stripMargin
+
+    println(str)
+  }
+
+  def cli(options: Map[Symbol, Any], args: List[String]): Map[Symbol, Any] = args match {
+    case Nil => options
+    case "--all" :: Nil => cli(options + ('sampling -> true, 'processing -> configuration.samplingDir), Nil)
+    case "--processing" :: value :: Nil => cli(options + ('sampling -> false, 'processing -> value), Nil)
+    case option :: tail => println(s"unknown cli option $option"); sys.exit(1)
+  }
+
+  if(args.size == 0) {
+    printHelp()
+    sys.exit(1)
+  }
+
+  val options = cli(Map(), args.toList)
+
+  if(options('sampling).asInstanceOf[Boolean]) {
+    Sampling(configuration).run()
+  }
+
+  Processing(options('processing).toString(), configuration, regression).run()
 
   shutdownHookThread.start()
   shutdownHookThread.join()

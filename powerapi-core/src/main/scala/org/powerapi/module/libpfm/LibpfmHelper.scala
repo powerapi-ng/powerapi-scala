@@ -88,8 +88,10 @@ object LibpfmHelper {
    * Deinit. libpfm
    */
   def deinit(): Unit = {
-    LibpfmLibrary.pfm_terminate()
-    initialized = false
+    if(initialized) {
+      LibpfmLibrary.pfm_terminate()
+      initialized = false
+    }
   }
 
   /**
