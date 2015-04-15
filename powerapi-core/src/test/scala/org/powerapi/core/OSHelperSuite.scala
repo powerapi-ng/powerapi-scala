@@ -152,7 +152,7 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     intercept[SigarException] { helper.getCPUFrequencies }
     helper.getProcesses(Application("java")).size should be > 0
     intercept[SigarException] { helper.getThreads(Process(1)) }
-    helper.getProcessCpuTime(Process(1)).get should be > 0L
+    helper.getProcessCpuTime(Process(java.lang.management.ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt)).get should be > 0L
     helper.getGlobalCpuTime.globalTime should be > 0L
     intercept[SigarException] { helper.getTimeInStates }
   }
