@@ -239,5 +239,5 @@ trait PowerDisplay {
   /**
    * Displays data from power reports.
    */
-  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
+  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit
 }
