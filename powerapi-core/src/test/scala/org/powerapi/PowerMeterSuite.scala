@@ -31,6 +31,7 @@ import org.powerapi.module.cpu.simple.CpuSimpleModule
 import org.powerapi.module.libpfm.{LibpfmCoreSensorModule, LibpfmCoreModule}
 import org.powerapi.module.powerspy.PowerSpyModule
 import org.powerapi.module.rapl.RAPLModule
+import org.powerapi.module.sigar.SigarModule
 import scala.concurrent.duration.DurationInt
 
 class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
@@ -88,6 +89,11 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "load the RAPLModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(RAPLModule()), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+  }
+
+  it should "load the SigarModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(SigarModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
 }
