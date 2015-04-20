@@ -39,6 +39,6 @@ class ReporterComponent(output: PowerDisplay) extends APIComponent {
   } orElse default
 
   def report(aggPowerReport: AggregatePowerReport): Unit = {
-    output.display(aggPowerReport.tick.timestamp, aggPowerReport.targets, aggPowerReport.devices, aggPowerReport.power)
+    output.display(aggPowerReport.muid, aggPowerReport.tick.timestamp, aggPowerReport.targets, aggPowerReport.devices, aggPowerReport.power)
   }
 }

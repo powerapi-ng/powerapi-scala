@@ -22,6 +22,7 @@
  */
 package org.powerapi.reporter
 
+import java.util.UUID
 import org.powerapi.PowerDisplay
 import org.powerapi.core.power.Power
 import org.powerapi.core.target.Target
@@ -37,7 +38,7 @@ class FileDisplay(filepath: String) extends PowerDisplay  {
 
   lazy val output = Resource.fromFile(filepath)
 
-  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    output.append(s"timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}\n")
+  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    output.append(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}\n")
   }
 }
