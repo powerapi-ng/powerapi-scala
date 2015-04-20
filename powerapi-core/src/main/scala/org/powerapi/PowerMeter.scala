@@ -22,6 +22,8 @@
  */
 package org.powerapi
 
+import java.util.UUID
+
 import akka.actor.{ ActorRef, ActorRefFactory, ActorSystem, Props }
 import akka.event.LoggingReceive
 import akka.pattern.{ ask, after, gracefulStop }
@@ -239,5 +241,5 @@ trait PowerDisplay {
   /**
    * Displays data from power reports.
    */
-  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
+  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
 }

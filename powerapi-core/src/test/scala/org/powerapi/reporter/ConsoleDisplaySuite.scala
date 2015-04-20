@@ -36,8 +36,8 @@ import org.powerapi.module.PowerChannel.{ AggregatePowerReport, RawPowerReport, 
 import scala.concurrent.duration.DurationInt
 
 class ConsoleDisplayMock(testActor: ActorRef) extends ConsoleDisplay {
-  override def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    testActor ! s"timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}"
+  override def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    testActor ! s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}"
   }
 }
 
@@ -76,9 +76,9 @@ class ConsoleDisplaySuite(system: ActorSystem) extends UnitTest(system) {
     render(aggR2)(eventBus)
     render(aggR3)(eventBus)
     
-    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}")
-    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}")
-    expectMsgClass(classOf[String]) should equal(s"timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
+    expectMsgClass(classOf[String]) should equal(s"muid=$muid;timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}")
+    expectMsgClass(classOf[String]) should equal(s"muid=$muid;timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}")
+    expectMsgClass(classOf[String]) should equal(s"muid=$muid;timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
   }
 }
 
