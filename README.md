@@ -1,4 +1,5 @@
-# PowerAPI
+<img src="https://rawgit.com/Spirals-Team/powerapi/master/resources/logo/PowerAPI-logo.png" alt="Powerapi" width="300px">
+
 [![OSS Licence](http://img.shields.io/badge/license-AGPLv3-532553.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg)](https://travis-ci.org/Spirals-Team/powerapi)
 [![Codacy Badge](https://www.codacy.com/project/badge/e0b0e331ca414250a7240b6be74aaa7b)](https://www.codacy.com/public/maximecolmant/powerapi)
