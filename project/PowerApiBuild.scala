@@ -31,4 +31,5 @@ object PowerApiBuild extends Build {
   lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val powerapiHpcAnalysis = Project(id = "powerapi-hpc-analysis", base = file("powerapi-hpc-analysis")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 }
