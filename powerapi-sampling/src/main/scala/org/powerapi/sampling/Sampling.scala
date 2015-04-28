@@ -116,7 +116,7 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class Sampling(configuration: SamplingConfiguration, powerapi: PowerMeter, externalPMeter: PowerMeter) {
+class Sampling(outputPath: String, configuration: SamplingConfiguration, powerapi: PowerMeter, externalPMeter: PowerMeter) {
 
   private val log = LogManager.getLogger
   private lazy val trash = ProcessLogger(out => {}, err => {})
@@ -124,7 +124,7 @@ class Sampling(configuration: SamplingConfiguration, powerapi: PowerMeter, exter
   def run(): Unit = {
     val begin = System.currentTimeMillis()
 
-    Path(s"${configuration.samplingDir}", '/').deleteRecursively(force = true)
+    Path(outputPath, '/').deleteRecursively(force = true)
     Path("/tmp/sampling", '/').deleteRecursively(force = true)
 
     var frequencies = configuration.osHelper.getCPUFrequencies.toArray.sorted
@@ -141,9 +141,9 @@ class Sampling(configuration: SamplingConfiguration, powerapi: PowerMeter, exter
 
         sampling(index, 0, false)
 
-        Path(s"${configuration.samplingDir}/$index/0", '/').createDirectory()
+        Path(s"$outputPath/$index/0", '/').createDirectory()
         (Path(s"/tmp/sampling/$index/0", '/') * "*.dat").foreach(path => {
-          path.moveTo(Path(s"${configuration.samplingDir}/$index/0/${path.name}", '/'), true)
+          path.moveTo(Path(s"$outputPath/$index/0/${path.name}", '/'), true)
         })
       }
 
@@ -160,9 +160,9 @@ class Sampling(configuration: SamplingConfiguration, powerapi: PowerMeter, exter
 
           sampling(index, frequency, false)
 
-          Path(s"${configuration.samplingDir}/$index/$frequency", '/').createDirectory()
+          Path(s"$outputPath/$index/$frequency", '/').createDirectory()
           (Path(s"/tmp/sampling/$index/$frequency", '/') * "*.dat").foreach(path => {
-            path.moveTo(Path(s"${configuration.samplingDir}/$index/$frequency/${path.name}", '/'), true)
+            path.moveTo(Path(s"$outputPath/$index/$frequency/${path.name}", '/'), true)
           })
         }
 
@@ -177,9 +177,9 @@ class Sampling(configuration: SamplingConfiguration, powerapi: PowerMeter, exter
 
             sampling(index, frequency, true)
 
-            Path(s"${configuration.samplingDir}/$index/$frequency", '/').createDirectory()
+            Path(s"$outputPath/$index/$frequency", '/').createDirectory()
             (Path(s"/tmp/sampling/$index/$frequency", '/') * "*.dat").foreach(path => {
-              path.moveTo(Path(s"${configuration.samplingDir}/$index/$frequency/${path.name}", '/'), true)
+              path.moveTo(Path(s"$outputPath/$index/$frequency/${path.name}", '/'), true)
             })
           }
           case _ => {}
@@ -292,7 +292,7 @@ class Sampling(configuration: SamplingConfiguration, powerapi: PowerMeter, exter
     Thread.sleep(2.seconds.toMillis)
 
     val externalPMeterDisplay = writersSys.actorOf(Props(classOf[PowersDisplay], s"/tmp/sampling/$index/$frequency/${configuration.outputPowers}"), "output-powers")
-    val powerapiDisplay = writersSys.actorOf(Props(classOf[CountersDisplay], s"/tmp/sampling/$index/$frequency/${configuration.baseOutputCounter}", configuration.events), "output-cpu")
+    val powerapiDisplay = writersSys.actorOf(Props(classOf[CountersDisplay], s"/tmp/sampling/$index/$frequency/${configuration.baseOutput}", configuration.events), "output-cpu")
 
     /**
      * Idle Phase.
@@ -353,10 +353,10 @@ object Sampling {
   @volatile var powerapi: Option[PowerMeter] = None
   @volatile var externalPMeter: Option[PowerMeter] = None
 
-  def apply(configuration: SamplingConfiguration): Sampling = {
+  def apply(outputPath: String, configuration: SamplingConfiguration): Sampling = {
     org.powerapi.module.libpfm.LibpfmHelper.init()
     powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(configuration.events)))
     externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule()))
-    new Sampling(configuration, powerapi.get, externalPMeter.get)
+    new Sampling(outputPath, configuration, powerapi.get, externalPMeter.get)
   }
 }

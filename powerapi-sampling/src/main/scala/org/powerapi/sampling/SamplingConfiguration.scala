@@ -65,16 +65,6 @@ class SamplingConfiguration extends Configuration {
     case _ => 2
   }
 
-  lazy val baseFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-base-frequency") } match {
-    case ConfigValue(value) => value
-    case _ => 0d
-  }
-
-  lazy val maxFrequency: Double = load { _.getDouble("powerapi.sampling.cpu-max-frequency") } match {
-    case ConfigValue(value) => value
-    case _ => 0d
-  }
-
   lazy val topology: Map[Int, Set[Int]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
       yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toSet)).toMap
@@ -83,36 +73,14 @@ class SamplingConfiguration extends Configuration {
     case _ => Map()
   }
 
-  lazy val samplingDir: String = load { _.getString("powerapi.sampling.sampling-directory") } match {
-    case ConfigValue(value) => value
-    case _ => "samples"
+  lazy val events: Set[String] = load { _.getStringList("powerapi.sampling.events") } match {
+    case ConfigValue(values) => values.toSet
+    case _ => Set()
   }
 
-  lazy val processingDir: String = load { _.getString("powerapi.sampling.processing-directory") } match {
-    case ConfigValue(value) => value
-    case _ => "processing"
-  }
-
-  lazy val computingDir: String = load { _.getString("powerapi.sampling.computing-directory") } match {
-    case ConfigValue(value) => value
-    case _ => "formulae"
-  }
-
-  lazy val unhaltedCycles = load { _.getString("powerapi.sampling.unhalted-cycles-event") } match {
-    case ConfigValue(value) => value
-    case _ => "CPU_CLK_UNHALTED:THREAD_P"
-  }
-
-  lazy val refCycles = load { _.getString("powerapi.sampling.ref-cycles-event") } match {
-    case ConfigValue(value) => value
-    case _ => "CPU_CLK_UNHALTED:REF_P"
-  }
-
-  lazy val events = Set(unhaltedCycles, refCycles)
-  lazy val outputPowers = "output-powers.dat"
-  lazy val baseOutputCounter = "output-"
-  lazy val outputUnhaltedCycles = s"${baseOutputCounter}${unhaltedCycles.toLowerCase().replace('_', '-').replace(':', '-')}.dat"
-  lazy val outputRefCycles = s"${baseOutputCounter}${refCycles.toLowerCase().replace('_', '-').replace(':', '-')}.dat"
+  lazy val baseOutput = "output-"
+  lazy val powers = "powers"
+  lazy val outputPowers = s"$baseOutput${powers.toLowerCase().replace('_', '-').replace(':', '-')}.dat"
   lazy val separator = "="
   lazy val formatter = new PeriodFormatterBuilder().appendHours()
     .appendSuffix("H ")
