@@ -47,11 +47,14 @@ class SamplingConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
     configuration.turbo should equal(true)
     configuration.steps should equal(List(100, 75, 25))
     configuration.stepDuration should equal(3)
-    configuration.baseFrequency should equal(0.133)
-    configuration.maxFrequency should equal(2.66)
     configuration.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    configuration.samplingDir should equal("test-samples")
-    configuration.processingDir should equal("test-processing")
-    configuration.computingDir should equal("test-computing")
+  }
+
+  "The PolynomCyclesConfiguration" should "read correctly the values from a resource file" in {
+    val configuration = new PolynomCyclesConfiguration {}
+    configuration.baseFrequency should equal(0.100)
+    configuration.maxFrequency should equal(3.0)
+    configuration.unhaltedCycles should equal("EVENT1")
+    configuration.refCycles should equal("EVENT2")
   }
 }

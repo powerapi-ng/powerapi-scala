@@ -23,6 +23,8 @@
 package org.powerapi.sampling
 
 import scala.sys
+import scala.sys.process.stringSeqToProcess
+import scalax.file.Path
 
 /**
  * Main application.
@@ -31,6 +33,21 @@ import scala.sys
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 object Application extends App {
+
+  // core -> (governor, frequency)
+  val backup = scala.collection.mutable.HashMap[String, (String, Option[Long])]()
+
+  if(Path("/sys/devices/system/cpu/", '/').exists) {
+    for(path <- Path("/sys/devices/system/cpu/", '/').descendants(depth = 1).filter(_.name matches """cpu\d+""")) {
+      val governor = Seq("bash", "-c", s"cat ${path.path}/cpufreq/scaling_governor").lineStream.toArray.apply(0)
+      val frequency = Seq("bash", "-c", s"cat ${path.path}/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
+
+      if(frequency matches """\d+""") {
+        backup += (path.path -> (governor, Some(frequency.toLong)))
+      }
+      else backup += (path.path -> (governor, None))
+    }
+  }
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
     println("It's the time for sleeping! ...")
@@ -48,30 +65,46 @@ object Application extends App {
       }
       case _ => {}
     }
-  }
 
-  lazy val configuration = new SamplingConfiguration
-  lazy val regression = new PolynomialRegression
+    for((path, (governor, frequency)) <- backup) {
+      Seq("bash", "-c", s"echo $governor > ${path}/cpufreq/scaling_governor").!
+
+      if(governor == "userspace" && frequency.isDefined) {
+        Seq("bash", "-c", s"echo ${frequency.get} > ${path}/cpufreq/scaling_setspeed").!
+      }
+    }
+  }
 
   def printHelp(): Unit = {
     val str =
       """
-        |PowerAPI, Spirals Team
+        |PowerAPI, Spirals Team.
         |
-        |Infers the CPU power model. You have to be a sudoer to run this program.
+        |Infers the CPU power model. You have to run this program in sudo mode.
         |Do not forget to configure correctly the modules (see the documentation).
         |
-        |usage: sudo ./bin/sampling --[all|processing [sampling-path]]
+        |usage: sudo ./bin/sampling --all [sampling-path] [processing-path] [computing-path]
+        |                         ||--sampling [sampling-path]
+        |                         ||--processing [sampling-path] [processing-path]
+        |                         ||--computing [processing-path] [computing-path]
       """.stripMargin
 
     println(str)
   }
 
   def cli(options: Map[Symbol, Any], args: List[String]): Map[Symbol, Any] = args match {
-    case Nil => options
-    case "--all" :: Nil => cli(options + ('sampling -> true, 'processing -> configuration.samplingDir), Nil)
-    case "--processing" :: value :: Nil => cli(options + ('sampling -> false, 'processing -> value), Nil)
-    case option :: tail => println(s"unknown cli option $option"); sys.exit(1)
+    case Nil =>
+      options
+    case "--all" :: samplingPath :: processingPath :: computingPath :: Nil =>
+      cli(options + ('sampling -> (true, samplingPath), 'processing -> (true, processingPath), 'computing -> (true, computingPath)), Nil)
+    case "--sampling" :: samplingPath :: Nil =>
+      cli(options + ('sampling -> (true, samplingPath), 'processing -> (false, ""), 'computing -> (false, "")), Nil)
+    case "--processing" :: samplingPath :: processingPath :: Nil =>
+      cli(options + ('sampling -> (false, samplingPath), 'processing -> (true, processingPath), 'computing -> (false, "")), Nil)
+    case "--computing" :: processingPath :: computingPath :: Nil =>
+      cli(options + ('sampling -> (false, ""), 'processing -> (false, processingPath), 'computing -> (true, computingPath)), Nil)
+    case option :: tail =>
+      println(s"unknown cli option $option"); sys.exit(1)
   }
 
   if(args.size == 0) {
@@ -80,12 +113,23 @@ object Application extends App {
   }
 
   val options = cli(Map(), args.toList)
+  val samplingOption = options('sampling).asInstanceOf[(Boolean, String)]
+  val processingOption = options('processing).asInstanceOf[(Boolean, String)]
+  val computingOption = options('computing).asInstanceOf[(Boolean, String)]
 
-  if(options('sampling).asInstanceOf[Boolean]) {
-    Sampling(configuration).run()
+  val configuration = new PolynomCyclesConfiguration
+
+  if(samplingOption._1) {
+    Sampling(samplingOption._2, configuration).run()
   }
 
-  Processing(options('processing).toString(), configuration, regression).run()
+  if(processingOption._1) {
+    Processing(samplingOption._2, processingOption._2, configuration).run()
+  }
+
+  if(computingOption._1) {
+    PolynomialCyclesRegression(processingOption._2, computingOption._2, configuration).run()
+  }
 
   shutdownHookThread.start()
   shutdownHookThread.join()
