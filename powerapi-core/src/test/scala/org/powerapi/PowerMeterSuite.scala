@@ -91,7 +91,7 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(RAPLModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
-
+  
   it should "load the SigarModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(SigarModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
