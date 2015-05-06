@@ -104,10 +104,12 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => GlobalCpuTime(0, 0)
         }
       }
+      
+      def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = TargetUsageRatio(0.0)
+
+      def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
-      
-      def getRAPLEnergy: Double = 0.0
     }, 90.W))(system)
 
     val tickMock = ClockTick("test", 25.milliseconds)

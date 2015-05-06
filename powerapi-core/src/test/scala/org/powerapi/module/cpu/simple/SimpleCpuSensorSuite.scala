@@ -35,7 +35,7 @@ import org.powerapi.core.{OSHelper, Thread, TimeInStates}
 import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process, Target, TargetUsageRatio}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.MonitorChannel.publishMonitorTick
-import org.powerapi.module.CacheKey
+import org.powerapi.module.{Cache, CacheKey}
 import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
 import scala.concurrent.duration.DurationInt
@@ -53,53 +53,28 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
   "A simple CpuSensor" should "process a MonitorTick message and then publish a UsageReport" in {
     val eventBus = new MessageBus
 
-    val globalElapsedTime1: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeElapsedTime1: Long = globalElapsedTime1 - 25883594
-    val globalElapsedTime2: Long = 43173 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeElapsedTime2: Long = globalElapsedTime2 - 25883594
-    val globalElapsedTime3: Long = 43175 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeElapsedTime3: Long = globalElapsedTime3 - 25883594
-    val p1ElapsedTime1: Long = 33 + 2
-    val p1ElapsedTime2: Long = 33 + 4
-    val p2ElapsedTime: Long = 10 + 5
-    val p3ElapsedTime: Long = 3 + 5
-    val appElapsedTime: Long = p2ElapsedTime + p3ElapsedTime
-
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
     val muid3 = UUID.randomUUID()
 
-    val oldP1ElapsedTime1 = p1ElapsedTime1 / 2
-    val oldP1ElapsedTime2 = p1ElapsedTime1 / 2
-    val oldP2ElapsedTime = p2ElapsedTime / 2
-    val oldP3ElapsedTime = p3ElapsedTime / 2
-    val oldAppElapsedTime = oldP2ElapsedTime + oldP3ElapsedTime
-    val (oldGlobalElapsedTime1, oldActiveElapsedTime1) = (globalElapsedTime1 / 2, activeElapsedTime1 / 2)
-    val (oldGlobalElapsedTime2, oldActiveElapsedTime2) = (globalElapsedTime2 / 2, activeElapsedTime2 / 2)
-    val (oldGlobalElapsedTime3, oldActiveElapsedTime3) = (globalElapsedTime3 / 2, activeElapsedTime3 / 2)
+    val processRatio1 = 0.05
+    val processRatio2 = 0.23
+    val appRatio = 0.44
 
-    val processRatio1 = TargetUsageRatio((p1ElapsedTime1 - oldP1ElapsedTime1).toDouble / (globalElapsedTime1 - oldGlobalElapsedTime1))
-
-    val processRatio2 = TargetUsageRatio((p1ElapsedTime2 - oldP1ElapsedTime2).toDouble / (globalElapsedTime2 - oldGlobalElapsedTime2))
-    val appRatio = TargetUsageRatio((appElapsedTime - oldAppElapsedTime).toDouble / (globalElapsedTime2 - oldGlobalElapsedTime2))
-
-    val allRatio = TargetUsageRatio((activeElapsedTime3 - oldActiveElapsedTime3).toDouble / (globalElapsedTime3 - oldGlobalElapsedTime3))
+    val allRatio = 0.87
 
     val tickMock = ClockTick("test", 25.milliseconds)
 
     val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
       import org.powerapi.core.GlobalCpuTime
 
-      private var targetTimes = Map[Target, List[Long]](
-        Process(1) -> List(oldP1ElapsedTime1, oldP1ElapsedTime2, p1ElapsedTime1, p1ElapsedTime2),
-        Process(2) -> List(oldP2ElapsedTime, p2ElapsedTime),
-        Process(3) -> List(oldP3ElapsedTime, p3ElapsedTime)
+      private var targetUsage = Map[Target, Double](
+        Process(1) -> processRatio1,
+        Process(2) -> processRatio2,
+        Process(3) -> appRatio
       )
 
-      private var globalTimes = List[(Long, Long)](
-        (oldGlobalElapsedTime1, oldActiveElapsedTime1), (oldGlobalElapsedTime2, oldActiveElapsedTime2), (oldGlobalElapsedTime2, oldActiveElapsedTime2), (oldGlobalElapsedTime3, oldActiveElapsedTime3),
-        (globalElapsedTime1, activeElapsedTime1), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime2, activeElapsedTime2), (globalElapsedTime3, activeElapsedTime3)
-      )
+      private var globalUsages = allRatio
 
       def getCPUFrequencies: Set[Long] = Set()
 
@@ -107,158 +82,30 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       def getThreads(process: Process): Set[Thread] = Set()
 
-      def getProcessCpuTime(process: Process): Option[Long] = {
-        targetTimes.getOrElse(process, List()) match {
-          case times if times.length > 0 => {
-            targetTimes += process -> times.tail
-            Some(times.head)
-          }
-          case _ => None
-        }
-      }
+      def getProcessCpuTime(process: Process): Option[Long] = None
 
-      def getGlobalCpuTime: GlobalCpuTime = {
-        globalTimes.headOption match {
-          case Some((globalTime, activeTime)) => {
-            globalTimes = globalTimes.tail
-            GlobalCpuTime(globalTime, activeTime)
-          }
-          case _ => GlobalCpuTime(0, 0)
-        }
-      }
+      def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
+      
+      def getProcessCpuPercent(muid: UUID, process: Process) = TargetUsageRatio(targetUsage.getOrElse(process, 0.0))
+      
+      def getGlobalCpuPercent(muid: UUID) = TargetUsageRatio(globalUsages)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
-      
-      def getRAPLEnergy: Double = 0.0
     }), "simple-CpuSensor1")(system)
 
     subscribeSimpleUsageReport(eventBus)(testActor)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid1); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
-    }
-    publishMonitorTick(muid2, 1, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
+      case ur: UsageReport => ur.muid should equal(muid1); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.05))
     }
     publishMonitorTick(muid2, "app", tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Application("app")); ur.targetRatio should equal(TargetUsageRatio(0.0))
+      case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Application("app")); ur.targetRatio should equal(TargetUsageRatio(0.67))
     }
     publishMonitorTick(muid3, All, tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(TargetUsageRatio(0.0))
-    }
-
-    publishMonitorTick(muid1, 1, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid1); ur.target should equal(Process(1)); ur.targetRatio should equal(processRatio1)
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid1, 1))(0, 0) match {
-      case times => times should equal(p1ElapsedTime1, globalElapsedTime1)
-    }
-    publishMonitorTick(muid2, 1, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Process(1)); ur.targetRatio should equal(processRatio2)
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, 1))(0, 0) match {
-      case times => times should equal(p1ElapsedTime2, globalElapsedTime2)
-    }
-    publishMonitorTick(muid2, "app", tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Application("app")); ur.targetRatio should equal(appRatio)
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid2, "app"))(0, 0) match {
-      case times => times should equal(appElapsedTime, globalElapsedTime2)
-    }
-    publishMonitorTick(muid3, All, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(allRatio)
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid3, All))(0, 0) match {
-      case times => times should equal(activeElapsedTime3, globalElapsedTime3)
-    }
-
-    gracefulStop(cpuSensor, 1.seconds)
-  }
-
-  it should "handle correctly the time differences for computing the TargetUsageRatio" in {
-    val eventBus = new MessageBus
-
-    val globalElapsedTime: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeElapsedTime: Long = globalElapsedTime - 25883594
-    val p1ElapsedTime = (33 + 2).toLong
-
-    val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
-      import org.powerapi.core.GlobalCpuTime
-
-      private var targetTimes = Map[Target, List[Long]](Process(1) -> List(p1ElapsedTime + 10, p1ElapsedTime))
-      private var globalTimes = List[(Long, Long)]((globalElapsedTime, activeElapsedTime), (globalElapsedTime, activeElapsedTime))
-
-      def getCPUFrequencies: Set[Long] = Set()
-
-      def getProcesses(application: Application): Set[Process] = Set()
-
-      def getThreads(process: Process): Set[Thread] = Set()
-
-      def getProcessCpuTime(process: Process): Option[Long] = {
-        targetTimes.getOrElse(process, List()) match {
-          case times if times.length > 0 => {
-            targetTimes += process -> times.tail
-            Some(times.head)
-          }
-          case _ => None
-        }
-      }
-
-      def getGlobalCpuTime: GlobalCpuTime = {
-        globalTimes.headOption match {
-          case Some((globalTime, activeTime)) => {
-            globalTimes = globalTimes.tail
-            GlobalCpuTime(globalTime, activeTime)
-          }
-          case _ => GlobalCpuTime(0, 0)
-        }
-      }
-
-      def getTimeInStates: TimeInStates = TimeInStates(Map())
-      
-      def getRAPLEnergy: Double = 0.0
-    }), "simple-CpuSensor2")(system)
-
-    val oldP1ElapsedTime = p1ElapsedTime / 2
-    val oldGlobalElapsedTime = globalElapsedTime / 2
-
-    val muid = UUID.randomUUID()
-    val tickMock = ClockTick("test", 25.milliseconds)
-
-    subscribeSimpleUsageReport(eventBus)(testActor)
-
-    publishMonitorTick(muid, 1, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1))(0, 0) match {
-      case times => times should equal(p1ElapsedTime + 10, globalElapsedTime)
-    }
-
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1)) = (p1ElapsedTime , globalElapsedTime + 10)
-    publishMonitorTick(muid, 1, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1))(0, 0) match {
-      case times => times should equal(p1ElapsedTime , globalElapsedTime + 10)
-    }
-
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1)) = (globalElapsedTime, p1ElapsedTime)
-    publishMonitorTick(muid, 1, tickMock)(eventBus)
-    expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid); ur.target should equal(Process(1)); ur.targetRatio should equal(TargetUsageRatio(0.0))
-    }
-    cpuSensor.underlyingActor.asInstanceOf[CpuSensor].cpuTimesCache(CacheKey(muid, 1))(0, 0) match {
-      case times => times should equal(globalElapsedTime, p1ElapsedTime)
+      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(TargetUsageRatio(0.87))
     }
 
     gracefulStop(cpuSensor, 1.seconds)

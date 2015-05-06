@@ -24,11 +24,13 @@ package org.powerapi.core
 
 import com.typesafe.config.Config
 import java.io.{IOException, File}
+import java.util.UUID
 import org.apache.logging.log4j.LogManager
 import org.hyperic.sigar.{Sigar, SigarException, SigarProxyCache}
 import org.hyperic.sigar.ptql.ProcessFinder
 import org.powerapi.core.FileHelper.using
-import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.core.target.{All, Application, Process, Target, TargetUsageRatio}
+import org.powerapi.module.{Cache, CacheKey}
 import scala.collection.JavaConversions._
 import scala.sys.process._
 
@@ -95,6 +97,18 @@ trait OSHelper {
    * Get the global execution time for the cpu.
    */
   def getGlobalCpuTime: GlobalCpuTime
+  
+  /**
+   * Get the process cpu usage in percentage.
+   *
+   * @param process: targeted process.
+   */
+  def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio
+  
+  /**
+   * Get the global cpu usage in percentage.
+   */
+  def getGlobalCpuPercent(muid: UUID): TargetUsageRatio
 
   /**
    * Get how many time CPU spent under each frequency.
@@ -118,6 +132,26 @@ trait OSHelper {
         }
       )
       case _ => None
+    }
+  }
+  
+  /**
+   * Get the target cpu usage in pourcentage.
+   */
+  def getTargetCpuPercent(muid: UUID, target: Target): TargetUsageRatio = {
+    target match {
+      case process: Process => getProcessCpuPercent(muid, process)
+      case application: Application => TargetUsageRatio(
+        getProcesses(application).foldLeft(0.0: Double) {
+          (acc, process: Process) => {
+            getProcessCpuPercent(muid, process) match {
+              case TargetUsageRatio(value) => acc + value
+              case _ => acc
+            }
+          }
+        }
+      )
+      case _ => TargetUsageRatio(0.0)
     }
   }
 }
@@ -186,6 +220,8 @@ class LinuxHelper extends OSHelper with Configuration {
     case ConfigValue(values) => values
     case _ => Map()
   }
+  
+  lazy val cpuTimesCache = new Cache[(Long, Long)]
 
   def getCPUFrequencies: Set[Long] = {
     (for(index <- topology.values.flatten) yield {
@@ -264,6 +300,47 @@ class LinuxHelper extends OSHelper with Configuration {
     }
   }
 
+  def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = {
+    lazy val now = (getProcessCpuTime(process) match {
+      case Some(time) => time
+      case _ => 0l
+    }, getGlobalCpuTime.globalTime)
+
+    computeDiff(CacheKey(muid, process), now)
+  }
+  
+  def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = {
+    lazy val (globalCpuTime, activeCpuTime) = getGlobalCpuTime match {
+      case GlobalCpuTime(globalTime, activeTime) => (globalTime, activeTime)
+    }
+
+    lazy val now = (activeCpuTime, globalCpuTime)
+
+    computeDiff(CacheKey(muid, All), (activeCpuTime, globalCpuTime))
+  }
+  
+  private def computeDiff(key: CacheKey, now: (Long, Long)): TargetUsageRatio = {
+    val old = cpuTimesCache(key)(now)
+    val diffTimes = (now._1 - old._1, now._2 - old._2)
+
+    diffTimes match {
+      case diff: (Long, Long) => {
+        if(old == now) {
+          cpuTimesCache(key) = now
+          TargetUsageRatio(0.0)
+        }
+
+        else if (diff._1 > 0 && diff._2 > 0 && diff._1 <= diff._2) {
+          cpuTimesCache(key) = now
+          TargetUsageRatio(diff._1.toDouble / diff._2)
+        }
+
+        else TargetUsageRatio(0.0)
+      }
+      case _ => TargetUsageRatio(0.0)
+    }
+  }
+
   def getTimeInStates: TimeInStates = {
     val result = collection.mutable.HashMap[Long, Long]()
 
@@ -312,6 +389,11 @@ class SigarHelper extends OSHelper with Configuration {
     System.setProperty("java.library.path", libNativePath)
     SigarProxyCache.newInstance(new Sigar(), 100)
   }
+  
+  /**
+   * CPU cores number.
+   */
+  lazy val cores = sigar.getCpuInfoList()(0).getTotalCores()
 
   def getCPUFrequencies: Set[Long] = throw new SigarException("sigar cannot be able to get CPU frequencies")
 
@@ -337,6 +419,27 @@ class SigarHelper extends OSHelper with Configuration {
     }
     catch {
       case se: SigarException => log.warn("sigar exception: {}", se.getMessage); GlobalCpuTime(0, 0)
+    }
+  }
+  
+  def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = {
+    try {
+      // we need the line below to fix a bug with initialisation of sigar 
+      ProcessFinder.find(sigar, "State.Name.eq=")
+      
+      TargetUsageRatio(sigar.getProcCpu(process.pid.toLong).getPercent() / cores)
+    }
+    catch {
+      case se: SigarException => log.warn("sigar exception: {}", se.getMessage); TargetUsageRatio(-1.0)
+    }
+  }
+  
+  def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = {
+    try {
+      TargetUsageRatio(sigar.getCpuPerc.getCombined())
+    }
+    catch {
+      case se: SigarException => log.warn("sigar exception: {}", se.getMessage); TargetUsageRatio(-1.0)
     }
   }
 
