@@ -169,7 +169,7 @@ object PowerAPI extends App {
   }
 
   else {
-    Seq("bash", "scripts/system.bash").!
+    if(!System.getProperty("os.name").startsWith("Windows")) Seq("bash", "scripts/system.bash").!
     val (configuration, duration) = cli(List(), "3600", args.toList)
 
     for(powerMeterConf <- configuration) {
