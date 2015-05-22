@@ -128,7 +128,7 @@ object PowerAPI extends App {
         |Build a software-defined power meter. Do not forget to configure correctly the modules (see the documentation).
         |
         |usage: ./powerapi modules [cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-proces|powerspy|rapl,...] \
-        |                          monitor --frequency [ms] --targets [pid, ..., app, ...)|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart] \
+        |                          monitor --frequency [ms] --targets [pid, ..., app, ...|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart] \
         |                  duration [s]
         |
         |example: ./powerapi modules cpu-simple monitor --frequency 1000 --targets firefox --agg max --console monitor --targets chrome --agg max --console \

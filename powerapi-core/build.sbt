@@ -44,7 +44,7 @@ pomExtra := {
     <developer>
       <id>mcolmant</id>
       <name>Maxime Colmant</name>
-      <url>http://researchers.lille.inria.fr/colmant/</url>
+      <url>http://mcolmant.github.io/</url>
     </developer>
     <developer>
       <id>rouvoy</id>

@@ -73,7 +73,6 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val targets = List[Target](1)
                                                             
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor1")
-    val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorStop("test", muid)
@@ -96,16 +95,11 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       monitor ! MonitorStop("test", UUID.randomUUID())
     })(_system)
 
-    EventFilter.warning(occurrences = 1, source = monitors.path.toString).intercept({
-      stopMonitor(muid)(eventBus)
-    })(_system)
-
     receiveWhile(10.seconds, idle = 2.seconds) {
       case msg: MonitorTick => {}
     }
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
   }
@@ -458,8 +452,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val monitor3 = new Monitor(eventBus, reporters)
 
     val display = new PowerDisplay {
-      def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {
-        testActor ! s"$timestamp, ${targets.mkString(",")}, ${devices.mkString(",")}, $power"
+      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {
+        testActor ! s"$muid, $timestamp, ${targets.mkString(",")}, ${devices.mkString(",")}, $power"
       }
     }
 
@@ -469,7 +463,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     monitor.to(display)
     publishRawPowerReport(monitor.muid, 1, 15.W, "gpu", tickMock)(eventBus)
-    expectMsgClass(classOf[String]) should equal(s"${tickMock.timestamp}, ${Process(1)}, gpu, ${15000.mW}")
+    expectMsgClass(classOf[String]) should equal(s"${monitor.muid}, ${tickMock.timestamp}, ${Process(1)}, gpu, ${15000.mW}")
     reporters.actorSelection("user/*") ! Identify(None)
     val reporter = expectMsgClass(classOf[ActorIdentity]).getRef
 

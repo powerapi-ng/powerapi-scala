@@ -62,7 +62,6 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     val _system = ActorSystem("ClockSuiteTest1", eventListener)
 
     val frequency = 50.milliseconds
-    val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks1")
     val clock = _system.actorOf(Props(classOf[ClockChild], eventBus, frequency), "clock1")
 
     EventFilter.warning(occurrences = 1, source = clock.path.toString).intercept({
@@ -89,12 +88,7 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     EventFilter.info(occurrences = 1, source = clock.path.toString).intercept({
       clock ! ClockStop("test", frequency)
     })(_system)
-
-    EventFilter.warning(occurrences = 1, source = clocks.path.toString).intercept({
-      stopClock(frequency)(eventBus)
-    })(_system)
-
-    Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
+    
     Await.result(gracefulStop(clock, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)

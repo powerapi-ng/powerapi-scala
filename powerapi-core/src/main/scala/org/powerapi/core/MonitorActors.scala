@@ -140,16 +140,6 @@ class Monitors(eventBus: MessageBus) extends Supervisor with Configuration  {
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: MonitorStart => {
-      start(msg)
-      context.become(running)
-    }
-  } orElse default
-
-  /**
-   * Running state.
-   */
-  def running: Actor.Receive = LoggingReceive {
     case msg: MonitorStart => start(msg)
     case msg: MonitorAggFunction => setAggregatingFunction(msg)
     case msg: MonitorStop => stop(msg)

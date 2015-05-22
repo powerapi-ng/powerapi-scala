@@ -108,16 +108,6 @@ class Clocks(eventBus: MessageBus) extends Supervisor {
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: ClockStart => {
-      start(msg)
-      context.become(running)
-    }
-  } orElse default
-
-  /**
-   * Running state.
-   */
-  def running: Actor.Receive = LoggingReceive {
     case msg: ClockStart => start(msg)
     case msg: ClockStop => stop(msg)
     case msg: ClockStopAll => stopAll(msg)
