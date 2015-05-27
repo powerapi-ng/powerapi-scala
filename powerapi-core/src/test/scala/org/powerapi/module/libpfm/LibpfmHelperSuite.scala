@@ -25,7 +25,6 @@ package org.powerapi.module.libpfm
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import org.powerapi.UnitTest
-import org.powerapi.module.libpfm.LibpfmHelper.{BitSet2Long, init, closePC, configurePC, deinit, disablePC, enablePC, readPC, resetPC, scale}
 import scala.collection.BitSet
 import scala.sys.process.stringSeqToProcess
 
@@ -34,6 +33,10 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
+  }
+
+  val helper = new LibpfmHelper() {
+    override lazy val nrPerfEventOpen = 298 // Linux Intel/AMD 64 bits.
   }
 
   "An implicit method" should "convert a BitSet to a long" in {
@@ -53,20 +56,25 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
     long should equal((1L << 0) + (1L << 1) + (2L << 1))
   }
 
+  "The LibpfmHelper" should "read correctly the configuration value from a file" in {
+    val helper = new LibpfmHelper()
+    helper.nrPerfEventOpen should equal(128)
+  }
+
   "The scale method" should "scale correctly the values passed as arguments" in {
     var now = Array[Long](10, 2, 2)
     var old = Array[Long](1, 1, 1)
-    scale(now, old) should equal(Some(9))
+    helper.scale(now, old) should equal(Some(9))
 
     now = Array[Long](10, 0, 0)
-    scale(now, old) should equal(None)
+    helper.scale(now, old) should equal(None)
 
     now = Array[Long](10, 2, 3)
-    scale(now, old) should equal(None)
+    helper.scale(now, old) should equal(None)
 
     now = Array[Long](10, 2, 2)
     old = Array[Long](1, 2, 2)
-    scale(now, old) should equal(None)
+    helper.scale(now, old) should equal(None)
   }
 
   "The libpfm library" can "be used on linux" ignore {
@@ -75,24 +83,24 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
     val pid = Seq("bash", s"${basepath}test-pc.bash").lineStream(0).trim.toInt
     val configuration = BitSet(0, 1)
 
-    init() should equal(true)
-    configurePC(TID(pid), configuration, "cycles") match {
+    helper.init() should equal(true)
+    helper.configurePC(TID(pid), configuration, "cycles") match {
       case Some(fd) => {
-        resetPC(fd) should equal(true)
-        enablePC(fd) should equal(true)
+        helper.resetPC(fd) should equal(true)
+        helper.enablePC(fd) should equal(true)
         Seq("kill", "-SIGCONT", s"$pid").!
 
         for(_ <- 0 to 5) {
-          val values = readPC(fd)
+          val values = helper.readPC(fd)
           println(s"value: ${values(0)}, enabled time: ${values(1)}, running time: ${values(2)}")
           Thread.sleep(500)
         }
 
         Seq("kill", "-SIGKILL", s"$pid").!
 
-        disablePC(fd) should equal(true)
-        closePC(fd) should equal(true)
-        deinit()
+        helper.disablePC(fd) should equal(true)
+        helper.closePC(fd) should equal(true)
+        helper.deinit()
       }
       case None => assert(false)
     }

@@ -28,7 +28,7 @@ import akka.util.Timeout
 import org.powerapi.core.MessageBus
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.CpuSimpleModule
-import org.powerapi.module.libpfm.{LibpfmCoreSensorModule, LibpfmCoreModule}
+import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmHelper, LibpfmCoreSensorModule, LibpfmCoreModule}
 import org.powerapi.module.powerspy.PowerSpyModule
 import org.powerapi.module.rapl.RAPLModule
 import org.powerapi.module.sigar.SigarModule
@@ -73,13 +73,26 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
   it should "load the LibpfmCoreModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
+    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreModule(new LibpfmHelper)), Timeout(1.seconds)))(system)
+    actor2.children.size should equal(4)
   }
 
   it should "load the LibpfmCoreSensorModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(3)
-    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(Set("cycles", "instructions"))), Timeout(1.seconds)))(system)
+    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(new LibpfmHelper)), Timeout(1.seconds)))(system)
     actor2.children.size should equal(3)
+    val actor3 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(Set("cycles", "instructions"))), Timeout(1.seconds)))(system)
+    actor3.children.size should equal(3)
+    val actor4 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(new LibpfmHelper, Set("cycles", "instructions"))), Timeout(1.seconds)))(system)
+    actor4.children.size should equal(3)
+  }
+
+  it should "load the LibpfmCoreProcessModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreProcessModule()), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreProcessModule(new LibpfmHelper)), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
   }
 
   it should "load the PowerSpyModule" ignore new EventBus {

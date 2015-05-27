@@ -28,8 +28,6 @@ import org.bridj.ann.CLong;
 import org.bridj.BridJ;
 import org.bridj.CRuntime;
 import org.bridj.Pointer;
-
-import perfmon2.libpfm.LibpfmLibrary;
 import perfmon2.libpfm.perf_event_attr;
 
 /**
@@ -47,10 +45,10 @@ public class CUtils {
   /**
    * perf_event_open maccro (not generated correctly).
    */
-  public static int perf_event_open(Pointer<perf_event_attr> __hw, int __pid, int __cpu, int __gr, @CLong long __flags) {
-    return syscall(LibpfmLibrary.__NR_perf_event_open, Pointer.getPeer(__hw), __pid, __cpu, __gr, __flags);
+  public static int perf_event_open(int __nrPerfEventOpen, Pointer<perf_event_attr> __hw, int __pid, int __cpu, int __gr, @CLong long __flags) {
+    return syscall(__nrPerfEventOpen, Pointer.getPeer(__hw), __pid, __cpu, __gr, __flags);
   }
-  private native static int syscall(int __cdde, Object... varArgs1);
+  private native static int syscall(int __code, Object... varArgs1);
 
   /**
    * Interact with a given file descriptor. In this case, we use it to enable, disable and reset a file descriptor (so, a counter).

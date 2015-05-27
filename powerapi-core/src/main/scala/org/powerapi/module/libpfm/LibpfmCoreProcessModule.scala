@@ -29,15 +29,21 @@ import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, 
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreProcessModule(timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
+class LibpfmCoreProcessModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
                               cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
 
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper, timeout, topology, configuration, events, inDepth)))
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreProcessSensor], Seq(new LinuxHelper, libpfmHelper, timeout, topology, configuration, events, inDepth)))
   lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
 }
 
 object LibpfmCoreProcessModule extends LibpfmCoreProcessSensorConfiguration with LibpfmCoreCyclesFormulaConfiguration {
+  lazy val libpfmHelper = new LibpfmHelper
+
   def apply(): LibpfmCoreProcessModule = {
-    new LibpfmCoreProcessModule(timeout, topology, configuration, events, inDepth, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
+    new LibpfmCoreProcessModule(libpfmHelper, timeout, topology, configuration, events, inDepth, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
+  }
+
+  def apply(libpfmHelper: LibpfmHelper): LibpfmCoreProcessModule = {
+    new LibpfmCoreProcessModule(libpfmHelper, timeout, topology, configuration, events, inDepth, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
   }
 }

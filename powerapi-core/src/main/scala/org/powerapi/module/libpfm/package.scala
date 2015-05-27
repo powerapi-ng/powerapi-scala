@@ -20,14 +20,19 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
-import sbt._
-import scoverage.ScoverageSbtPlugin.ScoverageKeys
+package org.powerapi.module
 
-object PowerApiBuild extends Build {
-  lazy val powerapi = Project(id = "powerapi", base = file(".")).aggregate(powerapiCore, powerapiCli, powerapiSampling)
+import scala.collection.BitSet
 
-  lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core"))
-  lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
-  lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+/**
+ * Implicit conversions.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+package object libpfm {
+  implicit def BitSet2Long(value: BitSet): Long = {
+    // We limit the size of the bitset (see the documentation on perf_event.h, only 23 bits for the config.)
+    // The other 41 bits are reserved.
+    value.range(0, 23).foldLeft(0l)((acc, index) => acc + (1L << index))
+  }
 }

@@ -22,6 +22,7 @@
  */
 package org.powerapi.sampling
 
+import org.powerapi.module.libpfm.LibpfmHelper
 import scala.sys
 import scala.sys.process.stringSeqToProcess
 import scalax.file.Path
@@ -117,10 +118,11 @@ object Application extends App {
   val processingOption = options('processing).asInstanceOf[(Boolean, String)]
   val computingOption = options('computing).asInstanceOf[(Boolean, String)]
 
+  val libpfmHelper = new LibpfmHelper
   val configuration = new PolynomCyclesConfiguration
 
   if(samplingOption._1) {
-    Sampling(samplingOption._2, configuration).run()
+    Sampling(samplingOption._2, configuration, libpfmHelper).run()
   }
 
   if(processingOption._1) {
