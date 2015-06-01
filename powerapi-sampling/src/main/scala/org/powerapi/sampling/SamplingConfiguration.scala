@@ -34,7 +34,7 @@ import scala.collection.JavaConversions._
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class SamplingConfiguration extends Configuration {
+class SamplingConfiguration extends Configuration(None) {
   lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
@@ -80,7 +80,7 @@ class SamplingConfiguration extends Configuration {
 
   lazy val baseOutput = "output-"
   lazy val powers = "powers"
-  lazy val outputPowers = s"$baseOutput${powers.toLowerCase().replace('_', '-').replace(':', '-')}.dat"
+  lazy val outputPowers = s"$baseOutput${powers.toLowerCase.replace('_', '-').replace(':', '-')}.dat"
   lazy val separator = "="
   lazy val formatter = new PeriodFormatterBuilder().appendHours()
     .appendSuffix("H ")
@@ -91,5 +91,5 @@ class SamplingConfiguration extends Configuration {
     .appendMillis()
     .appendSuffix("ms ")
     .toFormatter
-  lazy val osHelper = new LinuxHelper()
+  lazy val osHelper = new LinuxHelper
 }

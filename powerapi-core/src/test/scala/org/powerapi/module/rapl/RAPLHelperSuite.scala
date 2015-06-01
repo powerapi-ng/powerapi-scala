@@ -42,7 +42,14 @@ class RAPLHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   val basepath = getClass.getResource("/").getPath
 
-  "The method getRAPLEnergy in the LinuxHelper" should "return an estimation of CPU energy consumption" in {
+  "The RAPLHelper" should "be able to read configuration parameters (with or without prefix parameter)" in {
+    val helper = new RAPLHelper
+
+    helper.cpuInfoPath should equal("p1")
+    helper.msrPath should equal("p2")
+  }
+
+  "The method getRAPLEnergy in the RAPLHelper" should "return an estimation of CPU energy consumption" in {
     val helper = new RAPLHelper {
       override lazy val msrFile =  Some(new FileInputStream(s"${basepath}dev/cpu/0/msr").getChannel)
     }

@@ -355,7 +355,7 @@ object Sampling {
 
   def apply(outputPath: String, configuration: SamplingConfiguration, libpfmHelper: LibpfmHelper): Sampling = {
     libpfmHelper.init()
-    powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(libpfmHelper, configuration.events)))
+    powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(None, libpfmHelper, configuration.events)))
     externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule()))
     new Sampling(outputPath, configuration, libpfmHelper, powerapi.get, externalPMeter.get)
   }

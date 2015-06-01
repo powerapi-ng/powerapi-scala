@@ -32,7 +32,7 @@ import org.powerapi.core.FileHelper.using
 import org.powerapi.core.target.{All, Application, Process, Target, TargetUsageRatio}
 import org.powerapi.module.{Cache, CacheKey}
 import scala.collection.JavaConversions._
-import scala.sys.process._
+import scala.sys.process.stringSeqToProcess
 
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
@@ -161,7 +161,7 @@ trait OSHelper {
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LinuxHelper extends OSHelper with Configuration {
+class LinuxHelper extends Configuration(None) with OSHelper {
   private val log = LogManager.getLogger
 
   private val PSFormat = """^\s*(\d+)\s*""".r
@@ -172,7 +172,7 @@ class LinuxHelper extends OSHelper with Configuration {
    * This file allows to get all the cpu frequencies with the help of procfs and cpufreq_utils.
    */
   lazy val frequenciesPath = load { _.getString("powerapi.procfs.frequencies-path") } match {
-    case ConfigValue(path) if path.contains("%?core") => path
+    case ConfigValue(p) if p.contains("%?core") => p
     case _ => "/sys/devices/system/cpu/cpu%?core/cpufreq/scaling_available_frequencies"
   }
 
@@ -180,7 +180,7 @@ class LinuxHelper extends OSHelper with Configuration {
    * This file allows to get all threads associated to one PID with the help of the procfs.
    */
   lazy val taskPath = load { _.getString("powerapi.procfs.process-task-path") } match {
-    case ConfigValue(path) if path.contains("%?pid") => path
+    case ConfigValue(p) if p.contains("%?pid") => p
     case _ => "/proc/%?pid/task"
   }
 
@@ -189,7 +189,7 @@ class LinuxHelper extends OSHelper with Configuration {
    * Typically presents under /proc/stat.
    */
   lazy val globalStatPath = load { _.getString("powerapi.procfs.global-path") } match {
-    case ConfigValue(path) => path
+    case ConfigValue(p) => p
     case _ => "/proc/stat"
   }
 
@@ -198,7 +198,7 @@ class LinuxHelper extends OSHelper with Configuration {
    * Typically presents under /proc/[pid]/stat.
    */
   lazy val processStatPath = load { _.getString("powerapi.procfs.process-path") } match {
-    case ConfigValue(path) if path.contains("%?pid") => path
+    case ConfigValue(p) if p.contains("%?pid") => p
     case _ => "/proc/%?pid/stat"
   }
 
@@ -206,7 +206,7 @@ class LinuxHelper extends OSHelper with Configuration {
    * Time in state file, giving information about how many time CPU spent under each frequency.
    */
   lazy val timeInStatePath = load { _.getString("powerapi.sysfs.timeinstates-path") } match {
-    case ConfigValue(path) => path
+    case ConfigValue(p) => p
     case _ => "/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
   }
 
@@ -371,14 +371,14 @@ class LinuxHelper extends OSHelper with Configuration {
  *
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class SigarHelper extends OSHelper with Configuration {
+class SigarHelper extends Configuration(None) with OSHelper {
   private val log = LogManager.getLogger
 
   /**
    * Sigar native libraries
    */
   lazy val libNativePath = load { _.getString("powerapi.sigar.native-path") } match {
-    case ConfigValue(path) => path
+    case ConfigValue(p) => p
     case _ => "./lib"
   }
 

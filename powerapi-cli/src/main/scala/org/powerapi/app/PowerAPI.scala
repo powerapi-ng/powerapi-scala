@@ -26,12 +26,11 @@ import java.lang.management.ManagementFactory
 
 import org.powerapi.core.target.{Application, All, Process, Target}
 import org.powerapi.module.rapl.RAPLModule
-import org.powerapi.module.sigar.SigarModule
 import org.powerapi.reporter.{FileDisplay, JFreeChartDisplay, ConsoleDisplay}
 import org.powerapi.{PowerMonitoring, PowerMeter}
 import org.powerapi.core.power._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
-import org.powerapi.module.cpu.simple.CpuSimpleModule
+import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
 import org.powerapi.module.libpfm.{LibpfmHelper, LibpfmCoreProcessModule, LibpfmCoreModule}
 import org.powerapi.module.powerspy.PowerSpyModule
 import scala.concurrent.duration.DurationInt
@@ -45,7 +44,7 @@ import scala.sys.process.stringSeqToProcess
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
 object PowerAPI extends App {
-  val modulesR = """(cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl|sigar)(,(cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl|sigar))*""".r
+  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-process|powerspy|rapl))*""".r
   val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
   val durationR = """\d+""".r
   val pidR = """(\d+)""".r
@@ -111,14 +110,16 @@ object PowerAPI extends App {
       """
         |PowerAPI, Spirals Team
         |
-        |Build a software-defined power meter. Do not forget to configure correctly the modules (see the documentation).
+        |Build a software-defined power meter. Do not forget to configure correctly the modules.
+        |You can use different settings per software-defined power meter for some modules by using the optional prefix option.
+        |Please, refer to the documentation inside the GitHub wiki for further details.
         |
-        |usage: ./powerapi modules [cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-proces|powerspy|rapl,...] \
+        |usage: ./powerapi modules [procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm-core|libpfm-core-proces|powerspy|rapl,...] *--prefix [name]* \
         |                          monitor --frequency [ms] --targets [pid, ..., app, ...|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart] \
         |                  duration [s]
         |
-        |example: ./powerapi modules cpu-simple monitor --frequency 1000 --targets firefox --agg max --console monitor --targets chrome --agg max --console \
-        |                    modules powerspy monitor --frequency 1000 --targets all --agg max --console \
+        |example: ./powerapi modules procfs-cpu-simple monitor --frequency 1000 --targets firefox,chrome --agg max --console \
+        |                    modules powerspy --prefix powermeter2 monitor --frequency 1000 --targets all --agg max --console \
         |                    duration 30
       """.stripMargin
 
@@ -127,9 +128,13 @@ object PowerAPI extends App {
 
   def cli(options: List[Map[Symbol, Any]], duration: String, args: List[String]): (List[Map[Symbol, Any]], String) = args match {
     case Nil => (options, duration)
+    case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validateModules(value) => {
+      val (remainingArgs, monitors) = cliMonitorsSubcommand(List(), Map(), tail.map(_.toString))
+      cli(options :+ Map('modules -> value, 'prefix -> Some(prefix), 'monitors -> monitors), duration, remainingArgs)
+    }
     case "modules" :: value :: "monitor" :: tail if validateModules(value) => {
       val (remainingArgs, monitors) = cliMonitorsSubcommand(List(), Map(), tail.map(_.toString))
-      cli(options :+ Map('modules -> value, 'monitors -> monitors), duration, remainingArgs)
+      cli(options :+ Map('modules -> value, 'prefix -> None, 'monitors -> monitors), duration, remainingArgs)
     }
     case "duration" :: value :: tail if validateDuration(value) => cli(options, value, tail)
     case option :: tail => println(s"unknown cli option $option"); sys.exit(1)
@@ -137,6 +142,7 @@ object PowerAPI extends App {
 
   def cliMonitorsSubcommand(options: List[Map[Symbol, Any]], currentMonitor: Map[Symbol, Any], args: List[String]): (List[String], List[Map[Symbol, Any]]) = args match {
     case Nil => (List(), options :+ currentMonitor)
+    case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validateModules(value) => (List("modules", value, "--prefix", prefix, "monitor") ++ tail, options :+ currentMonitor)
     case "modules" :: value :: "monitor" :: tail if validateModules(value) => (List("modules", value, "monitor") ++ tail, options :+ currentMonitor)
     case "duration" :: value :: tail if validateDuration(value) => (List("duration", value) ++ tail, options :+ currentMonitor)
     case "monitor" :: tail => cliMonitorsSubcommand(options :+ currentMonitor, Map(), tail)
@@ -155,7 +161,7 @@ object PowerAPI extends App {
   }
 
   else {
-    if(!System.getProperty("os.name").startsWith("Windows")) Seq("bash", "scripts/system.bash").!
+    if(System.getProperty("os.name").toLowerCase.indexOf("nix") >= 0 || System.getProperty("os.name").toLowerCase.indexOf("nux") >= 0) Seq("bash", "scripts/system.bash").!
     val (configuration, duration) = cli(List(), "3600", args.toList)
 
     var libpfmHelper: Option[LibpfmHelper] = None
@@ -166,17 +172,15 @@ object PowerAPI extends App {
     }
 
     for(powerMeterConf <- configuration) {
-      val modulesStr = powerMeterConf('modules).toString
-
-      val modules = (for(module <- modulesStr.split(",")) yield {
+      val modules = (for(module <- powerMeterConf('modules).toString.split(",")) yield {
         module match {
-          case "cpu-simple" => CpuSimpleModule()
+          case "procfs-cpu-simple" => ProcFSCpuSimpleModule()
+          case "sigar-cpu-simple" => SigarCpuSimpleModule()
           case "cpu-dvfs" => CpuDvfsModule()
-          case "libpfm-core" => LibpfmCoreModule(libpfmHelper.get)
-          case "libpfm-core-process" => LibpfmCoreProcessModule(libpfmHelper.get)
+          case "libpfm-core" => LibpfmCoreModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
+          case "libpfm-core-process" => LibpfmCoreProcessModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
           case "powerspy" => PowerSpyModule()
           case "rapl" => RAPLModule()
-          case "sigar" => SigarModule()
         }
       }).toSeq
 

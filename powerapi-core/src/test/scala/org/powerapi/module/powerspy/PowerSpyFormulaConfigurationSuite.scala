@@ -41,6 +41,7 @@ class PowerSpyFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(sy
 
   "The PowerSpyFormulaConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new PowerSpyFormulaConfiguration {}
+
     configuration.idlePower should equal(87.50.W)
   }
 }

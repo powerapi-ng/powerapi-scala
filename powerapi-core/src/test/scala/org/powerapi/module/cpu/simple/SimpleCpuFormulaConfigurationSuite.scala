@@ -40,6 +40,7 @@ class SimpleCpuFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(s
 
   "The CpuFormulaConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new CpuFormulaConfiguration {}
+
     configuration.tdp should equal(120)
     configuration.tdpFactor should equal(0.80)
   }

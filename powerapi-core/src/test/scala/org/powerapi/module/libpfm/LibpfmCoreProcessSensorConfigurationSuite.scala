@@ -39,7 +39,10 @@ class LibpfmCoreProcessSensorConfigurationSuite(system: ActorSystem) extends Uni
   }
 
   "The LibpfmCoreProcessSensorConfiguration" should "read correctly the values from a resource file" in {
-    val configuration = new LibpfmCoreProcessSensorConfiguration {}
-    configuration.inDepth should equal(true)
+    val configuration1 = new LibpfmCoreProcessSensorConfiguration(None)
+    val configuration2 = new LibpfmCoreProcessSensorConfiguration(Some("libpfm"))
+
+    configuration1.inDepth should equal(true)
+    configuration2.inDepth should equal(false)
   }
 }

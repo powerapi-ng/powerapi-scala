@@ -22,8 +22,6 @@
  */
 package org.powerapi.module.cpu.simple
 
-
-
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.gracefulStop
 import akka.testkit.{TestActorRef, TestKit}
@@ -35,7 +33,6 @@ import org.powerapi.core.{OSHelper, Thread, TimeInStates}
 import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process, Target, TargetUsageRatio}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.MonitorChannel.publishMonitorTick
-import org.powerapi.module.{Cache, CacheKey}
 import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 import org.powerapi.module.cpu.UsageMetricsChannel.subscribeSimpleUsageReport
 import scala.concurrent.duration.DurationInt
@@ -68,13 +65,13 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val cpuSensor = TestActorRef(Props(classOf[CpuSensor], eventBus, new OSHelper {
       import org.powerapi.core.GlobalCpuTime
 
-      private var targetUsage = Map[Target, Double](
+      private val targetUsage = Map[Target, Double](
         Process(1) -> processRatio1,
         Process(2) -> processRatio2,
         Process(3) -> appRatio
       )
 
-      private var globalUsages = allRatio
+      private val globalUsages = allRatio
 
       def getCPUFrequencies: Set[Long] = Set()
 

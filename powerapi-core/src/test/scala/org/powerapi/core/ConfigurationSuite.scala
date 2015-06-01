@@ -28,12 +28,12 @@ import com.typesafe.config.{Config, ConfigException}
 import org.powerapi.UnitTest
 import scala.collection.JavaConversions
 
-class ConfigurationMock extends Configuration {
-  val existingKey = load { _.getString("configuration-suite.key") }
-  val wrongKey = load { _.getString("configuration-suite.wrong-key") }
+class ConfigurationMock(prefix: Option[String]) extends Configuration(prefix) {
+  val existingKey = load { _.getString(s"${configurationPath}configuration-suite.key") }
+  val wrongKey = load { _.getString(s"${configurationPath}configuration-suite.wrong-key") }
   val map = load {
     conf => {
-      (for(item: Config <- JavaConversions.asScalaBuffer(conf.getConfigList("configuration-suite.hash-map")))
+      (for(item: Config <- JavaConversions.asScalaBuffer(conf.getConfigList(s"${configurationPath}configuration-suite.hash-map")))
         yield (item.getString("key"), item.getString("value"))).toMap
     }
   }
@@ -47,25 +47,63 @@ class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
     TestKit.shutdownActorSystem(system)
   }
 
-  val config = new ConfigurationMock
+  val simpleConfig = new ConfigurationMock(None)
+  val prefixConfig1 = new ConfigurationMock(Some("prefix"))
+  val prefixConfig2 = new ConfigurationMock(Some("prefix2."))
 
-  "A ConfigurationMock class" should "read a value from a configuration file" in {
-    config.existingKey match {
+  "A Configuration class" can "be prefixed to search configuration values" in {
+    simpleConfig.configurationPath should equal("")
+    prefixConfig1.configurationPath should equal("prefix.")
+    prefixConfig2.configurationPath should equal("prefix2.")
+  }
+
+  it should "read a value from a configuration file" in {
+    simpleConfig.existingKey match {
       case ConfigValue(item) => item should equal("item")
+      case _ => fail()
+    }
+
+    prefixConfig1.existingKey match {
+      case ConfigValue(item) => item should equal("prefix-config1-item")
+      case _ => fail()
+    }
+
+    prefixConfig2.existingKey match {
+      case ConfigValue(item) => item should equal("prefix-config2-item")
       case _ => fail()
     }
   }
 
   it should "return the exception if the value asked does not exist" in {
-    config.wrongKey match {
+    simpleConfig.wrongKey match {
+      case ConfigError(ex) => ex shouldBe a [ConfigException]
+      case _ => fail()
+    }
+
+    prefixConfig1.wrongKey match {
+      case ConfigError(ex) => ex shouldBe a [ConfigException]
+      case _ => fail()
+    }
+
+    prefixConfig2.wrongKey match {
       case ConfigError(ex) => ex shouldBe a [ConfigException]
       case _ => fail()
     }
   }
 
   it can "read complex values" in {
-    config.map match {
+    simpleConfig.map match {
       case ConfigValue(map) => map should contain theSameElementsAs Map("item1" -> "value1", "item2" -> "value2")
+      case _ => fail()
+    }
+
+    prefixConfig1.map match {
+      case ConfigValue(map) => map should contain theSameElementsAs Map("prefix-config1-item1" -> "prefix-config1-value1")
+      case _ => fail()
+    }
+
+    prefixConfig2.map match {
+      case ConfigValue(map) => map should contain theSameElementsAs Map("prefix-config2-item2" -> "prefix-config2-value2")
       case _ => fail()
     }
   }

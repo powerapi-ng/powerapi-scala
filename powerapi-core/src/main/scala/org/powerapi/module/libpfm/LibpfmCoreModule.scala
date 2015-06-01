@@ -35,15 +35,14 @@ class LibpfmCoreModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: M
   lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
 }
 
-object LibpfmCoreModule extends LibpfmCoreSensorConfiguration with LibpfmCoreCyclesFormulaConfiguration {
-  lazy val libpfmHelper = new LibpfmHelper
+object LibpfmCoreModule {
+  def apply(prefixConfig: Option[String] = None, libpfmHelper: LibpfmHelper): LibpfmCoreModule = {
+    val coreSensorConfig = new LibpfmCoreSensorConfiguration(prefixConfig)
+    val coreCyclesFormulaConfig = new LibpfmCoreCyclesFormulaConfiguration(prefixConfig)
 
-  def apply(): LibpfmCoreModule = {
-    new LibpfmCoreModule(libpfmHelper, timeout, topology, configuration, events, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
-  }
-
-  def apply(libpfmHelper: LibpfmHelper): LibpfmCoreModule = {
-    new LibpfmCoreModule(libpfmHelper, timeout, topology, configuration, events, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
+    new LibpfmCoreModule(libpfmHelper, coreSensorConfig.timeout, coreSensorConfig.topology, coreSensorConfig.configuration,
+      coreSensorConfig.events, coreCyclesFormulaConfig.cyclesThreadName, coreCyclesFormulaConfig.cyclesRefName,
+      coreCyclesFormulaConfig.formulae, coreCyclesFormulaConfig.samplingInterval)
   }
 }
 
@@ -52,22 +51,16 @@ class LibpfmCoreSensorModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topol
   lazy val underlyingFormulaeClasses = Seq()
 }
 
-object LibpfmCoreSensorModule extends LibpfmCoreSensorConfiguration {
-  lazy val libpfmHelper = new LibpfmHelper
+object LibpfmCoreSensorModule {
+  def apply(prefixConfig: Option[String] = None, libpfmHelper: LibpfmHelper): LibpfmCoreSensorModule = {
+    val coreSensorConfig = new LibpfmCoreSensorConfiguration(prefixConfig)
 
-  def apply(): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
+    new LibpfmCoreSensorModule(libpfmHelper, coreSensorConfig.timeout, coreSensorConfig.topology, coreSensorConfig.configuration, coreSensorConfig.events)
   }
 
-  def apply(libpfmHelper: LibpfmHelper): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
-  }
+  def apply(prefixConfig: Option[String], libpfmHelper: LibpfmHelper, events: Set[String]): LibpfmCoreSensorModule = {
+    val coreSensorConfig = new LibpfmCoreSensorConfiguration(prefixConfig)
 
-  def apply(events: Set[String]): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
-  }
-
-  def apply(libpfmHelper: LibpfmHelper, events: Set[String]): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
+    new LibpfmCoreSensorModule(libpfmHelper, coreSensorConfig.timeout, coreSensorConfig.topology, coreSensorConfig.configuration, events)
   }
 }
