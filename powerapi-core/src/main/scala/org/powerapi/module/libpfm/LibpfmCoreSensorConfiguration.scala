@@ -39,7 +39,7 @@ import scala.concurrent.duration.DurationLong
 trait LibpfmCoreSensorConfiguration extends Configuration {
   lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
     case ConfigValue(value) => Timeout(value.milliseconds)
-    case _ => Timeout(1l.seconds)
+    case _ => Timeout(15l.seconds)
   }
 
   lazy val topology: Map[Int, Set[Int]] = load { conf =>
