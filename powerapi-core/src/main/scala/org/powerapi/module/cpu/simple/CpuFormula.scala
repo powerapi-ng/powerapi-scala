@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,12 +22,11 @@
  */
 package org.powerapi.module.cpu.simple
 
-import org.powerapi.core.{Configuration, MessageBus}
+import org.powerapi.core.MessageBus
 import org.powerapi.core.power._
 import org.powerapi.module.FormulaComponent
 import org.powerapi.module.cpu.UsageMetricsChannel.{subscribeSimpleUsageReport, UsageReport}
 import org.powerapi.module.PowerChannel.publishRawPowerReport
-
 
 /**
  * Implements a CpuFormula by making the ratio between maximum CPU power (obtained by multiplying

@@ -1,10 +1,11 @@
 <img src="https://rawgit.com/Spirals-Team/powerapi/master/resources/logo/PowerAPI-logo.png" alt="Powerapi" width="300px">
 
+[![Join the chat at https://gitter.im/Spirals-Team/powerapi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Spirals-Team/powerapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![OSS Licence](http://img.shields.io/badge/license-AGPLv3-532553.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg)](https://travis-ci.org/Spirals-Team/powerapi)
-[![Codacy Badge](https://www.codacy.com/project/badge/e0b0e331ca414250a7240b6be74aaa7b)](https://www.codacy.com/public/maximecolmant/powerapi)
-
-[![Join the chat at https://gitter.im/Spirals-Team/powerapi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Spirals-Team/powerapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Coverage Status](https://coveralls.io/repos/Spirals-Team/powerapi/badge.svg)](https://coveralls.io/r/Spirals-Team/powerapi)
+[![Codacy Badge](https://www.codacy.com/project/badge/31f7762213c340fbb5fe1463a5b871d4)](https://www.codacy.com/app/mcolmant/powerapi)
 
 PowerAPI is a middleware toolkit for building software-defined power meters.
 Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
@@ -45,7 +46,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Akka](http://akka.io) (version 2.3.11 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
 * [Typesafe Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
 * [Apache log4j2](http://logging.apache.org/log4j/2.x) (version 2.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
-* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.0.1 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
+* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.2 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
 * [BridJ](https://code.google.com/p/bridj/) (version 0.7.0 under [3-clause BSD license](https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE)), for system or C calls.
 * [perfmon2](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree) (version 4.6.0 under [MIT license](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING)), for accessing hardware performance counters.
 * [JFreeChart](http://www.jfree.org/jfreechart/) (version 1.0.19 under [LGPL license](https://www.gnu.org/licenses/lgpl.html)), for creation of interactive and animated charts.

@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,7 +22,7 @@
  */
 package org.powerapi.core.power
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import org.apache.logging.log4j.LogManager
 import RawPower._
 

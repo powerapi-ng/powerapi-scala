@@ -23,7 +23,6 @@
 package org.powerapi.app
 
 import java.lang.management.ManagementFactory
-
 import org.powerapi.core.target.{Application, All, Process, Target}
 import org.powerapi.module.rapl.RAPLModule
 import org.powerapi.reporter.{FileDisplay, JFreeChartDisplay, ConsoleDisplay}

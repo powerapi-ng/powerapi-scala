@@ -1,9 +1,9 @@
-/**
+/*
  * This software is licensed under the GNU Affero General Public License, quoted below.
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with PowerAPI.
-
+ *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
 package org.powerapi.core

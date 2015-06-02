@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,6 @@
 package org.powerapi.module
 
 import java.util.UUID
-
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
 import org.powerapi.UnitTest
