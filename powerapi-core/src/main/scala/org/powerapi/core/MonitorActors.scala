@@ -125,7 +125,7 @@ class MonitorChild(eventBus: MessageBus,
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class Monitors(eventBus: MessageBus) extends Supervisor with Configuration  {
+class Monitors(eventBus: MessageBus) extends Supervisor {
   
   override def preStart(): Unit = {
     subscribeMonitorsChannel(eventBus)(self)

@@ -42,8 +42,14 @@ case class ConfigError[T](exception: Throwable) extends ConfigResult[T]
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait Configuration {
+abstract class Configuration(prefix: Option[String] = None) {
   private lazy val conf = ConfigFactory.load()
+
+  val configurationPath = prefix match {
+    case Some(p) if p.endsWith(".") => s"$p"
+    case Some(p) => s"$p."
+    case None => ""
+  }
 
   /**
    * Method to load a value from a configuration file.

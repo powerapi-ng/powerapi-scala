@@ -44,6 +44,17 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   val basepath = getClass.getResource("/").getPath
 
+  "The LinuxHelper" should "be able to read configuration parameters" in {
+    val linuxHelper = new LinuxHelper
+
+    linuxHelper.frequenciesPath should equal("p1/%?core")
+    linuxHelper.taskPath should equal("p2/%?pid")
+    linuxHelper.globalStatPath should equal("p3")
+    linuxHelper.processStatPath should equal("p4/%?pid")
+    linuxHelper.timeInStatePath should equal("p5")
+    linuxHelper.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+  }
+
   "The method getCPUFrequencies in the LinuxHelper" should "return the list of available frequencies" in {
     val helper = new LinuxHelper {
       override lazy val frequenciesPath = s"${basepath}sys/devices/system/cpu/cpu%?core/cpufreq/scaling_available_frequencies"
@@ -214,8 +225,14 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
     (timesLeft - timesRight) should equal(TimeInStates(Map(1l -> 9l, 2l -> 18l, 3l -> 27l, 4l -> 15l)))
   }
-  
-  "The Sigar helper funtions" should "return consistent value" in {
+
+  "The SigarHelper" should "be able to read configuration parameters" in {
+    val sigarHelper = new SigarHelper
+
+    sigarHelper.libNativePath should equal("p2")
+  }
+
+  "The SigarHelper methods" should "return correct values" in {
     val helper = new SigarHelper {
       override lazy val libNativePath = "./powerapi-core/lib"
     }

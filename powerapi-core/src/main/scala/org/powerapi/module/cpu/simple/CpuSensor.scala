@@ -57,9 +57,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
     publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), monitorTick.tick)(eventBus)
   }
 
-  def monitorStopped(msg: MonitorStop): Unit = {
-  }
+  def monitorStopped(msg: MonitorStop): Unit = {}
 
-  def monitorAllStopped(msg: MonitorStopAll): Unit = {
-  }
+  def monitorAllStopped(msg: MonitorStopAll): Unit = {}
 }

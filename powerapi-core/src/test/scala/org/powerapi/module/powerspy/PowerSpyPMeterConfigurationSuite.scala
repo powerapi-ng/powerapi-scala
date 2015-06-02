@@ -40,6 +40,7 @@ class PowerSpyPMeterConfigurationSuite(system: ActorSystem) extends UnitTest(sys
 
   "The PowerSpyPMeterConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new PowerSpyPMeterConfiguration {}
+
     configuration.mac should equal("00:0B:CE:07:1E:9B")
     configuration.interval should equal(250.milliseconds)
   }

@@ -31,7 +31,7 @@ import org.powerapi.core.power._
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait PowerSpyFormulaConfiguration extends Configuration {
-  lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
+  lazy val idlePower = load { _.getDouble(s"powerapi.hardware.idle-power") } match {
     case ConfigValue(idle) => idle.W
     case _ => 0.W
   }

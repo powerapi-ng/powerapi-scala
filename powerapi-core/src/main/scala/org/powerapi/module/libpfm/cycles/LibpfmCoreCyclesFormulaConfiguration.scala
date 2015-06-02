@@ -35,7 +35,7 @@ import scala.concurrent.duration.FiniteDuration
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait LibpfmCoreCyclesFormulaConfiguration extends Configuration {
+class LibpfmCoreCyclesFormulaConfiguration(prefix: Option[String]) extends Configuration(prefix) {
   lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.formulae.cycles-thread") } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:THREAD_P"
@@ -47,14 +47,14 @@ trait LibpfmCoreCyclesFormulaConfiguration extends Configuration {
   }
 
   lazy val formulae: Map[Double, List[Double]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.libpfm.formulae.cycles"))
+    (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.libpfm.formulae.cycles"))
     yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
   }
 
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
+  lazy val samplingInterval: FiniteDuration = load { _.getDuration(s"${configurationPath}powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
   }

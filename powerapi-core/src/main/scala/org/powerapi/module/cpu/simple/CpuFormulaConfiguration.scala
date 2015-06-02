@@ -45,7 +45,7 @@ trait CpuFormulaConfiguration extends Configuration {
    *
    * @see [1], JouleSort: A Balanced Energy-Efﬁciency Benchmark, by Rivoire et al.
    */
-  lazy val tdpFactor = load { _.getDouble("powerapi.cpu.tdp-factor") } match {
+  lazy val tdpFactor = load { _.getDouble(s"powerapi.cpu.tdp-factor") } match {
     case ConfigValue(value) => value
     case _ => 0.7
   }

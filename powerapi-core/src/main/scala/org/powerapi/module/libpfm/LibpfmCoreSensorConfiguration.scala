@@ -36,7 +36,7 @@ import scala.concurrent.duration.DurationLong
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait LibpfmCoreSensorConfiguration extends Configuration {
+class LibpfmCoreSensorConfiguration(prefix: Option[String]) extends Configuration(prefix) {
   lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
     case ConfigValue(value) => Timeout(value.milliseconds)
     case _ => Timeout(15l.seconds)
@@ -58,13 +58,13 @@ trait LibpfmCoreSensorConfiguration extends Configuration {
    */
   lazy val configuration =
     BitSet(
-      (load { _.getIntList("powerapi.libpfm.configuration") } match {
+      (load { _.getIntList(s"${configurationPath}powerapi.libpfm.configuration") } match {
         case ConfigValue(values) => values.map(_.toInt).toList
         case _ => List[Int]()
       }): _*
     )
 
-  lazy val events = load { _.getStringList("powerapi.libpfm.events") } match {
+  lazy val events = load { _.getStringList(s"${configurationPath}powerapi.libpfm.events") } match {
     case ConfigValue(values) => values.map(_.toString).toSet
     case _ => Set[String]()
   }
