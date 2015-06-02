@@ -1,10 +1,11 @@
 <img src="https://rawgit.com/Spirals-Team/powerapi/master/resources/logo/PowerAPI-logo.png" alt="Powerapi" width="300px">
 
+[![Join the chat at https://gitter.im/Spirals-Team/powerapi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Spirals-Team/powerapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![OSS Licence](http://img.shields.io/badge/license-AGPLv3-532553.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg)](https://travis-ci.org/Spirals-Team/powerapi)
-[![Codacy Badge](https://www.codacy.com/project/badge/e0b0e331ca414250a7240b6be74aaa7b)](https://www.codacy.com/public/maximecolmant/powerapi)
-
-[![Join the chat at https://gitter.im/Spirals-Team/powerapi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Spirals-Team/powerapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Coverage Status](https://coveralls.io/repos/Spirals-Team/powerapi/badge.svg)](https://coveralls.io/r/Spirals-Team/powerapi)
+[![Codacy Badge](https://www.codacy.com/project/badge/31f7762213c340fbb5fe1463a5b871d4)](https://www.codacy.com/app/mcolmant/powerapi)
 
 PowerAPI is a middleware toolkit for building software-defined power meters.
 Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
@@ -34,18 +35,24 @@ When submitting code, please make every effort to follow existing conventions an
 * **[Runtime Monitoring of Software Energy Hotspots](https://hal.inria.fr/hal-00715331)**: A. Noureddine, A. Bourdon, R. Rouvoy, L. Seinturier. *International Conference on Automated Software Engineering* (ASE), September 2012, Essen, Germany. pp.160-169.
 * **[A Preliminary Study of the Impact of Software Engineering on GreenIT](https://hal.inria.fr/hal-00681560)**: A. Noureddine, A. Bourdon, R. Rouvoy, L. Seinturier. *International Workshop on Green and Sustainable Software* (GREENS), June 2012, Zurich, Switzerland. pp.21-27.
 
+## Use Cases
+PowerAPI is used in a variety of projects to address key challenges of GreenIT:
+* [BitWatts](http://bitwatts.powerapi.org) provides process-level power estimation of applications running in virtual machines
+* [Web Energy Archive](http://webenergyarchive.com) ranks popular websites based on the energy footpring they imposes to browsers
+* [Greenspector](http://greenspector.com) optimises the power consumption of software by identifying potential energy leaks in the source code.
 
 ## Acknowledgments
-We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.4 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
-* [Akka](http://akka.io) (version 2.3.6 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
-* [Typesage Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
-* [Apache log4j2](http://logging.apache.org/log4j/2.x) (version 2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
-* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.0.1 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
-* [BridJ](https://code.google.com/p/bridj/) (version 0.6.2 under [3-clause BSD license](https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE)), for system or C calls.
+We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.6 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
+* [Akka](http://akka.io) (version 2.3.11 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
+* [Typesafe Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
+* [Apache log4j2](http://logging.apache.org/log4j/2.x) (version 2.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
+* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.2 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
+* [BridJ](https://code.google.com/p/bridj/) (version 0.7.0 under [3-clause BSD license](https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE)), for system or C calls.
 * [perfmon2](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree) (version 4.6.0 under [MIT license](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING)), for accessing hardware performance counters.
 * [JFreeChart](http://www.jfree.org/jfreechart/) (version 1.0.19 under [LGPL license](https://www.gnu.org/licenses/lgpl.html)), for creation of interactive and animated charts.
 * [Scala IO](http://jesseeichar.github.io/scala-io-doc/0.4.3/index.html#!/overview) (version 0.4.3 under [3-clause BSD license](http://www.scala-lang.org/license.html)), for an extensions of IO.
-* [Saddle](http://saddle.github.io) (version 1.3.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for data manipulation.
+* [Saddle](http://saddle.github.io/) (version 1.3.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for data manipulation.
+* [Sigar](https://support.hyperic.com/display/SIGAR/Home) (version 1.6.5 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a portable interface for gathering system information.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.

@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -89,12 +89,14 @@ object PerformanceCounterChannel extends Channel {
 
   /**
    * Use to format the names.
+   *
+   * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its name otherwise.
    */
   def formatLibpfmCoreSensorChildName(core: Int, event: String, muid: UUID): String = {
-    s"libpfm-$core-${event.toLowerCase().replace('_', '-').replace(':', '-')}-$muid"
+    s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_"
   }
 
   def formatLibpfmCoreProcessSensorChildName(core: Int, event: String, muid: UUID, identifier: Int): String = {
-    s"libpfm-$core-${event.toLowerCase().replace('_', '-').replace(':', '-')}-$muid-$identifier"
+    s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_${identifier}_"
   }
 }

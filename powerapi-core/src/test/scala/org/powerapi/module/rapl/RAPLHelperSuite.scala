@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,6 @@
 package org.powerapi.module.rapl
 
 import java.io.FileInputStream
-
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
@@ -42,7 +41,14 @@ class RAPLHelperSuite(system: ActorSystem) extends UnitTest(system) {
 
   val basepath = getClass.getResource("/").getPath
 
-  "The method getRAPLEnergy in the LinuxHelper" should "return an estimation of CPU energy consumption" in {
+  "The RAPLHelper" should "be able to read configuration parameters (with or without prefix parameter)" in {
+    val helper = new RAPLHelper
+
+    helper.cpuInfoPath should equal("p1")
+    helper.msrPath should equal("p2")
+  }
+
+  "The method getRAPLEnergy in the RAPLHelper" should "return an estimation of CPU energy consumption" in {
     val helper = new RAPLHelper {
       override lazy val msrFile =  Some(new FileInputStream(s"${basepath}dev/cpu/0/msr").getChannel)
     }

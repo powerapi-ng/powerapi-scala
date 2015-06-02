@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -104,10 +104,12 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => GlobalCpuTime(0, 0)
         }
       }
+      
+      def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = TargetUsageRatio(0.0)
+
+      def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
-      
-      def getRAPLEnergy: Double = 0.0
     }, 90.W))(system)
 
     val tickMock = ClockTick("test", 25.milliseconds)

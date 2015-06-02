@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,6 +22,7 @@
  */
 package org.powerapi.reporter
 
+import java.util.UUID
 import org.powerapi.PowerDisplay
 import org.powerapi.core.power.Power
 import org.powerapi.core.target.Target
@@ -34,8 +35,8 @@ import org.powerapi.core.target.Target
  */
 class ConsoleDisplay extends PowerDisplay {
 
-  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    println(s"timestamp=$timestamp;target=${targets.mkString(";")};devices=${devices.mkString(",")};power=${power.toWatts}")
+  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+    println(s"muid=$muid;timestamp=$timestamp;target=${targets.mkString(";")};devices=${devices.mkString(",")};power=${power.toWatts}")
   }
 }
 

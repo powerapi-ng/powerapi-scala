@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,12 +31,11 @@ import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.{OSHelper, Thread, TimeInStates}
-import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process}
+import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process, TargetUsageRatio}
 import org.powerapi.core.MonitorChannel.publishMonitorTick
 import org.powerapi.module.CacheKey
 import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
 import org.powerapi.module.cpu.UsageMetricsChannel.subscribeDvfsUsageReport
-
 import scala.concurrent.duration.DurationInt
 
 class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
@@ -69,6 +68,10 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       def getProcessCpuTime(process: Process): Option[Long] = None
 
       def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
+      
+      def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = TargetUsageRatio(0.0)
+
+      def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = {
         times.headOption match {
@@ -79,8 +82,6 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => TimeInStates(Map())
         }
       }
-      
-      def getRAPLEnergy: Double = 0.0
     }), "dvfs-CpuSensor1")(system)
 
     val muid = UUID.randomUUID()
@@ -141,6 +142,10 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       def getProcessCpuTime(process: Process): Option[Long] = None
 
       def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
+      
+      def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = TargetUsageRatio(0.0)
+
+      def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = {
         times.headOption match {
@@ -151,8 +156,6 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => TimeInStates(Map())
         }
       }
-      
-      def getRAPLEnergy: Double = 0.0
     }), "dvfs-CpuSensor2")(system)
 
     val muid = UUID.randomUUID()

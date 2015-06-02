@@ -22,6 +22,8 @@
  */
 package org.powerapi
 
+import java.util.UUID
+
 import akka.actor.{ ActorRef, ActorRefFactory, ActorSystem, Props }
 import akka.event.LoggingReceive
 import akka.pattern.{ ask, after, gracefulStop }
@@ -46,10 +48,10 @@ object PowerMeterMessages {
 /**
  * Main configuration.
  */
-trait PowerMeterConfiguration extends Configuration {
+class PowerMeterConfiguration extends Configuration(None) {
   lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
     case ConfigValue(value) => Timeout(value.milliseconds)
-    case _ => Timeout(1l.seconds)
+    case _ => Timeout(15l.seconds)
   }
 }
 
@@ -99,12 +101,12 @@ class PowerMeterActor(eventBus: MessageBus, modules: Seq[PowerModule], timeout: 
 }
 
 /**
- * Implements the main functionalities for configuring a <i>Software-Defined Power Meter</i>.
+ * Implements the main features for configuring a <i>Software-Defined Power Meter</i>.
  *
  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configuration with PowerMeterConfiguration {
+class PowerMeter(system: ActorSystem, modules: Seq[PowerModule]) extends PowerMeterConfiguration {
   private val eventBus = new MessageBus
   private val powerMeterActor = system.actorOf(Props(classOf[PowerMeterActor], eventBus, modules, timeout))
   
@@ -145,18 +147,18 @@ class PowerMeter(modules: Seq[PowerModule], system: ActorSystem) extends Configu
 }
 
 object PowerMeter {
-  lazy val system = ActorSystem(s"PowerMeter-${System.nanoTime()}")
+  lazy val system = ActorSystem(s"PowerMeter-${System.nanoTime}")
   
   /**
    * Loads a specific power module as a tuple (sensor,formula).
    *
-   * Example: `PowerMeter.load(PowerSpyModule, system)`
+   * Example: `PowerMeter.loadModule(PowerSpyModule)`
    *
-   * @param modules: the list of power modules to be loaded within the PowerMeter.
+   * @param modules: PowerModule to be loaded within the PowerMeter.
    * @return the resulting instance of the requested power meter.
    */
   def loadModule(modules: PowerModule*): PowerMeter = {
-    new PowerMeter(modules, system)
+    new PowerMeter(system, modules)
   }
 }
 
@@ -239,5 +241,5 @@ trait PowerDisplay {
   /**
    * Displays data from power reports.
    */
-  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
+  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
 }

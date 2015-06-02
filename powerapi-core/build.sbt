@@ -1,27 +1,29 @@
-import SonatypeKeys._
-
-sonatypeSettings
-
 name := "powerapi-core"
 
 organization := "org.powerapi"
 
+resolvers ++= Seq(
+  "JBoss Thirdparty Uploads" at "https://repository.jboss.org/nexus/content/repositories/thirdparty-uploads/"
+)
+
 // App
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.6",
+  "com.typesafe.akka" %% "akka-actor" % "2.3.11",
   "com.typesafe" % "config" % "1.2.1",
-  "fr.inria.powerspy" % "powerspy-core_2.11" % "1.1",
-  "com.nativelibs4java" % "bridj" % "0.6.2",
+  "fr.inria.powerspy" % "powerspy-core_2.11" % "1.2",
+  "com.nativelibs4java" % "bridj" % "0.7.0",
   "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
   "org.jfree" % "jfreechart" % "1.0.19",
-  "org.scala-saddle" %% "saddle-core" % "1.3.3"
+  "org.scala-saddle" %% "saddle-core" % "1.3.3",
+  "org.hyperic" % "sigar" % "1.6.5.132"
 )
 
 // Tests
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
-  "org.scalatest" %% "scalatest" % "2.2.2" % "test"
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.11" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.5" % "test",
+  "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2" % "test"
 )
 
 startYear := Some(2014)
@@ -39,7 +41,7 @@ pomExtra := {
     <developer>
       <id>mcolmant</id>
       <name>Maxime Colmant</name>
-      <url>http://researchers.lille.inria.fr/colmant/</url>
+      <url>http://mcolmant.github.io/</url>
     </developer>
     <developer>
       <id>rouvoy</id>

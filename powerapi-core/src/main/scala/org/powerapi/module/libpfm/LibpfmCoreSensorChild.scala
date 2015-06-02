@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -35,7 +35,7 @@ import scala.collection.BitSet
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configuration: BitSet) extends ActorComponent {
+class LibpfmCoreSensorChild(helper: LibpfmHelper, event: String, core: Int, tid: Option[Int], configuration: BitSet) extends ActorComponent {
   private var _fd: Option[Int] = None
 
   def fd: Option[Int] = {
@@ -45,10 +45,10 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
         case None => CID(core)
       }
 
-      LibpfmHelper.configurePC(identifier, configuration, event) match {
+      helper.configurePC(identifier, configuration, event) match {
         case Some(value: Int) => {
-          LibpfmHelper.resetPC(value)
-          LibpfmHelper.enablePC(value)
+          helper.resetPC(value)
+          helper.enablePC(value)
           _fd = Some(value)
         }
         case None => {
@@ -64,8 +64,8 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
   override def postStop(): Unit = {
     fd match {
       case Some(fdValue) => {
-        LibpfmHelper.disablePC(fdValue)
-        LibpfmHelper.closePC(fdValue)
+        helper.disablePC(fdValue)
+        helper.closePC(fdValue)
       }
       case _ => {}
     }
@@ -82,7 +82,7 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
   def collect(first: Boolean, old: Array[Long]): Unit = {
     fd match {
       case Some(fdValue) => {
-        val now = LibpfmHelper.readPC(fdValue)
+        val now = helper.readPC(fdValue)
 
         val scaledValue: Long = {
           if(first) {
@@ -90,7 +90,7 @@ class LibpfmCoreSensorChild(event: String, core: Int, tid: Option[Int], configur
           }
 
           else if(now(1) != old(1) && now(2) != old(2)) {
-            LibpfmHelper.scale(now, old) match {
+            helper.scale(now, old) match {
               case Some(value) => value
               case _ => 0l
             }

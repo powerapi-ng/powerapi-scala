@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -125,7 +125,7 @@ class MonitorChild(eventBus: MessageBus,
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class Monitors(eventBus: MessageBus) extends Supervisor with Configuration  {
+class Monitors(eventBus: MessageBus) extends Supervisor {
   
   override def preStart(): Unit = {
     subscribeMonitorsChannel(eventBus)(self)
@@ -140,16 +140,6 @@ class Monitors(eventBus: MessageBus) extends Supervisor with Configuration  {
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: MonitorStart => {
-      start(msg)
-      context.become(running)
-    }
-  } orElse default
-
-  /**
-   * Running state.
-   */
-  def running: Actor.Receive = LoggingReceive {
     case msg: MonitorStart => start(msg)
     case msg: MonitorAggFunction => setAggregatingFunction(msg)
     case msg: MonitorStop => stop(msg)
@@ -202,9 +192,10 @@ class Monitors(eventBus: MessageBus) extends Supervisor with Configuration  {
 }
 
 /**
- * This class is an interface for interacting directly with a MonitorChild actor.
+ * This class is an interface to interact with the event bus.
  */
 class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring {
+  private var reporters = Array[ActorRef]()
   val muid = UUID.randomUUID()
   
   def apply(aggregator: Seq[Power] => Power): this.type = {
@@ -214,6 +205,7 @@ class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring
   
   def to(output: PowerDisplay): this.type = {
     val reporterRef = system.actorOf(Props(classOf[ReporterComponent], output))
+    reporters :+= reporterRef
     subscribeAggPowerReport(muid)(eventBus)(reporterRef)
     this
   }
@@ -230,5 +222,7 @@ class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring
 
   def cancel(): Unit = {
     stopMonitor(muid)(eventBus)
+    reporters foreach system.stop
+    reporters = Array()
   }
 }

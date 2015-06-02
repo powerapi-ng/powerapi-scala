@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,167 +23,99 @@
 package org.powerapi.sampling
 
 import org.apache.logging.log4j.LogManager
-import org.saddle.{Frame, Mat, Vec}
+import org.joda.time.Period
+import org.saddle.{Vec, Frame}
 import org.saddle.io.CsvImplicits.frame2CsvWriter
-import scalax.io.LongTraversable
 import scalax.file.Path
 import scalax.file.PathMatcher.IsDirectory
+import scalax.io.LongTraversable
 
 /**
  * Process the data from the sampling directory and write the resulting csv files inside a directory.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class Processing(samplingDir: String, processingDir: String, baseFrequency: Double, maxFrequency: Double, separator: String, outputPowers: String, outputUnhaltedCycles: String, outputRefCycles: String)  {
+class Processing(samplingPath: String, processingPath: String, configuration: SamplingConfiguration) {
   private val log = LogManager.getLogger
 
   def run(): Unit = {
-    val maxCoefficient = maxFrequency.toDouble / baseFrequency
-    var frequencies = Set[Long]()
+    val begin = System.currentTimeMillis()
 
-    // Freq -> List[Vec(data)]
-    var powerData = Map[Long, List[Vec[Double]]]()
-    var unhaltedCycleData = Map[Long, List[Vec[Double]]]()
-    var refCycleData = Map[Long, List[Vec[Double]]]()
+    Path(processingPath, '/').deleteRecursively(force = true)
+    Path(processingPath, '/').createDirectory()
 
-    var data = Map[Double, Array[Double]]()
+    val frequencies = scala.collection.mutable.Set[Long]()
+    val data = scala.collection.mutable.Map[(Long, String), List[Vec[Double]]]()
 
     /**
      * Process sample files, keep the data in memory.
      */
-    for(samplePath <- Path(samplingDir, '/') ** IsDirectory) {
-      for(frequencyPath <- samplePath ** IsDirectory) {
+    for(samplePath <- Path(samplingPath, '/') ** IsDirectory) {
+      for (frequencyPath <- samplePath ** IsDirectory) {
         val frequency = frequencyPath.name.toLong
-        var powerLines = (frequencyPath / outputPowers).lines()
-        var unhaltedCycleLines = (frequencyPath / outputUnhaltedCycles).lines()
-        var refCycleLines = (frequencyPath / outputRefCycles).lines()
-
         frequencies += frequency
 
-        if(!powerData.contains(frequency)) {
-          powerData += frequency -> List()
-        }
-        if(!unhaltedCycleData.contains(frequency)) {
-          unhaltedCycleData += frequency -> List()
-        }
-        if(!refCycleData.contains(frequency)) {
-          refCycleData += frequency -> List()
-        }
+        for(eventPath <- frequencyPath ** "*.dat") {
+          val event = eventPath.name.replace(configuration.baseOutput, "").replace(".dat", "")
 
-        var index = 0
-        while(powerLines.nonEmpty) {
-          val powersSubset = powerLines.takeWhile(_ != separator)
-
-          powerData += frequency -> (powerData.get(frequency) match {
-            case Some(list) => list.lift(index) match {
-              case Some(vector) => list.updated(index, vector.concat(Vec[Double](powersSubset.filter(_ != "").map(_.toDouble).toList: _*)))
-              case _ => list :+ Vec(powersSubset.filter(_ != "").map(_.toDouble).toList: _*)
-            }
-            case _ => List(Vec(powersSubset.filter(_ != "").map(_.toDouble).toList: _*))
-          })
-
-          powerLines = powerLines.dropWhile(_ != separator) match {
-            case traversable if traversable.size > 1 => traversable.tail
-            case _ => LongTraversable[String]()
+          if (!data.contains(frequency, event)) {
+            data += (frequency, event) -> List()
           }
 
-          index += 1
-        }
+          var lines = eventPath.lines()
+          var index = 0
 
-        index = 0
-        while(unhaltedCycleLines.nonEmpty) {
-          val unhaltedCyclesSubset = unhaltedCycleLines.takeWhile(_ != separator)
+          while(lines.nonEmpty) {
+            val dataSubset = lines.takeWhile(_ != configuration.separator)
 
-          unhaltedCycleData += frequency -> (unhaltedCycleData.get(frequency) match {
-            case Some(list) => list.lift(index) match {
-              case Some(vector) => list.updated(index, vector.concat(Vec[Double](unhaltedCyclesSubset.filter(_ != "").map(_.toDouble).toList: _*)))
-              case _ => list :+ Vec(unhaltedCyclesSubset.filter(_ != "").map(_.toDouble).toList: _*)
-            }
-            case _ => List(Vec(unhaltedCyclesSubset.filter(_ != "").map(_.toDouble).toList: _*))
-          })
-
-          unhaltedCycleLines = unhaltedCycleLines.dropWhile(_ != separator) match {
-            case traversable if traversable.size > 1 => traversable.tail
-            case _ => LongTraversable[String]()
-          }
-
-          index += 1
-        }
-
-        index = 0
-        while(refCycleLines.nonEmpty) {
-          val refCyclesSubset = refCycleLines.takeWhile(_ != separator)
-
-          refCycleData += frequency -> (refCycleData.get(frequency) match {
-            case Some(list) => list.lift(index) match {
-              case Some(vector) => list.updated(index, vector.concat(Vec[Double](refCyclesSubset.filter(_ != "").map(_.toDouble).toList: _*)))
-              case _ => list :+ Vec(refCyclesSubset.filter(_ != "").map(_.toDouble).toList: _*)
-            }
-            case _ => List(Vec(refCyclesSubset.filter(_ != "").map(_.toDouble).toList: _*))
-          })
-
-          refCycleLines = refCycleLines.dropWhile(_ != separator) match {
-            case traversable if traversable.size > 1 => traversable.tail
-            case _ => LongTraversable[String]()
-          }
-
-          index += 1
-        }
-      }
-    }
-
-    /**
-     * Classify the data with the coefficients
-     */
-    for(frequency <- frequencies) {
-      // Frequencies in KHz
-      val coefficient = frequency.toDouble / (baseFrequency * 1E6)
-
-      if(unhaltedCycleData(frequency).size == powerData(frequency).size && refCycleData(frequency).size == powerData(frequency).size) {
-        if(coefficient <= maxCoefficient) data += coefficient -> Array()
-
-        for(i <- 0 until powerData(frequency).size) {
-          val power = powerData(frequency)(i).median
-          val unhaltedCycles = unhaltedCycleData(frequency)(i).median
-          val refCycles = refCycleData(frequency)(i).median
-          val coefficient = math.round(unhaltedCycles / refCycles).toDouble
-
-          // Frequencies before boost mode
-          if(coefficient <= maxCoefficient) {
-            if(data.contains(coefficient)) {
-              data += coefficient -> (data(coefficient) ++ Array(unhaltedCycles, power))
-            }
-            else {
-              val coefficientsBefore = data.keys.filter(_ < coefficient)
-              if(coefficientsBefore.size > 0) {
-                data += coefficientsBefore.max -> (data(coefficientsBefore.max) ++ Array(unhaltedCycles, power))
+            data += (frequency, event) -> (data.get(frequency, event) match {
+              case Some(list) => list.lift(index) match {
+                case Some(vector) => list.updated(index, vector.concat(Vec[Double](dataSubset.filter(_ != "").map(_.toDouble).toList: _*)))
+                case _ => list :+ Vec(dataSubset.filter(_ != "").map(_.toDouble).toList: _*)
               }
+              case _ => List(Vec(dataSubset.filter(_ != "").map(_.toDouble).toList: _*))
+            })
+
+            lines = lines.dropWhile(_ != configuration.separator) match {
+              case traversable if traversable.size > 1 => traversable.tail
+              case _ => LongTraversable[String]()
             }
-          }
-          // Boost mode
-          else {
-            data += coefficient -> (data.getOrElse(coefficient, Array()) ++ Array(unhaltedCycles, power))
+
+            index += 1
           }
         }
       }
-
-      else log.error("The sampling was wrong for the frequency: {}, coefficient: {}", s"$frequency", s"$coefficient")
     }
 
-    if(Path(samplingDir, '/').exists) {
-      Path(processingDir, '/').deleteRecursively(force = true)
-      Path(processingDir, '/').createDirectory()
+    for(frequency <- frequencies) {
+      Path(s"$processingPath/$frequency", '/').createDirectory()
 
-      for((coefficient, values) <- data) {
-        val matrix = Mat(values.size / 2, 2, values)
-        Frame("unhalted-cycles" -> matrix.col(0), "P" -> matrix.col(1)).writeCsvFile(s"$processingDir/$coefficient.csv")
+      val dataPerFreq = data.filter(_._1._1 == frequency)
+      val size = dataPerFreq.values.head.size
+
+      if(dataPerFreq.values.count(list => list.size != size) == 0) {
+        for (index <- 0 until size) {
+          val dataStep = scala.collection.mutable.ListBuffer[(String, Vec[Double])]()
+          val min = (for (elt <- dataPerFreq) yield elt._2(index).length).min
+
+          for (((_, event), values) <- dataPerFreq) {
+            dataStep += event -> values(index).slice(0, min)
+          }
+
+          Frame(dataStep: _*).writeCsvFile(s"$processingPath/$frequency/$index.csv")
+        }
       }
+
+      else log.error("The sampling was wrong for the frequency: {}", s"$frequency")
     }
+
+    val end = System.currentTimeMillis()
+    log.info("Processing duration: {}", configuration.formatter.print(new Period(end - begin)))
   }
 }
 
 object Processing extends SamplingConfiguration {
-  def apply(): Processing = {
-    new Processing(samplingDir, processingDir, baseFrequency, maxFrequency, separator, outputPowers, outputUnhaltedCycles, outputRefCycles)
+  def apply(samplingPath: String, processingPath: String, configuration: SamplingConfiguration): Processing = {
+    new Processing(samplingPath, processingPath, configuration)
   }
 }

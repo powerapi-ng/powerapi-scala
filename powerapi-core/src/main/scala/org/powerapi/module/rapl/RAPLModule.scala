@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,15 +23,18 @@
 package org.powerapi.module.rapl
 
 import org.powerapi.PowerModule
-import org.powerapi.core.LinuxHelper
+import org.powerapi.core.{OSHelper, LinuxHelper}
 
-class RAPLModule extends PowerModule {
-  lazy val underlyingSensorsClasses  = Seq((classOf[RAPLSensor], Seq(new LinuxHelper, new RAPLHelper)))
+class RAPLModule(osHelper: OSHelper, raplHelper: RAPLHelper) extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[RAPLSensor], Seq(osHelper, raplHelper)))
   lazy val underlyingFormulaeClasses = Seq((classOf[RAPLFormula], Seq()))
 }
 
 object RAPLModule {
   def apply(): RAPLModule = {
-    new RAPLModule()
+    val linuxHelper = new LinuxHelper
+    val raplHelper = new RAPLHelper
+
+    new RAPLModule(linuxHelper, raplHelper)
   }
 }

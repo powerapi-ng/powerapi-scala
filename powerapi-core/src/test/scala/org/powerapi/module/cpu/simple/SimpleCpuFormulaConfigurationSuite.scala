@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,6 +40,7 @@ class SimpleCpuFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(s
 
   "The CpuFormulaConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new CpuFormulaConfiguration {}
+
     configuration.tdp should equal(120)
     configuration.tdpFactor should equal(0.80)
   }

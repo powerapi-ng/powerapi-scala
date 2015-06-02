@@ -1,8 +1,8 @@
 name := "powerapi"
 
-version in ThisBuild := "3.1"
+version in ThisBuild := "3.2"
 
-scalaVersion in ThisBuild := "2.11.4"
+scalaVersion in ThisBuild := "2.11.6"
 
 scalacOptions in ThisBuild ++= Seq(
   "-language:reflectiveCalls",
@@ -13,10 +13,8 @@ scalacOptions in ThisBuild ++= Seq(
 
 // Logging
 libraryDependencies in ThisBuild ++= Seq(
-  "org.apache.logging.log4j" % "log4j-api" % "2.1",
-  "org.apache.logging.log4j" % "log4j-core" % "2.1"
+  "org.apache.logging.log4j" % "log4j-api" % "2.3",
+  "org.apache.logging.log4j" % "log4j-core" % "2.3"
 )
 
 parallelExecution in (ThisBuild, Test) := false
-
-codacyProjectTokenFile := Some("./codacy-token.txt")

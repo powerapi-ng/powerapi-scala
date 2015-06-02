@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,8 +42,13 @@ class ProcessingSuite(system: ActorSystem) extends UnitTest(system) {
 
   val basepath = getClass.getResource("/").getPath
 
-  "The Processing step" should "process the data files from a directory and write results inside CSV files" in {
-    new Processing(s"${basepath}samples", "/tmp/processing", 0.133, 2.66, "=", "output-powers.dat", "output-cpu-clk-unhalted-thread-p.dat", "output-cpu-clk-unhalted-ref-p.dat").run()
+  "The Processing step" should "process the sample files and create the files that will be used during the regression" in {
+    val samplingConfiguration = new SamplingConfiguration {
+      override lazy val baseOutput = "output-"
+      override lazy val separator = "="
+    }
+
+    new Processing(s"${basepath}samples", "/tmp/processing", samplingConfiguration).run()
 
     val expectedPaths = Path("/") / (s"${basepath}processing", '/') * "*.csv"
     val prDataPaths = Path("/") / ("/tmp/processing", '/') * "*.csv"

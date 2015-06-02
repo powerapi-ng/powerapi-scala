@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,8 @@
 package org.powerapi.module.libpfm
 
 import org.apache.logging.log4j.LogManager
-import org.bridj.Pointer.{allocateCLongs, pointerTo, pointerToCString}
+import org.bridj.Pointer.{allocateCLongs, getPointer, pointerToCString}
+import org.powerapi.core.{Configuration, ConfigValue}
 import perfmon2.libpfm.{LibpfmLibrary, perf_event_attr, pfm_perf_encode_arg_t}
 import perfmon2.libpfm.LibpfmLibrary.pfm_os_t
 import scala.collection.BitSet
@@ -47,19 +48,15 @@ case class TCID(identifier: Int, core: Int) extends Identifier
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-object LibpfmHelper {
+class LibpfmHelper extends Configuration {
   private val format = LibpfmLibrary.perf_event_read_format.PERF_FORMAT_TOTAL_TIME_ENABLED.value().toInt | LibpfmLibrary.perf_event_read_format.PERF_FORMAT_TOTAL_TIME_RUNNING.value.toInt
   private var initialized = false
 
   private val log = LogManager.getLogger
 
-  /**
-   * Implicit conversion BitSet to Long
-   */
-  implicit def BitSet2Long(value: BitSet): Long = {
-    // We limit the size of the bitset (see the documentation on perf_event.h, only 23 bits for the config.)
-    // The other 41 bits are reserved.
-    value.range(0, 23).foldLeft(0l)((acc, index) => acc + (1L << index))
+  lazy val nrPerfEventOpen = load { _.getInt("powerapi.libpfm.NR-perf-event-open") } match {
+    case ConfigValue(value) => value
+    case _ => 298 // Linux Intel/AMD 64 bits.
   }
 
   /**
@@ -88,8 +85,10 @@ object LibpfmHelper {
    * Deinit. libpfm
    */
   def deinit(): Unit = {
-    LibpfmLibrary.pfm_terminate()
-    initialized = false
+    if(initialized) {
+      LibpfmLibrary.pfm_terminate()
+      initialized = false
+    }
   }
 
   /**
@@ -102,9 +101,9 @@ object LibpfmHelper {
   def configurePC(identifier: Identifier, configuration: BitSet, name: String): Option[Int] = {
     val cName = pointerToCString(name)
     val argEncoded = new pfm_perf_encode_arg_t
-    val argEncodedPointer = pointerTo(argEncoded)
+    val argEncodedPointer = getPointer(argEncoded)
     val eventAttr = new perf_event_attr
-    val eventAttrPointer = pointerTo(eventAttr)
+    val eventAttrPointer = getPointer(eventAttr)
 
     argEncoded.attr(eventAttrPointer)
 
@@ -122,9 +121,9 @@ object LibpfmHelper {
 
       // Open the file descriptor.
       val fd = identifier match {
-        case TID(tid) => CUtils.perf_event_open(eventAttrPointer, tid, -1, -1, 0)
-        case CID(cid) => CUtils.perf_event_open(eventAttrPointer, -1, cid, -1, 0)
-        case TCID(tid, cid) => CUtils.perf_event_open(eventAttrPointer, tid, cid, -1, 0)
+        case TID(tid) => CUtils.perf_event_open(nrPerfEventOpen, eventAttrPointer, tid, -1, -1, 0)
+        case CID(cid) => CUtils.perf_event_open(nrPerfEventOpen, eventAttrPointer, -1, cid, -1, 0)
+        case TCID(tid, cid) => CUtils.perf_event_open(nrPerfEventOpen, eventAttrPointer, tid, cid, -1, 0)
         case _ => {
           log.error("The type of the first parameter is unknown.")
           -1

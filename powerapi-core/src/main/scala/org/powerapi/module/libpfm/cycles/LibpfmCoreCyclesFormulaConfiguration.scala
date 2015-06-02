@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,6 @@
 package org.powerapi.module.libpfm.cycles
 
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.config.Config
 import org.powerapi.core.{Configuration, ConfigValue}
 import scala.collection.JavaConversions._
@@ -35,7 +34,7 @@ import scala.concurrent.duration.FiniteDuration
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait LibpfmCoreCyclesFormulaConfiguration extends Configuration {
+class LibpfmCoreCyclesFormulaConfiguration(prefix: Option[String]) extends Configuration(prefix) {
   lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.formulae.cycles-thread") } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:THREAD_P"
@@ -47,14 +46,14 @@ trait LibpfmCoreCyclesFormulaConfiguration extends Configuration {
   }
 
   lazy val formulae: Map[Double, List[Double]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.libpfm.formulae.cycles"))
+    (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.libpfm.formulae.cycles"))
     yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
   }
 
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
+  lazy val samplingInterval: FiniteDuration = load { _.getDuration(s"${configurationPath}powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
   }

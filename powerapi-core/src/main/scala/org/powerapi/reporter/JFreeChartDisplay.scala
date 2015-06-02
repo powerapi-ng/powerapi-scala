@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,6 +22,7 @@
  */
 package org.powerapi.reporter
 
+import java.util.UUID
 import javax.swing.SwingUtilities
 import org.powerapi.PowerDisplay
 import org.powerapi.core.power.Power
@@ -43,7 +44,7 @@ class JFreeChartDisplay extends PowerDisplay {
     }
   })
 
-  def display(timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
     Chart.process(Map(s"${targets.mkString(",")}" -> power.toWatts), timestamp)
   }
 }

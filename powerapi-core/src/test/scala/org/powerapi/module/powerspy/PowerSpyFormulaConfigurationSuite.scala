@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -41,6 +41,7 @@ class PowerSpyFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(sy
 
   "The PowerSpyFormulaConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new PowerSpyFormulaConfiguration {}
+
     configuration.idlePower should equal(87.50.W)
   }
 }

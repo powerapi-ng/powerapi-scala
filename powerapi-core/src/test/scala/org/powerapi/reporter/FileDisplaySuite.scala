@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -74,9 +74,9 @@ class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
     testFile.size.get should be > 0L
     testFile.lines() should (
       have size 3 and
-      contain(s"timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}") and
-      contain(s"timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}") and
-      contain(s"timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
+      contain(s"muid=$muid;timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}") and
+      contain(s"muid=$muid;timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}") and
+      contain(s"muid=$muid;timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
     )
     testFile.delete(true)
   }

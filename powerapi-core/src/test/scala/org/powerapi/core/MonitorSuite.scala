@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,18 +22,17 @@
  */
 package org.powerapi.core
 
-import akka.actor.{Actor, ActorRef, ActorSystem, ActorNotFound, Props, Terminated}
+import akka.actor.{Props, ActorSystem, Actor, ActorRef, ActorNotFound, Terminated, Identify, ActorIdentity}
 import akka.pattern.{ask, gracefulStop}
-import akka.testkit.{EventFilter, TestKit, TestProbe}
+import akka.testkit.{TestActorRef, TestProbe, EventFilter, TestKit}
 import akka.util.Timeout
-import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
 import java.util.UUID
-import org.powerapi.UnitTest
+import org.powerapi.{PowerDisplay, UnitTest}
 import org.powerapi.core.ClockChannel.{ ClockTick, formatClockChildName }
 import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorTick, subscribeMonitorTick, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
 import org.powerapi.core.power._
-import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target}
+import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target, Process}
 import org.powerapi.module.PowerChannel.{AggregatePowerReport, publishRawPowerReport, subscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.subscribeSensorsChannel
 import scala.concurrent.Await
@@ -74,7 +73,6 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     val targets = List[Target](1)
                                                             
     val monitor = _system.actorOf(Props(classOf[MonitorChild], eventBus, muid, frequency, targets), "monitor1")
-    val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors1")
 
     EventFilter.warning(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorStop("test", muid)
@@ -97,16 +95,11 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
       monitor ! MonitorStop("test", UUID.randomUUID())
     })(_system)
 
-    EventFilter.warning(occurrences = 1, source = monitors.path.toString).intercept({
-      stopMonitor(muid)(eventBus)
-    })(_system)
-
     receiveWhile(10.seconds, idle = 2.seconds) {
       case msg: MonitorTick => {}
     }
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
-    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
   }
@@ -443,6 +436,58 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
 
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
     Await.result(gracefulStop(watcher.ref, timeout.duration), timeout.duration)
+    _system.shutdown()
+    _system.awaitTermination(timeout.duration)
+  }
+
+  "A Monitor object" should "allow to interact directly with the bus" in new Bus {
+    val _system = ActorSystem("MonitorSuiteTest8", eventListener)
+    val reporters = ActorSystem("Reporters8", eventListener)
+
+    val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors8")
+
+    val tickMock = ClockTick("ticktest", 1.second)
+    val monitor = new Monitor(eventBus, reporters)
+    val monitor2 = new Monitor(eventBus, reporters)
+    val monitor3 = new Monitor(eventBus, reporters)
+
+    val display = new PowerDisplay {
+      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {
+        testActor ! s"$muid, $timestamp, ${targets.mkString(",")}, ${devices.mkString(",")}, $power"
+      }
+    }
+
+    Await.result(monitors.ask(MonitorStart("", monitor.muid, 1.seconds, List(1)))(timeout), timeout.duration)
+    Await.result(monitors.ask(MonitorStart("", monitor2.muid, 1.seconds, List(2)))(timeout), timeout.duration)
+    Await.result(monitors.ask(MonitorStart("", monitor3.muid, 1.seconds, List(1, 3)))(timeout), timeout.duration)
+
+    monitor.to(display)
+    publishRawPowerReport(monitor.muid, 1, 15.W, "gpu", tickMock)(eventBus)
+    expectMsgClass(classOf[String]) should equal(s"${monitor.muid}, ${tickMock.timestamp}, ${Process(1)}, gpu, ${15000.mW}")
+    reporters.actorSelection("user/*") ! Identify(None)
+    val reporter = expectMsgClass(classOf[ActorIdentity]).getRef
+
+    monitor2.to(testActor, subscribeSensorsChannel)
+    monitors ! MonitorStop("", monitor2.muid)
+    expectMsgClass(classOf[org.powerapi.module.SensorChannel.MonitorStop]).muid should equal(monitor2.muid)
+
+    monitor3.to(testActor)
+    publishRawPowerReport(monitor3.muid, 1, 1.W, "gpu", tickMock)(eventBus)
+    publishRawPowerReport(monitor3.muid, 3, 15.W, "gpu", tickMock)(eventBus)
+    expectMsgClass(classOf[AggregatePowerReport]).power should equal(16.W)
+
+    monitor.cancel()
+    monitor3.cancel()
+
+    awaitAssert({
+      intercept[ActorNotFound] {
+        Await.result(reporters.actorSelection(reporter.path).resolveOne(), timeout.duration)
+      }
+    }, 20.seconds)
+
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
+    reporters.shutdown()
+    reporters.awaitTermination(timeout.duration)
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
   }

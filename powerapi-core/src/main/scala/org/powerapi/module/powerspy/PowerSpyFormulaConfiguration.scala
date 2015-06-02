@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,7 +31,7 @@ import org.powerapi.core.power._
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 trait PowerSpyFormulaConfiguration extends Configuration {
-  lazy val idlePower = load { _.getDouble("powerapi.hardware.idle-power") } match {
+  lazy val idlePower = load { _.getDouble(s"powerapi.hardware.idle-power") } match {
     case ConfigValue(idle) => idle.W
     case _ => 0.W
   }

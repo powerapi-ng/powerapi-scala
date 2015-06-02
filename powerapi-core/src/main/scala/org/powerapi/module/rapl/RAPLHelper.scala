@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -35,22 +35,22 @@ import scala.sys.process.stringSeqToProcess
  *
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class RAPLHelper extends Configuration {
+class RAPLHelper extends Configuration(None) {
   private val log = LogManager.getLogger
 
   /**
    * CPU info file, giving information about specifications of the processor.
    */
-  lazy val cpuInfoURL = load { _.getString("rapl.cpuInfoURL") } match {
-    case ConfigValue(url) => url
+  lazy val cpuInfoPath = load { _.getString("powerapi.procfs.cpu-info-path") } match {
+    case ConfigValue(p) => p
     case _ => "/proc/cpuinfo"
   }
 
   /**
-   * MSR registers URL, giving information about estimation (from RAPL model) of CPU energy consumption.
+   * MSR registers, giving information about estimation (from RAPL model) of CPU energy consumption.
    */
-  lazy val msrURL = load { _.getString("rapl.msrURL") } match {
-    case ConfigValue(url) => url
+  lazy val msrPath = load { _.getString("powerapi.cpu.msr-path") } match {
+    case ConfigValue(p) => p
     case _ => "/dev/cpu/0/msr"
   }
 
@@ -74,7 +74,7 @@ class RAPLHelper extends Configuration {
   lazy val msrFile: Option[FileChannel] = {
     if(detectCpu) {
       Seq("modprobe", "msr").!
-      Some(new FileInputStream(msrURL).getChannel)
+      Some(new FileInputStream(msrPath).getChannel)
     }
     else None
   }
@@ -121,11 +121,11 @@ class RAPLHelper extends Configuration {
   }
 
   private def detectCpu: Boolean = {
-    val source = io.Source.fromFile(cpuInfoURL).getLines
+    val source = io.Source.fromFile(cpuInfoPath).getLines
     source.find(l => l.startsWith("vendor_id") && l.endsWith("GenuineIntel")) match {
       case Some(_) => source.find(l => l.startsWith("cpu family") && l.endsWith("6")) match {
         case Some(_) => source.find(_.startsWith("model")) match {
-          case Some(model) => archs.getOrElse(model.split("\\s").last.toInt, "") match {
+          case Some(model)  => archs.getOrElse(model.split("\\s").last.toInt, "") match {
             case ""         => log.error("cpuinfo: Unsupported model {}", model); false
             case modelCheck => log.info("Found {} CPU", modelCheck); true
           }

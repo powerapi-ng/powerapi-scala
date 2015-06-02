@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,8 +27,8 @@ import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.core.MessageBus
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
-import org.powerapi.module.cpu.simple.CpuSimpleModule
-import org.powerapi.module.libpfm.{LibpfmCoreSensorModule, LibpfmCoreModule}
+import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmHelper, LibpfmCoreSensorModule, LibpfmCoreModule}
+import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
 import org.powerapi.module.powerspy.PowerSpyModule
 import org.powerapi.module.rapl.RAPLModule
 import scala.concurrent.duration.DurationInt
@@ -37,7 +37,7 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("CpuSimpleModuleSuite"))
+  def this() = this(ActorSystem("PowerMeterSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
@@ -55,12 +55,17 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   "The PowerMeter configuration" should "be correctly read from a resource file" in {
-    val configuration = new PowerMeterConfiguration {}
+    val configuration = new PowerMeterConfiguration()
     configuration.timeout should equal(Timeout(10.seconds))
   }
 
-  "The PowerMeter actor" should "load the CpuSimpleModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(CpuSimpleModule()), Timeout(1.seconds)))(system)
+  "The PowerMeter actor" should "load the ProcFSCpuSimpleModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(ProcFSCpuSimpleModule()), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+  }
+
+  it should "load the SigarCpuSimpleModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(SigarCpuSimpleModule()), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
 
@@ -70,15 +75,20 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "load the LibpfmCoreModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreModule()), Timeout(1.seconds)))(system)
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
 
   it should "load the LibpfmCoreSensorModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule()), Timeout(1.seconds)))(system)
-    actor.children.size should equal(3)
-    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(Set("cycles", "instructions"))), Timeout(1.seconds)))(system)
+    val actor1 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
+    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(None, new LibpfmHelper, Set("e1", "e2"))), Timeout(1.seconds)))(system)
+    actor1.children.size should equal(3)
     actor2.children.size should equal(3)
+  }
+
+  it should "load the LibpfmCoreProcessModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreProcessModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
   }
 
   it should "load the PowerSpyModule" ignore new EventBus {

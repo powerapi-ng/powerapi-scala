@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,15 +23,25 @@
 package org.powerapi.module.cpu.simple
 
 import org.powerapi.PowerModule
-import org.powerapi.core.{Configuration, ConfigValue, LinuxHelper}
+import org.powerapi.core.{SigarHelper, LinuxHelper, OSHelper}
 
-class CpuSimpleModule(tdp: Double, tdpFactor: Double) extends PowerModule {
-  lazy val underlyingSensorsClasses  = Seq((classOf[CpuSensor], Seq(new LinuxHelper)))
+class CpuSimpleModule(osHelper: OSHelper, tdp: Double, tdpFactor: Double) extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[CpuSensor], Seq(osHelper)))
   lazy val underlyingFormulaeClasses = Seq((classOf[CpuFormula], Seq(tdp, tdpFactor)))
 }
 
-object CpuSimpleModule extends CpuFormulaConfiguration {
+object ProcFSCpuSimpleModule extends CpuFormulaConfiguration {
   def apply(): CpuSimpleModule = {
-    new CpuSimpleModule(tdp, tdpFactor)
+    val linuxHelper = new LinuxHelper
+
+    new CpuSimpleModule(linuxHelper, tdp, tdpFactor)
+  }
+}
+
+object SigarCpuSimpleModule extends CpuFormulaConfiguration {
+  def apply(): CpuSimpleModule = {
+    val sigarHelper = new SigarHelper
+
+    new CpuSimpleModule(sigarHelper, tdp, tdpFactor)
   }
 }

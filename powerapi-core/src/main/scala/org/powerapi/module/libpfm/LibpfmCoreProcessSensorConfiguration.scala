@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,11 +29,11 @@ import org.powerapi.core.ConfigValue
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait LibpfmCoreProcessSensorConfiguration extends LibpfmCoreSensorConfiguration {
+class LibpfmCoreProcessSensorConfiguration(prefix: Option[String]) extends LibpfmCoreSensorConfiguration(prefix) {
   /**
    * Allows to know if the threads associated to a Target have to be included.
    */
-  lazy val inDepth = load { _.getBoolean("powerapi.libpfm.in-depth") } match {
+  lazy val inDepth = load { _.getBoolean(s"${configurationPath}powerapi.libpfm.in-depth") } match {
     case ConfigValue(value) => value
     case _ => false
   }

@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,10 +24,8 @@ package org.powerapi.module.cpu.simple
 
 import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.SensorComponent
-import org.powerapi.core.GlobalCpuTime
 import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.core.target.{All, Application, Process, TargetUsageRatio}
-import org.powerapi.module.{Cache, CacheKey}
 import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 import scala.reflect.ClassTag
@@ -42,48 +40,16 @@ import scala.reflect.ClassTag
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponent(eventBus) {
-  lazy val cpuTimesCache = new Cache[(Long, Long)]
 
   def targetCpuUsageRatio(monitorTick: MonitorTick): TargetUsageRatio = {
-    val key = CacheKey(monitorTick.muid, monitorTick.target)
-
-    lazy val (globalCpuTime, activeCpuTime) = osHelper.getGlobalCpuTime match {
-      case GlobalCpuTime(globalTime, activeTime) => (globalTime, activeTime)
-    }
-
     val processClaz = implicitly[ClassTag[Process]].runtimeClass
     val appClaz = implicitly[ClassTag[Application]].runtimeClass
 
-    lazy val now = monitorTick.target match {
+    monitorTick.target match {
       case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
-        lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
-          case Some(time) => time
-          case _ => 0l
-        }
-
-        (targetCpuTime, globalCpuTime)
+        osHelper.getTargetCpuPercent(monitorTick.muid, target)
       }
-      case All => (activeCpuTime, globalCpuTime)
-    }
-
-    val old = cpuTimesCache(key)(now)
-    val diffTimes = (now._1 - old._1, now._2 - old._2)
-
-    diffTimes match {
-      case diff: (Long, Long) => {
-        if(old == now) {
-          cpuTimesCache(key) = now
-          TargetUsageRatio(0.0)
-        }
-
-        else if (diff._1 > 0 && diff._2 > 0 && diff._1 <= diff._2) {
-          cpuTimesCache(key) = now
-          TargetUsageRatio(diff._1.toDouble / diff._2)
-        }
-
-        else TargetUsageRatio(0.0)
-      }
-      case _ => TargetUsageRatio(0.0)
+      case All => osHelper.getGlobalCpuPercent(monitorTick.muid)
     }
   }
 
@@ -91,11 +57,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
     publishUsageReport(monitorTick.muid, monitorTick.target, targetCpuUsageRatio(monitorTick), monitorTick.tick)(eventBus)
   }
 
-  def monitorStopped(msg: MonitorStop): Unit = {
-    cpuTimesCache -= msg.muid
-  }
+  def monitorStopped(msg: MonitorStop): Unit = {}
 
-  def monitorAllStopped(msg: MonitorStopAll): Unit = {
-    cpuTimesCache.clear()
-  }
+  def monitorAllStopped(msg: MonitorStopAll): Unit = {}
 }

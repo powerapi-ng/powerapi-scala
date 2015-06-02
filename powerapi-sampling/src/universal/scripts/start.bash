@@ -1,3 +1,3 @@
 #!/bin/bash
 
-(echo $BASHPID; kill -s SIGSTOP $BASHPID; exec $@)
+(echo $BASHPID; kill -s SIGSTOP $BASHPID; exec $@ &)

@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -38,8 +38,9 @@ class DvfsCpuFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(sys
     TestKit.shutdownActorSystem(system)
   }
 
-  "The CpuFormulaConfiguration" should "read correctly the values from a resource file" in {
+  "The DvfsCpuFormulaConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new CpuFormulaConfiguration {}
+
     configuration.tdp should equal(120)
     configuration.tdpFactor should equal(0.80)
     configuration.frequencies should equal(Map(1800002 -> 1.31, 2100002 -> 1.41, 2400003 -> 1.5))

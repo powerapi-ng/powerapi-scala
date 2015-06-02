@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -39,7 +39,9 @@ import scala.concurrent.Future
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends SensorComponent(eventBus) {
+class LibpfmCoreSensor(eventBus: MessageBus, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends SensorComponent(eventBus) {
+  val wrappers = scala.collection.mutable.Map[(Int, String), PCWrapper]()
+
   override def preStart(): Unit = {
     subscribeSensorsChannel(eventBus)(self)
     super.preStart()
@@ -47,34 +49,33 @@ class LibpfmCoreSensor(eventBus: MessageBus, timeout: Timeout, topology: Map[Int
 
   def sense(monitorTick: MonitorTick): Unit = {
     if(monitorTick.target == All) {
-      var wrappers = Map[(Int, String), PCWrapper]()
+      for((core, indexes) <- topology) {
+        for(index <- indexes) {
+          for(event <- events) {
+            val name = formatLibpfmCoreSensorChildName(index, event, monitorTick.muid)
 
-      topology.foreach {
-        case (core, indexes) => {
-          indexes.foreach(index => {
-            events.foreach(event => {
-              val name = formatLibpfmCoreSensorChildName(index, event, monitorTick.muid)
+            val actor = context.child(name) match {
+              case Some(ref) => ref
+              case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], libpfmHelper, event, index, None, configuration), name)
+            }
 
-              val actor = context.child(name) match {
-                case Some(ref) => ref
-                case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], event, index, None, configuration), name)
-              }
-
-              wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
-            })
-          })
+            wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
+          }
         }
       }
 
       publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
+      wrappers.clear()
     }
   }
 
   def monitorStopped(msg: MonitorStop): Unit = {
-    context.actorSelection(s"*${msg.muid}") ! msg
+    context.actorSelection(s"*${msg.muid}*") ! msg
+    wrappers.clear()
   }
 
   def monitorAllStopped(msg: MonitorStopAll): Unit = {
     context.actorSelection("*") ! msg
+    wrappers.clear()
   }
 }

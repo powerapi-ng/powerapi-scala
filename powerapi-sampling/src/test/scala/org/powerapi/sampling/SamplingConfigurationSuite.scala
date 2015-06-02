@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,17 +40,21 @@ class SamplingConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
   "The SamplingConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new SamplingConfiguration {}
+    configuration.events should equal(Set("THREAD_P", "REF_P"))
     configuration.samplingInterval should equal(250.milliseconds)
     configuration.nbSamples should equal(3)
     configuration.dvfs should equal(true)
     configuration.turbo should equal(true)
-    configuration.nbMessages should equal(15)
-    configuration.baseFrequency should equal(0.133)
-    configuration.maxFrequency should equal(2.66)
+    configuration.steps should equal(List(100, 75, 25))
+    configuration.stepDuration should equal(3)
     configuration.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    configuration.events should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
-    configuration.samplingDir should equal("test-samples")
-    configuration.processingDir should equal("test-processing")
-    configuration.computingDir should equal("test-computing")
+  }
+
+  "The PolynomCyclesConfiguration" should "read correctly the values from a resource file" in {
+    val configuration = new PolynomCyclesConfiguration {}
+    configuration.baseFrequency should equal(0.100)
+    configuration.maxFrequency should equal(3.0)
+    configuration.unhaltedCycles should equal("EVENT1")
+    configuration.refCycles should equal("EVENT2")
   }
 }

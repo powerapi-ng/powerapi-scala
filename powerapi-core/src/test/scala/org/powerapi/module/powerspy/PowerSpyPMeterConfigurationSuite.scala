@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,6 +40,7 @@ class PowerSpyPMeterConfigurationSuite(system: ActorSystem) extends UnitTest(sys
 
   "The PowerSpyPMeterConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new PowerSpyPMeterConfiguration {}
+
     configuration.mac should equal("00:0B:CE:07:1E:9B")
     configuration.interval should equal(250.milliseconds)
   }

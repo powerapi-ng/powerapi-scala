@@ -3,7 +3,7 @@
  *
  * This file is a part of PowerAPI.
  *
- * Copyright (C) 2011-2014 Inria, University of Lille 1.
+ * Copyright (C) 2011-2015 Inria, University of Lille 1.
  *
  * PowerAPI is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,7 +45,7 @@ trait CpuFormulaConfiguration extends Configuration {
    *
    * @see [1], JouleSort: A Balanced Energy-Efﬁciency Benchmark, by Rivoire et al.
    */
-  lazy val tdpFactor = load { _.getDouble("powerapi.cpu.tdp-factor") } match {
+  lazy val tdpFactor = load { _.getDouble(s"powerapi.cpu.tdp-factor") } match {
     case ConfigValue(value) => value
     case _ => 0.7
   }
