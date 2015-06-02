@@ -1,7 +1,3 @@
-import SonatypeKeys._
-
-sonatypeSettings
-
 name := "powerapi-core"
 
 organization := "org.powerapi"
@@ -12,10 +8,10 @@ resolvers ++= Seq(
 
 // App
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.6",
+  "com.typesafe.akka" %% "akka-actor" % "2.3.11",
   "com.typesafe" % "config" % "1.2.1",
   "fr.inria.powerspy" % "powerspy-core_2.11" % "1.1",
-  "com.nativelibs4java" % "bridj" % "0.6.2",
+  "com.nativelibs4java" % "bridj" % "0.7.0",
   "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
   "org.jfree" % "jfreechart" % "1.0.19",
@@ -25,8 +21,9 @@ libraryDependencies ++= Seq(
 
 // Tests
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
-  "org.scalatest" %% "scalatest" % "2.2.2" % "test"
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.11" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.5" % "test",
+  "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2" % "test"
 )
 
 startYear := Some(2014)

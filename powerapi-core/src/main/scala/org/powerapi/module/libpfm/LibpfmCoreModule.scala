@@ -28,30 +28,46 @@ import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, 
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreModule(timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
+class LibpfmCoreModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
                        cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
 
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(timeout, topology, configuration, events)))
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
   lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
 }
 
 object LibpfmCoreModule extends LibpfmCoreSensorConfiguration with LibpfmCoreCyclesFormulaConfiguration {
+  lazy val libpfmHelper = new LibpfmHelper
+
   def apply(): LibpfmCoreModule = {
-    new LibpfmCoreModule(timeout, topology, configuration, events, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
+    new LibpfmCoreModule(libpfmHelper, timeout, topology, configuration, events, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
+  }
+
+  def apply(libpfmHelper: LibpfmHelper): LibpfmCoreModule = {
+    new LibpfmCoreModule(libpfmHelper, timeout, topology, configuration, events, cyclesThreadName, cyclesRefName, formulae, samplingInterval)
   }
 }
 
-class LibpfmCoreSensorModule(timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends PowerModule {
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(timeout, topology, configuration, events)))
+class LibpfmCoreSensorModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends PowerModule {
+  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
   lazy val underlyingFormulaeClasses = Seq()
 }
 
 object LibpfmCoreSensorModule extends LibpfmCoreSensorConfiguration {
+  lazy val libpfmHelper = new LibpfmHelper
+
   def apply(): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule(timeout, topology, configuration, events)
+    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
+  }
+
+  def apply(libpfmHelper: LibpfmHelper): LibpfmCoreSensorModule = {
+    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
   }
 
   def apply(events: Set[String]): LibpfmCoreSensorModule = {
-    new LibpfmCoreSensorModule(timeout, topology, configuration, events)
+    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
+  }
+
+  def apply(libpfmHelper: LibpfmHelper, events: Set[String]): LibpfmCoreSensorModule = {
+    new LibpfmCoreSensorModule(libpfmHelper, timeout, topology, configuration, events)
   }
 }

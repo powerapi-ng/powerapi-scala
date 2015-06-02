@@ -28,7 +28,7 @@ import org.powerapi.core.target.{Application, All, Process, Target}
 import org.powerapi.module.rapl.RAPLModule
 import org.powerapi.module.sigar.SigarModule
 import org.powerapi.reporter.{FileDisplay, JFreeChartDisplay, ConsoleDisplay}
-import org.powerapi.{PowerMonitoring, PowerMeter, PowerModule}
+import org.powerapi.{PowerMonitoring, PowerMeter}
 import org.powerapi.core.power._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.CpuSimpleModule
@@ -64,20 +64,6 @@ object PowerAPI extends App {
   def validateModules(str: String) = str match {
     case modulesR(_*) => true
     case _ => false
-  }
-
-  implicit def modulesStrToPowerModules(str: String): Seq[PowerModule] = {
-    (for(module <- str.split(",")) yield {
-      module match {
-        case "cpu-simple" => CpuSimpleModule()
-        case "cpu-dvfs" => CpuDvfsModule()
-        case "libpfm-core" => LibpfmCoreModule()
-        case "libpfm-core-process" => LibpfmCoreProcessModule()
-        case "powerspy" => PowerSpyModule()
-        case "rapl" => RAPLModule()
-        case "sigar" => SigarModule()
-      }
-    }).toSeq
   }
 
   def validateAgg(str: String): Boolean = str match {
@@ -172,9 +158,27 @@ object PowerAPI extends App {
     if(!System.getProperty("os.name").startsWith("Windows")) Seq("bash", "scripts/system.bash").!
     val (configuration, duration) = cli(List(), "3600", args.toList)
 
+    var libpfmHelper: Option[LibpfmHelper] = None
+
+    if(configuration.count(powerMeterConf => powerMeterConf('modules).toString.contains("libpfm")) != 0) {
+      libpfmHelper = Some(new LibpfmHelper)
+      libpfmHelper.get.init()
+    }
+
     for(powerMeterConf <- configuration) {
-      val modules = powerMeterConf('modules).toString
-      if(modules.contains("libpfm-core") || modules.contains("libpfm-core-process")) LibpfmHelper.init()
+      val modulesStr = powerMeterConf('modules).toString
+
+      val modules = (for(module <- modulesStr.split(",")) yield {
+        module match {
+          case "cpu-simple" => CpuSimpleModule()
+          case "cpu-dvfs" => CpuDvfsModule()
+          case "libpfm-core" => LibpfmCoreModule(libpfmHelper.get)
+          case "libpfm-core-process" => LibpfmCoreProcessModule(libpfmHelper.get)
+          case "powerspy" => PowerSpyModule()
+          case "rapl" => RAPLModule()
+          case "sigar" => SigarModule()
+        }
+      }).toSeq
 
       val powerMeter = PowerMeter.loadModule(modules: _*)
       powerMeters :+= powerMeter
@@ -209,8 +213,10 @@ object PowerAPI extends App {
 
     Thread.sleep(duration.toInt.seconds.toMillis)
 
-    val isLibpfmInit = configuration.count(powerMeterConf => powerMeterConf('modules).toString.contains("libpfm-core") || powerMeterConf('modules).toString.contains("libpfm-core-process")) != 0
-    if(isLibpfmInit) LibpfmHelper.deinit()
+    libpfmHelper match {
+      case Some(helper) => helper.deinit()
+      case _ => {}
+    }
   }
 
   shutdownHookThread.start()

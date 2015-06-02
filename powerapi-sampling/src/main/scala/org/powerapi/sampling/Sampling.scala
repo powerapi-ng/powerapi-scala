@@ -28,7 +28,7 @@ import org.apache.logging.log4j.LogManager
 import org.joda.time.Period
 import org.powerapi.PowerMeter
 import org.powerapi.module.PowerChannel.AggregatePowerReport
-import org.powerapi.module.libpfm.LibpfmCoreSensorModule
+import org.powerapi.module.libpfm.{LibpfmHelper, LibpfmCoreSensorModule}
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{subscribePCReport, PCReport}
 import org.powerapi.core.power._
 import org.powerapi.core.target.All
@@ -116,7 +116,7 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class Sampling(outputPath: String, configuration: SamplingConfiguration, powerapi: PowerMeter, externalPMeter: PowerMeter) {
+class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmHelper: LibpfmHelper, powerapi: PowerMeter, externalPMeter: PowerMeter) {
 
   private val log = LogManager.getLogger
   private lazy val trash = ProcessLogger(out => {}, err => {})
@@ -187,7 +187,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
       }
     }
 
-    org.powerapi.module.libpfm.LibpfmHelper.deinit()
+    libpfmHelper.deinit()
     val end = System.currentTimeMillis()
     log.info(s"Sampling duration: {}", configuration.formatter.print(new Period(end - begin)))
   }
@@ -353,10 +353,10 @@ object Sampling {
   @volatile var powerapi: Option[PowerMeter] = None
   @volatile var externalPMeter: Option[PowerMeter] = None
 
-  def apply(outputPath: String, configuration: SamplingConfiguration): Sampling = {
-    org.powerapi.module.libpfm.LibpfmHelper.init()
-    powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(configuration.events)))
+  def apply(outputPath: String, configuration: SamplingConfiguration, libpfmHelper: LibpfmHelper): Sampling = {
+    libpfmHelper.init()
+    powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(libpfmHelper, configuration.events)))
     externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule()))
-    new Sampling(outputPath, configuration, powerapi.get, externalPMeter.get)
+    new Sampling(outputPath, configuration, libpfmHelper, powerapi.get, externalPMeter.get)
   }
 }

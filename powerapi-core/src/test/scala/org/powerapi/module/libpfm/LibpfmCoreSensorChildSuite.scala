@@ -32,11 +32,11 @@ import org.powerapi.core.target.All
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-import scala.sys.process.stringSeqToProcess
+import org.scalamock.scalatest.MockFactory
 import scala.collection.BitSet
 import scala.concurrent.duration.DurationInt
 
-class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
+class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) with MockFactory {
 
   def this() = this(ActorSystem("LibpfmCoreSensorChildSuite"))
 
@@ -50,51 +50,59 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) {
     val eventBus = new MessageBus
   }
 
-  "A LibpfmCoreSensorChild" should "collect the performance counter values" ignore new Bus {
-    val basepath = getClass.getResource("/").getPath
-    val pid = Seq("bash", s"${basepath}test-pc.bash").lineStream(0).trim.toInt
-    Seq("taskset", "-cp", "0" ,s"$pid").!
+  "A LibpfmCoreSensorChild" should "collect the performance counter values" in new Bus {
+    val configuration = BitSet()
+    val helper = mock[LibpfmHelper]
+    val muid = UUID.randomUUID()
 
-    val configuration = BitSet(0, 1)
-    val muid1 = UUID.randomUUID()
-    val muid2 = UUID.randomUUID()
-    var msg = 0l
+    val child = TestActorRef(Props(classOf[LibpfmCoreSensorChild], helper, "event", 0, None, configuration), testActor, "child1")(system)
 
-    LibpfmHelper.init()
+    helper.resetPC _ expects * anyNumberOfTimes() returning true
+    helper.enablePC _ expects * anyNumberOfTimes() returning true
+    helper.disablePC _ expects * anyNumberOfTimes() returning true
+    helper.closePC _ expects * anyNumberOfTimes() returning true
 
+    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
+    helper.readPC _ expects 0 repeat 2 returning Array(1, 1, 1)
+    child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
+    expectMsgClass(classOf[Long]) should equal(0l)
+    child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
+    expectMsgClass(classOf[Long]) should equal(0l)
+
+    helper.readPC _ expects 0 returning Array(10, 2, 2)
+    helper.scale _ expects where {
+      (now: Array[Long], old: Array[Long]) => now.deep == Array(10l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
+    } returning Some(8)
+
+    child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
+    expectMsgClass(classOf[Long]) should equal(8l)
+
+    system.stop(child)
+  }
+
+  it should "close correctly the resources" in {
+    val configuration = BitSet()
+    val helper = mock[LibpfmHelper]
     val reaper = TestProbe()(system)
-    val child1 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], "CPU_CLK_UNHALTED:THREAD_P", 0, None, configuration), testActor, "child1")(system)
-    val child2 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], "CPU_CLK_UNHALTED:THREAD_P", 0, None, configuration), testActor, "child2")(system)
+    val muid1 = UUID.randomUUID()
+
+    val child1 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], helper, "event", 0, None, configuration), testActor, "child1")(system)
+    val child2 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], helper, "event1", 1, None, configuration), testActor, "child2")(system)
     reaper.watch(child1)
     reaper.watch(child2)
 
-    Seq("kill", "-SIGCONT", s"$pid").!!
-    child1 ! MonitorTick("monitor", muid1, All, ClockTick("clock", 500.milliseconds))
-    msg = expectMsgClass(classOf[Long])
-    msg should be >= 0l
-    println(s"muid: $muid1; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
-    child2 ! MonitorTick("monitor", muid2, All, ClockTick("clock", 500.milliseconds))
-    msg = expectMsgClass(classOf[Long])
-    msg should be >= 0l
-    println(s"muid: $muid2; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
-    child1 ! MonitorTick("monitor", muid1, All, ClockTick("clock", 500.milliseconds))
-    msg = expectMsgClass(classOf[Long])
-    msg should be >= 0l
-    println(s"muid: $muid1; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
-    child2 ! MonitorTick("monitor", muid2, All, ClockTick("clock", 500.milliseconds))
-    msg = expectMsgClass(classOf[Long])
-    msg should be >= 0l
-    println(s"muid: $muid2; event: CPU_CLK_UNHALTED:THREAD_P; value: $msg")
-    Seq("kill", "-SIGKILL", s"$pid").!!
+    helper.resetPC _ expects * anyNumberOfTimes() returning true
+    helper.enablePC _ expects * anyNumberOfTimes() returning true
+    helper.disablePC _ expects * anyNumberOfTimes() returning true
+    helper.closePC _ expects * anyNumberOfTimes() returning true
 
-    child1.underlyingActor.asInstanceOf[LibpfmCoreSensorChild].fd should not equal(None)
-    child2.underlyingActor.asInstanceOf[LibpfmCoreSensorChild].fd should not equal(None)
+    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
+    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(1)
 
     child1 ! MonitorStop("sensor", muid1)
-    reaper.expectTerminated(child1, 1.seconds)
-    child2 ! MonitorStopAll("sensor")
-    reaper.expectTerminated(child2, 1.seconds)
+    reaper.expectTerminated(child1, timeout.duration)
 
-    LibpfmHelper.deinit()
+    child2 ! MonitorStopAll("sensor")
+    reaper.expectTerminated(child2, timeout.duration)
   }
 }
