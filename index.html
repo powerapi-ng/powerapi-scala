@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
 
     <!--[if lt IE 9]>
@@ -19,20 +19,21 @@
   <body>
     <header>
       <div class="inner">
-        <img src="https://rawgit.com/Spirals-Team/powerapi/master/resources/logo/PowerAPI-logo.png" alt="Powerapi" width="300px">
+        <h1>PowerAPI</h1>
         <h2>A middleware toolkit for software-defined power meters</h2>
-        <a href="https://github.com/Spirals-Team/powerapi" target="_blank" class="button"><small>View project on</small> GitHub</a>
+        <a href="https://github.com/Spirals-Team/powerapi" class="button"><small>View project on</small> GitHub</a>
       </div>
     </header>
 
     <div id="content-wrapper">
       <div class="inner clearfix">
         <section id="main-content">
-          <p><a href="https://www.gnu.org/licenses/agpl-3.0.html"><img src="http://img.shields.io/badge/license-AGPLv3-532553.svg" alt="OSS Licence"></a>
-<a href="https://travis-ci.org/Spirals-Team/powerapi"><img src="https://travis-ci.org/Spirals-Team/powerapi.svg" alt="Build Status"></a>
-<a href="https://www.codacy.com/public/maximecolmant/powerapi"><img src="https://www.codacy.com/project/badge/e0b0e331ca414250a7240b6be74aaa7b" alt="Codacy Badge"></a></p>
+          <p><a href="https://gitter.im/Spirals-Team/powerapi?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Join the chat at https://gitter.im/Spirals-Team/powerapi"></a></p>
 
-<p><a href="https://gitter.im/Spirals-Team/powerapi?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Join the chat at https://gitter.im/Spirals-Team/powerapi"></a></p>
+<p><a href="https://www.gnu.org/licenses/agpl-3.0.html"><img src="http://img.shields.io/badge/license-AGPLv3-532553.svg" alt="OSS Licence"></a>
+<a href="https://travis-ci.org/Spirals-Team/powerapi"><img src="https://travis-ci.org/Spirals-Team/powerapi.svg" alt="Build Status"></a>
+<a href="https://coveralls.io/r/Spirals-Team/powerapi"><img src="https://coveralls.io/repos/Spirals-Team/powerapi/badge.svg" alt="Coverage Status"></a>
+<a href="https://www.codacy.com/app/mcolmant/powerapi"><img src="https://www.codacy.com/project/badge/31f7762213c340fbb5fe1463a5b871d4" alt="Codacy Badge"></a></p>
 
 <p>PowerAPI is a middleware toolkit for building software-defined power meters.
 Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
@@ -81,21 +82,35 @@ As a middleware toolkit, PowerAPI offers the capability of assembling power mete
 </ul>
 
 <h2>
-<a id="acknowledgments" class="anchor" href="#acknowledgments" aria-hidden="true"><span class="octicon octicon-link"></span></a>Acknowledgments</h2>
+<a id="use-cases" class="anchor" href="#use-cases" aria-hidden="true"><span class="octicon octicon-link"></span></a>Use Cases</h2>
 
-<p>We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in <a href="http://www.scala-lang.org">Scala</a> (version 2.11.4 under <a href="http://www.scala-lang.org/license.html">3-clause BSD license</a>) and built on top of:</p>
+<p>PowerAPI is used in a variety of projects to address key challenges of GreenIT:</p>
 
 <ul>
 <li>
-<a href="http://akka.io">Akka</a> (version 2.3.6 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for asynchronous processing</li>
+<a href="http://bitwatts.powerapi.org">BitWatts</a> provides process-level power estimation of applications running in virtual machines</li>
 <li>
-<a href="https://github.com/typesafehub/config">Typesage Config</a> (version 1.2.1 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for reading configuration files.</li>
+<a href="http://webenergyarchive.com">Web Energy Archive</a> ranks popular websites based on the energy footpring they imposes to browsers</li>
 <li>
-<a href="http://logging.apache.org/log4j/2.x">Apache log4j2</a> (version 2.1 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for logging outside actors.</li>
+<a href="http://greenspector.com">Greenspector</a> optimises the power consumption of software by identifying potential energy leaks in the source code.</li>
+</ul>
+
+<h2>
+<a id="acknowledgments" class="anchor" href="#acknowledgments" aria-hidden="true"><span class="octicon octicon-link"></span></a>Acknowledgments</h2>
+
+<p>We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in <a href="http://www.scala-lang.org">Scala</a> (version 2.11.6 under <a href="http://www.scala-lang.org/license.html">3-clause BSD license</a>) and built on top of:</p>
+
+<ul>
 <li>
-<a href="https://github.com/Spirals-Team/powerspy.scala">powerspy.scala</a> (version 1.0.1 under <a href="http://www.gnu.org/licenses/agpl-3.0.html">AGPL license</a>), for using the <a href="http://www.alciom.com/en/products/powerspy2-en-gb-2.html">PowerSpy powermeter</a>.</li>
+<a href="http://akka.io">Akka</a> (version 2.3.11 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for asynchronous processing</li>
 <li>
-<a href="https://code.google.com/p/bridj/">BridJ</a> (version 0.6.2 under <a href="https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE">3-clause BSD license</a>), for system or C calls.</li>
+<a href="https://github.com/typesafehub/config">Typesafe Config</a> (version 1.2.1 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for reading configuration files.</li>
+<li>
+<a href="http://logging.apache.org/log4j/2.x">Apache log4j2</a> (version 2.3 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for logging outside actors.</li>
+<li>
+<a href="https://github.com/Spirals-Team/powerspy.scala">powerspy.scala</a> (version 1.2 under <a href="http://www.gnu.org/licenses/agpl-3.0.html">AGPL license</a>), for using the <a href="http://www.alciom.com/en/products/powerspy2-en-gb-2.html">PowerSpy powermeter</a>.</li>
+<li>
+<a href="https://code.google.com/p/bridj/">BridJ</a> (version 0.7.0 under <a href="https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE">3-clause BSD license</a>), for system or C calls.</li>
 <li>
 <a href="http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree">perfmon2</a> (version 4.6.0 under <a href="http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING">MIT license</a>), for accessing hardware performance counters.</li>
 <li>
@@ -103,7 +118,9 @@ As a middleware toolkit, PowerAPI offers the capability of assembling power mete
 <li>
 <a href="http://jesseeichar.github.io/scala-io-doc/0.4.3/index.html#!/overview">Scala IO</a> (version 0.4.3 under <a href="http://www.scala-lang.org/license.html">3-clause BSD license</a>), for an extensions of IO.</li>
 <li>
-<a href="http://saddle.github.io">Saddle</a> (version 1.3.3 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for data manipulation.</li>
+<a href="http://saddle.github.io/">Saddle</a> (version 1.3.3 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for data manipulation.</li>
+<li>
+<a href="https://support.hyperic.com/display/SIGAR/Home">Sigar</a> (version 1.6.5 under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2 license</a>), for providing a portable interface for gathering system information.</li>
 </ul>
 
 <h1>
