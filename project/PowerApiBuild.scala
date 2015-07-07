@@ -25,9 +25,10 @@ import sbt._
 import scoverage.ScoverageSbtPlugin.ScoverageKeys
 
 object PowerApiBuild extends Build {
-  lazy val powerapi = Project(id = "powerapi", base = file(".")).aggregate(powerapiCore, powerapiCli, powerapiSampling)
+  lazy val powerapi = Project(id = "powerapi", base = file(".")).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
 
   lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core"))
   lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 }
