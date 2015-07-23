@@ -22,21 +22,37 @@
  */
 package org.powerapi.core
 
+import akka.util.Timeout
 import akka.actor.SupervisorStrategy.{Directive, Resume}
 import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.event.LoggingReceive
+import akka.pattern.ask
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.power._
 import org.powerapi.core.target.Target
 import org.powerapi.{PowerDisplay, PowerMonitoring}
 import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
-import org.powerapi.core.MonitorChannel.{MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
+import org.powerapi.core.MonitorChannel.{GetMonitoredProcesses, MonitorAggFunction, MonitorStart, MonitorStarted, MonitorStop, MonitorStopAll, formatMonitorChildName, subscribeMonitorsChannel}
 import org.powerapi.core.MonitorChannel.{publishMonitorTick, setAggFunction, stopMonitor}
 import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, render, subscribeRawPowerReport, unsubscribeRawPowerReport, subscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
 import org.powerapi.reporter.ReporterComponent
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{ DurationLong, FiniteDuration }
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{ Failure, Success }
+
+/**
+ * Main Configuration
+ */
+trait MonitorConfiguration extends Configuration {
+  lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
+    case ConfigValue(value) => Timeout(value.milliseconds)
+    case _ => Timeout(15l.seconds)
+  }
+}
 
 /**
  * One child represents one monitor.
@@ -61,6 +77,7 @@ class MonitorChild(eventBus: MessageBus,
     case tick: ClockTick => produceMessages(tick)
     case MonitorAggFunction(_, id, aggF) if muid == id => setAggregatingFunction(aggR, aggF)
     case powerReport: RawPowerReport => aggregate(aggR, powerReport, aggFunction)
+    case GetMonitoredProcesses => sender ! targets
     case MonitorStop(_, id) if muid == id => stop()
     case _: MonitorStopAll => stop()
   } orElse default
@@ -125,7 +142,7 @@ class MonitorChild(eventBus: MessageBus,
  *
  * @author Maxime Colmant <maxime.colmant@gmail.com>
  */
-class Monitors(eventBus: MessageBus) extends Supervisor {
+class Monitors(eventBus: MessageBus) extends MonitorConfiguration with Supervisor {
   
   override def preStart(): Unit = {
     subscribeMonitorsChannel(eventBus)(self)
@@ -144,6 +161,7 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
     case msg: MonitorAggFunction => setAggregatingFunction(msg)
     case msg: MonitorStop => stop(msg)
     case msg: MonitorStopAll => stopAll(msg)
+    case GetMonitoredProcesses => getMonitoredProcesses
   } orElse default
 
   /**
@@ -188,6 +206,20 @@ class Monitors(eventBus: MessageBus) extends Supervisor {
     context.actorSelection("*") ! msg
     monitorAllStopped()(eventBus)
     context.become(receive)
+  }
+  
+  /**
+   * Allows to get the processes which are monitored by a power meter.
+   */
+  def getMonitoredProcesses: Unit = {
+    val monitoredProcesses = Future.sequence(for (child <- context.children) yield {
+      child.ask(GetMonitoredProcesses)(timeout).map(Success(_)).recover({
+        case e => Failure(e)
+      })
+    }).map(_.collect {
+      case Success(list) => list.asInstanceOf[List[Target]].toSet
+    })
+    sender ! monitoredProcesses
   }
 }
 
