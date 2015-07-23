@@ -31,7 +31,8 @@ import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import org.powerapi.PowerMeterMessages.StopAll
 import org.powerapi.core.{ActorComponent, Clocks, ConfigValue, Configuration, APIComponent, Monitor, Monitors, MessageBus}
-import org.powerapi.core.MonitorChannel.MonitorStart
+import org.powerapi.core.MonitorChannel.{ GetMonitoredProcesses, MonitorStart }
+import org.powerapi.core.MonitorChannel.stopMonitor
 import org.powerapi.core.target.Target
 import org.powerapi.core.power._
 import scala.concurrent.{ Await, Future }
@@ -80,6 +81,12 @@ class PowerMeterActor(eventBus: MessageBus, modules: Seq[PowerModule], timeout: 
         case _ => log.error("The monitor supervisor is not created")
       }
     }
+    case GetMonitoredProcesses => {
+      monitorSupervisor match {
+        case Some(actorRef) => sender ! Await.result(actorRef.ask(GetMonitoredProcesses)(timeout), timeout.duration)
+        case _ => log.error("The monitor supervisor is not created")
+      }
+    }
     case StopAll => stopAll()
   } orElse default
   
@@ -122,6 +129,17 @@ class PowerMeter(system: ActorSystem, modules: Seq[PowerModule]) extends PowerMe
     Await.result(powerMeterActor.ask(MonitorStart("", monitor.muid, frequency, targets.toList))(timeout), timeout.duration)
     monitor
   }
+  
+  /**
+   * Allows to get the processes which are monitored by a power meter.
+   */
+  def getMonitoredProcesses: Iterable[Set[Target]] = {
+    Await.result(
+      Await.result(
+        powerMeterActor.ask(GetMonitoredProcesses)(timeout), timeout.duration
+      ).asInstanceOf[Future[Iterable[Set[Target]]]], timeout.duration
+    ).asInstanceOf[Iterable[Set[Target]]]
+  }
 
   /**
    * Blocks and actively waits for a specific duration before returning.
@@ -135,6 +153,13 @@ class PowerMeter(system: ActorSystem, modules: Seq[PowerModule]) extends PowerMe
     }, duration + 1l.seconds)
 
     this
+  }
+  
+  /**
+   * Cancel a subscription and stops the associated monitoring.
+   */
+  def stopMonitor(muid: UUID): Unit = {
+    org.powerapi.core.MonitorChannel.stopMonitor(muid)(eventBus)
   }
 
   /**

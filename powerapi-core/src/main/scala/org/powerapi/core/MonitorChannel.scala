@@ -85,6 +85,12 @@ object MonitorChannel extends Channel {
   object MonitorStarted
 
   /**
+   * Dedicated type of message to get the processes which are monitored
+   * by a power meter.
+   */
+  object GetMonitoredProcesses
+
+  /**
    * MonitorStop is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
