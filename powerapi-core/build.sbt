@@ -16,14 +16,20 @@ libraryDependencies ++= Seq(
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
   "org.jfree" % "jfreechart" % "1.0.19",
   "org.scala-saddle" %% "saddle-core" % "1.3.3",
-  "org.hyperic" % "sigar" % "1.6.5.132"
+  "org.hyperic" % "sigar" % "1.6.5.132",
+  "io.spray" %% "spray-can" % "1.3.3",
+  "io.spray" %% "spray-client" % "1.3.3",
+  "io.spray" %% "spray-routing" % "1.3.3",
+  "io.spray" %% "spray-json" % "1.3.2",
+  "com.github.nscala-time" %% "nscala-time" % "2.0.0"
 )
 
 // Tests
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % "2.3.11" % "test",
   "org.scalatest" %% "scalatest" % "2.2.5" % "test",
-  "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2" % "test"
+  "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2" % "test",
+  "io.spray" %% "spray-testkit" % "1.3.3" % "test"
 )
 
 startYear := Some(2014)

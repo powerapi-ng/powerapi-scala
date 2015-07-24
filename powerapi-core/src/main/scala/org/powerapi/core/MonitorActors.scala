@@ -258,3 +258,4 @@ class Monitor(eventBus: MessageBus, system: ActorSystem) extends PowerMonitoring
     reporters = Array()
   }
 }
+

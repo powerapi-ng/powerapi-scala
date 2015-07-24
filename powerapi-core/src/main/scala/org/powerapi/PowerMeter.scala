@@ -268,3 +268,4 @@ trait PowerDisplay {
    */
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
 }
+
