@@ -75,9 +75,6 @@ class RestReporterConfiguration extends Configuration(None) {
   }
 }
 
-case class StartProcessMonitoring(targets: Set[String])
-case class StopProcessMonitoring(targets: Set[String])
-
 /**
  * Dedicated type of message to get each monitored processes.
  */
@@ -192,7 +189,7 @@ trait RestService extends HttpService {
       target =>
         post {
           complete {
-            reporter ! StartProcessMonitoring(target.split(",").toSet)
+            reporter ! StartProcessMonitoring(1.second, target.split(",").toSet)
             s"${target} started"
           }
         }
