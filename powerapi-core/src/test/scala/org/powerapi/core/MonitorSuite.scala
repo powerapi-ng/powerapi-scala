@@ -30,12 +30,13 @@ import com.typesafe.config.ConfigFactory
 import java.util.UUID
 import org.powerapi.{PowerDisplay, UnitTest}
 import org.powerapi.core.ClockChannel.{ ClockTick, formatClockChildName }
-import org.powerapi.core.MonitorChannel.{ MonitorAggFunction, MonitorStart, MonitorStop, MonitorTick, subscribeMonitorTick, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
+import org.powerapi.core.MonitorChannel.{ GetMonitoredProcesses, MonitorAggFunction, MonitorStart, MonitorStop, MonitorTick, subscribeMonitorTick, formatMonitorChildName, startMonitor, stopAllMonitor, stopMonitor }
 import org.powerapi.core.power._
 import org.powerapi.core.target.{All, intToProcess, stringToApplication, Target, Process}
 import org.powerapi.module.PowerChannel.{AggregatePowerReport, publishRawPowerReport, subscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.subscribeSensorsChannel
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, DurationInt}
 
 class EchoMonitorTickActor(eventBus: MessageBus, testActor: ActorRef) extends Actor {
@@ -491,4 +492,42 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     _system.shutdown()
     _system.awaitTermination(timeout.duration)
   }
+  
+  "A Monitors actor" should "return a list of monitored processes" in new Bus {
+    val _system = ActorSystem("MonitorSuiteTest9")
+    
+    val monitors = TestActorRef(Props(classOf[Monitors], eventBus), "monitors9")(_system)
+    val reaper = TestProbe()(system)
+    val muids = scala.collection.mutable.ListBuffer[UUID]()
+    
+    for(i <- 0 to 4) {
+      muids += UUID.randomUUID
+      Await.result(monitors.ask(MonitorStart("", muids(i), 1.seconds, List(i)))(timeout), timeout.duration)
+    }
+    
+    var monitoredProcesses = Await.result(monitors.ask(GetMonitoredProcesses)(timeout), timeout.duration).asInstanceOf[Future[Iterable[Set[Target]]]]
+    monitoredProcesses onSuccess {
+      case iter => iter.flatten.toSet should contain theSameElementsAs Set(Process(1),Process(2),Process(3),Process(4),Process(0))
+    }
+
+    val children = monitors.children.toArray.clone()
+    children.foreach(child => reaper.watch(child))
+
+    monitors.ask(MonitorStop("", muids(0)))(timeout)
+    monitors.ask(MonitorStop("", muids(2)))(timeout)
+
+    for(_ <- 0 until 2) {
+      reaper.expectMsgClass(classOf[Terminated])
+    }
+    
+    monitoredProcesses = Await.result(monitors.ask(GetMonitoredProcesses)(timeout), timeout.duration).asInstanceOf[Future[Iterable[Set[Target]]]]
+    monitoredProcesses onSuccess {
+      case iter => iter.flatten.toSet should contain theSameElementsAs Set(Process(1),Process(3),Process(4))
+    }
+
+    Await.result(gracefulStop(monitors, timeout.duration), timeout.duration)
+    _system.shutdown()
+    _system.awaitTermination(timeout.duration)
+  }
 }
+
