@@ -31,8 +31,7 @@ import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import org.powerapi.PowerMeterMessages.StopAll
 import org.powerapi.core.{ActorComponent, Clocks, ConfigValue, Configuration, APIComponent, Monitor, Monitors, MessageBus}
-import org.powerapi.core.MonitorChannel.{ GetMonitoredProcesses, MonitorStart }
-import org.powerapi.core.MonitorChannel.stopMonitor
+import org.powerapi.core.MonitorChannel.{GetMonitoredProcesses, MonitorStart}
 import org.powerapi.core.target.Target
 import org.powerapi.core.power._
 import scala.concurrent.{ Await, Future }

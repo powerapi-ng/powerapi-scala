@@ -27,8 +27,8 @@ import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
 import org.powerapi.core.MessageBus
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
-import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmHelper, LibpfmCoreSensorModule, LibpfmCoreModule}
 import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
+import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmCoreSensorModule, LibpfmHelper, LibpfmCoreModule, LibpfmModule, LibpfmProcessModule}
 import org.powerapi.module.powerspy.PowerSpyModule
 import org.powerapi.module.rapl.RAPLModule
 import scala.concurrent.duration.DurationInt
@@ -88,6 +88,16 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "load the LibpfmCoreProcessModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreProcessModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+  }
+
+  it should "load the LibpfmModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+  }
+
+  it should "load the LibpfmProcessModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmProcessModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
 

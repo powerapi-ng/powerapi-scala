@@ -48,7 +48,7 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus, cyclesThreadName: String, cy
   }
 
   def compute(sensorReport: PCReport): Unit = {
-    val computations: Iterable[Future[Double]] = for((_, wrappers) <- sensorReport.wrappers.groupBy(_.core)) yield {
+    val powers: Iterable[Future[Double]] = for((_, wrappers) <- sensorReport.wrappers.groupBy(_.core)) yield {
       if(wrappers.count(_.event == cyclesThreadName) != 1 || wrappers.count(_.event == cyclesRefName) != 1) {
         Future { 0d }
       }
@@ -81,7 +81,7 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus, cyclesThreadName: String, cy
       }
     }
 
-    val future = Future.sequence(computations)
+    val future = Future.sequence(powers)
 
     future onSuccess {
       case powers: List[Double] => {

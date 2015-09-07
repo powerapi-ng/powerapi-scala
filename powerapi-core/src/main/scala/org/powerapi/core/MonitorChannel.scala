@@ -162,4 +162,3 @@ object MonitorChannel extends Channel {
     s"monitor-$muid"
   }
 }
-

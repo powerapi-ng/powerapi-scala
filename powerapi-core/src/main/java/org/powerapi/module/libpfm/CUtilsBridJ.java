@@ -31,13 +31,14 @@ import org.bridj.Pointer;
 import perfmon2.libpfm.perf_event_attr;
 
 /**
- * This class is used for binding several functions available on the system or in C.
+ * This class is used for binding several functions available in C by using BridJ.
+ * There is a problem when trying to bind the syscall function with JNA.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 @Library("c")
 @Runtime(CRuntime.class)
-public class CUtils {
+public class CUtilsBridJ {
   static {
     BridJ.register();
   }
@@ -48,23 +49,6 @@ public class CUtils {
   public static int perf_event_open(int __nrPerfEventOpen, Pointer<perf_event_attr> __hw, int __pid, int __cpu, int __gr, @CLong long __flags) {
     return syscall(__nrPerfEventOpen, Pointer.getPeer(__hw), __pid, __cpu, __gr, __flags);
   }
+
   private native static int syscall(int __code, Object... varArgs1);
-
-  /**
-   * Interact with a given file descriptor. In this case, we use it to enable, disable and reset a file descriptor (so, a counter).
-   */
-  public static native int ioctl(int __fd, @CLong long __request, Object... varArgs1);
-
-  /**
-   * Allow to read values from a file descriptor.
-   */
-  public static long read(int __fd, Pointer<? > __buf, @CLong long __nbytes) {
-    return read(__fd, Pointer.getPeer(__buf), __nbytes);
-  }
-  private native static long read(int __fd, @CLong long __buf, @CLong long __nbytes);
-
-  /**
-   * Close a file descriptor
-   */
-  public static native int close(int __fd);
 }

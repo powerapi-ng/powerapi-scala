@@ -40,7 +40,7 @@ import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, r
 import org.powerapi.module.SensorChannel.{monitorAllStopped, monitorStopped}
 import org.powerapi.reporter.ReporterComponent
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{ Failure, Success }
 

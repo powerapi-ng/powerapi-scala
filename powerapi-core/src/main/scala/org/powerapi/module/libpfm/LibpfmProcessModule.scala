@@ -24,26 +24,31 @@ package org.powerapi.module.libpfm
 
 import akka.util.Timeout
 import org.powerapi.PowerModule
-import org.powerapi.core.{OSHelper, LinuxHelper}
-import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, LibpfmCoreCyclesFormula}
+import org.powerapi.core.{LinuxHelper, OSHelper}
+
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreProcessModule(osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
-                              cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+/**
+ * This module uses a general formula for representing the overall CPU's power consumption.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+class LibpfmProcessModule(osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
+                          formula: Map[String, Double], samplingInterval: FiniteDuration) extends PowerModule {
 
   lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreProcessSensor], Seq(osHelper, libpfmHelper, timeout, topology, configuration, events, inDepth)))
-  lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
+  lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmFormula], Seq(formula, samplingInterval)))
 }
 
-object LibpfmCoreProcessModule {
-  def apply(prefixConfig: Option[String] = None, libpfmHelper: LibpfmHelper): LibpfmCoreProcessModule = {
+object LibpfmProcessModule {
+  def apply(prefixConfig: Option[String] = None, libpfmHelper: LibpfmHelper): LibpfmProcessModule = {
     val linuxHelper = new LinuxHelper
 
     val coreProcessSensorConf = new LibpfmCoreProcessSensorConfiguration(prefixConfig)
-    val coreCyclesFormulaConf = new LibpfmCoreCyclesFormulaConfiguration(prefixConfig)
+    val formulaConfig = new LibpfmFormulaConfiguration(prefixConfig)
 
-    new LibpfmCoreProcessModule(linuxHelper, libpfmHelper, coreProcessSensorConf.timeout, coreProcessSensorConf.topology, coreProcessSensorConf.configuration, coreProcessSensorConf.events,
-      coreProcessSensorConf.inDepth, coreCyclesFormulaConf.cyclesThreadName, coreCyclesFormulaConf.cyclesRefName, coreCyclesFormulaConf.formulae, coreCyclesFormulaConf.samplingInterval)
+    new LibpfmProcessModule(linuxHelper, libpfmHelper, coreProcessSensorConf.timeout, coreProcessSensorConf.topology, coreProcessSensorConf.configuration, coreProcessSensorConf.events,
+      coreProcessSensorConf.inDepth, formulaConfig.formula, formulaConfig.samplingInterval)
   }
 }
