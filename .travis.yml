@@ -7,3 +7,4 @@ after_success:
 - sbt "project powerapi-core" coverageReport
 - sbt "project powerapi-core" codacyCoverage
 - sbt "project powerapi-core" coveralls
+sudo: false

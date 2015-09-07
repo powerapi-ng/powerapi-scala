@@ -74,7 +74,7 @@ publishTo := {
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
 
-val downloadBluecoveLibs = TaskKey[Seq[File]]("download-bluecove")
+val downloadBluecoveLibs = taskKey[Seq[File]]("download-bluecove")
 
 downloadBluecoveLibs := {
   val locationBluecove = baseDirectory.value / "lib" / "bluecove-2.1.0.jar"
