@@ -49,5 +49,5 @@ abstract class SensorComponent(eventBus: MessageBus) extends APIComponent {
 
   def sense(monitorTick: MonitorTick): Unit
   def monitorStopped(msg: MonitorStop): Unit
-  def monitorAllStopped(msg: MonitorStopAll)
+  def monitorAllStopped(msg: MonitorStopAll): Unit
 }

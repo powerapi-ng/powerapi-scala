@@ -77,6 +77,8 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
       override def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0l, 0l)
 
       override def getProcesses(application: Application): Set[Process] = Set(Process(10), Process(11))
+
+      override def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }
 
     val sensor = TestActorRef(Props(classOf[LibpfmCoreProcessSensor], eventBus, osHelper, libpfmHelper, Timeout(1.seconds), topology, configuration, events, true), "core-process-sensor1")(system)
@@ -87,10 +89,10 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
     libpfmHelper.disablePC _ expects * anyNumberOfTimes() returning true
     libpfmHelper.closePC _ expects * anyNumberOfTimes() returning true
 
-    libpfmHelper.configurePC _ expects(TCID(1, 0), configuration, "event") returning Some(0)
-    libpfmHelper.configurePC _ expects(TCID(1, 0), configuration, "event1") returning Some(1)
-    libpfmHelper.configurePC _ expects(TCID(1, 1), configuration, "event") returning Some(2)
-    libpfmHelper.configurePC _ expects(TCID(1, 1), configuration, "event1") returning Some(3)
+    libpfmHelper.configurePC _ expects(1, 0, configuration, "event", -1, 0l) returning Some(0)
+    libpfmHelper.configurePC _ expects(1, 0, configuration, "event1", -1, 0l) returning Some(1)
+    libpfmHelper.configurePC _ expects(1, 1, configuration, "event", -1, 0l) returning Some(2)
+    libpfmHelper.configurePC _ expects(1, 1, configuration, "event1", -1, 0l) returning Some(3)
     libpfmHelper.readPC _ expects * repeat 4 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid1, Process(1), ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
@@ -104,7 +106,7 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(1l)
             }
           }
         }
@@ -145,14 +147,14 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
       }
     }
 
-    libpfmHelper.configurePC _ expects(TCID(10, 0), configuration, "event") returning Some(4)
-    libpfmHelper.configurePC _ expects(TCID(11, 0), configuration, "event") returning Some(5)
-    libpfmHelper.configurePC _ expects(TCID(10, 0), configuration, "event1") returning Some(6)
-    libpfmHelper.configurePC _ expects(TCID(11, 0), configuration, "event1") returning Some(7)
-    libpfmHelper.configurePC _ expects(TCID(10, 1), configuration, "event") returning Some(8)
-    libpfmHelper.configurePC _ expects(TCID(11, 1), configuration, "event") returning Some(9)
-    libpfmHelper.configurePC _ expects(TCID(10, 1), configuration, "event1") returning Some(10)
-    libpfmHelper.configurePC _ expects(TCID(11, 1), configuration, "event1") returning Some(11)
+    libpfmHelper.configurePC _ expects(10, 0, configuration, "event", -1, 0l) returning Some(4)
+    libpfmHelper.configurePC _ expects(11, 0, configuration, "event", -1, 0l) returning Some(5)
+    libpfmHelper.configurePC _ expects(10, 0, configuration, "event1", -1, 0l) returning Some(6)
+    libpfmHelper.configurePC _ expects(11, 0, configuration, "event1", -1, 0l) returning Some(7)
+    libpfmHelper.configurePC _ expects(10, 1, configuration, "event", -1, 0l) returning Some(8)
+    libpfmHelper.configurePC _ expects(11, 1, configuration, "event", -1, 0l) returning Some(9)
+    libpfmHelper.configurePC _ expects(10, 1, configuration, "event1", -1, 0l) returning Some(10)
+    libpfmHelper.configurePC _ expects(11, 1, configuration, "event1", -1, 0l) returning Some(11)
     libpfmHelper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid1, Application("app"), ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
@@ -166,7 +168,7 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(2l)
             }
           }
         }
@@ -247,6 +249,8 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
       override def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0l, 0l)
 
       override def getProcesses(application: Application): Set[Process] = Set(Process(10), Process(11))
+
+      override def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }
     val reaper = TestProbe()(system)
 
@@ -258,10 +262,10 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
     libpfmHelper.disablePC _ expects * anyNumberOfTimes() returning true
     libpfmHelper.closePC _ expects * anyNumberOfTimes() returning true
 
-    libpfmHelper.configurePC _ expects(TCID(1, 0), configuration, "event") returning Some(0)
-    libpfmHelper.configurePC _ expects(TCID(1, 0), configuration, "event1") returning Some(1)
-    libpfmHelper.configurePC _ expects(TCID(1, 1), configuration, "event") returning Some(2)
-    libpfmHelper.configurePC _ expects(TCID(1, 1), configuration, "event1") returning Some(3)
+    libpfmHelper.configurePC _ expects(1, 0, configuration, "event", -1, 0l) returning Some(0)
+    libpfmHelper.configurePC _ expects(1, 0, configuration, "event1", -1, 0l) returning Some(1)
+    libpfmHelper.configurePC _ expects(1, 1, configuration, "event", -1, 0l) returning Some(2)
+    libpfmHelper.configurePC _ expects(1, 1, configuration, "event1", -1, 0l) returning Some(3)
     libpfmHelper.readPC _ expects * repeat 4 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid1, Process(1), ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
@@ -275,16 +279,16 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(1l)
             }
           }
         }
       }
     }
-    libpfmHelper.configurePC _ expects(TCID(1, 0), configuration, "event") returning Some(0)
-    libpfmHelper.configurePC _ expects(TCID(1, 0), configuration, "event1") returning Some(1)
-    libpfmHelper.configurePC _ expects(TCID(1, 1), configuration, "event") returning Some(2)
-    libpfmHelper.configurePC _ expects(TCID(1, 1), configuration, "event1") returning Some(3)
+    libpfmHelper.configurePC _ expects(1, 0, configuration, "event", -1, 0l) returning Some(0)
+    libpfmHelper.configurePC _ expects(1, 0, configuration, "event1", -1, 0l) returning Some(1)
+    libpfmHelper.configurePC _ expects(1, 1, configuration, "event", -1, 0l) returning Some(2)
+    libpfmHelper.configurePC _ expects(1, 1, configuration, "event1", -1, 0l) returning Some(3)
     libpfmHelper.readPC _ expects * repeat 4 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid2, Process(1), ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
@@ -298,7 +302,7 @@ class LibpfmCoreProcessSensorSuite(system: ActorSystem) extends UnitTest(system)
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(1)
             }
           }
         }

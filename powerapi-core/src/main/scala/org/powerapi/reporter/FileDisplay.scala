@@ -41,4 +41,14 @@ class FileDisplay(filepath: String) extends PowerDisplay  {
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
     output.append(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}\n")
   }
+
+  override def equals(that: Any): Boolean = that match {
+    case that: FileDisplay => this.hashCode == that.hashCode
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(filepath)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
 }

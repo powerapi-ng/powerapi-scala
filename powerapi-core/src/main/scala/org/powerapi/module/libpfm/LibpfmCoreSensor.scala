@@ -30,7 +30,7 @@ import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.core.target.All
 import org.powerapi.module.SensorComponent
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmCoreSensorChildName, PCWrapper, publishPCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmPickerNameForCore, PCWrapper, publishPCReport}
 import scala.collection.BitSet
 import scala.concurrent.Future
 
@@ -42,31 +42,28 @@ import scala.concurrent.Future
 class LibpfmCoreSensor(eventBus: MessageBus, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends SensorComponent(eventBus) {
   val wrappers = scala.collection.mutable.Map[(Int, String), PCWrapper]()
 
-  override def preStart(): Unit = {
-    subscribeSensorsChannel(eventBus)(self)
-    super.preStart()
-  }
-
   def sense(monitorTick: MonitorTick): Unit = {
     if(monitorTick.target == All) {
       for((core, indexes) <- topology) {
         for(index <- indexes) {
           for(event <- events) {
-            val name = formatLibpfmCoreSensorChildName(index, event, monitorTick.muid)
+            val name = formatLibpfmPickerNameForCore(index, event, monitorTick.muid)
 
             val actor = context.child(name) match {
               case Some(ref) => ref
-              case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], libpfmHelper, event, index, None, configuration), name)
+              case None => context.actorOf(Props(classOf[DefaultLibpfmPicker], libpfmHelper, event, -1, index, configuration), name)
             }
 
             wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
           }
         }
       }
-
-      publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
-      wrappers.clear()
     }
+
+    else log.warning("Only All target can be used with this Sensor")
+
+    publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
+    wrappers.clear()
   }
 
   def monitorStopped(msg: MonitorStop): Unit = {

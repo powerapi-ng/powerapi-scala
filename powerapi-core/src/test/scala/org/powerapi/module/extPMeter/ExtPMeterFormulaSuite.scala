@@ -110,6 +110,8 @@ class ExtPMeterFormulaSuite(system: ActorSystem) extends UnitTest(system) {
       def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }, 90.W))(system)
 
     val tickMock = ClockTick("test", 25.milliseconds)

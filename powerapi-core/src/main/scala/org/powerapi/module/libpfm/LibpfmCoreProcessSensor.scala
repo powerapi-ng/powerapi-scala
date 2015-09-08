@@ -26,15 +26,14 @@ import akka.actor.{PoisonPill, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import java.util.UUID
-import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
+import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.core.target.{Application, Process, Target}
-import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
+import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 import org.powerapi.module.SensorComponent
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmPickerNameForCoreProcess, PCWrapper, publishPCReport}
 import org.powerapi.core.{OSHelper, MessageBus}
 import scala.collection.BitSet
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 
 /**
  * Main actor for getting the performance counter value per core/event/process.
@@ -42,19 +41,10 @@ import scala.reflect.ClassTag
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean) extends SensorComponent(eventBus) {
-  val processClaz = implicitly[ClassTag[Process]].runtimeClass
-  val appClaz = implicitly[ClassTag[Application]].runtimeClass
-
   val wrappers = scala.collection.mutable.Map[(Int, String), PCWrapper]()
   val targets = scala.collection.mutable.Map[UUID, Set[Target]]()
   val timestamps = scala.collection.mutable.Map[UUID, Long]()
   val identifiers = scala.collection.mutable.Map[(UUID, Target), Set[Int]]()
-
-  override def preStart(): Unit = {
-    subscribeMonitorTick(eventBus)(self)
-    subscribeSensorsChannel(eventBus)(self)
-    super.preStart()
-  }
 
   def sense(monitorTick: MonitorTick): Unit = {
     if(!timestamps.contains(monitorTick.muid)) {
@@ -75,6 +65,7 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, libpfmHe
           else List(process.pid)
         }).flatten.toSet
       }
+      case _ => log.warning("Only Process and Application targets can be used with this Sensor"); Set()
     }
 
     /**
@@ -109,11 +100,11 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, libpfmHe
       for(index <- indexes) {
         for(event <- events) {
           for(id <- identifiers(monitorTick.muid, monitorTick.target)) {
-            val name = formatLibpfmCoreProcessSensorChildName(index, event, monitorTick.muid, id)
+            val name = formatLibpfmPickerNameForCoreProcess(index, event, monitorTick.muid, id)
 
             val actor = context.child(name) match {
               case Some(ref) => ref
-              case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], libpfmHelper, event, index, Some(id), configuration), name)
+              case None => context.actorOf(Props(classOf[DefaultLibpfmPicker], libpfmHelper, event, id, index, configuration), name)
             }
 
             wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])

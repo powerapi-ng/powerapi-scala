@@ -88,6 +88,8 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       def getGlobalCpuPercent(muid: UUID) = TargetUsageRatio(globalUsages)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }), "simple-CpuSensor1")(system)
 
     subscribeSimpleUsageReport(eventBus)(testActor)

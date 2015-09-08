@@ -90,13 +90,18 @@ object PerformanceCounterChannel extends Channel {
   /**
    * Use to format the names.
    *
-   * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its name otherwise.
+   * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its
+   * name otherwise (string truncated).
    */
-  def formatLibpfmCoreSensorChildName(core: Int, event: String, muid: UUID): String = {
+  def formatLibpfmPickerNameForCore(core: Int, event: String, muid: UUID): String = {
     s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_"
   }
 
-  def formatLibpfmCoreProcessSensorChildName(core: Int, event: String, muid: UUID, identifier: Int): String = {
-    s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_${identifier}_"
+  def formatLibpfmPickerNameForCoreProcess(core: Int, event: String, muid: UUID, pid: Int): String = {
+    s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_${pid}_"
+  }
+
+  def formatLibpfmPickerNameForCoreMethod(core: Int, event: String, muid: UUID, label: String): String = {
+    s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_${label}_"
   }
 }

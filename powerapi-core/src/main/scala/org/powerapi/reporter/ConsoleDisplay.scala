@@ -38,5 +38,10 @@ class ConsoleDisplay extends PowerDisplay {
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
     println(s"muid=$muid;timestamp=$timestamp;target=${targets.mkString(";")};devices=${devices.mkString(",")};power=${power.toWatts}")
   }
+
+  override def equals(that: Any): Boolean = that match {
+    case that: ConsoleDisplay => true
+    case _ => false
+  }
 }
 

@@ -50,6 +50,7 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
         osHelper.getTargetCpuPercent(monitorTick.muid, target)
       }
       case All => osHelper.getGlobalCpuPercent(monitorTick.muid)
+      case _ => log.warning("Only Process, Application, or All targets can be used with this Sensor"); TargetUsageRatio(0.0)
     }
   }
 

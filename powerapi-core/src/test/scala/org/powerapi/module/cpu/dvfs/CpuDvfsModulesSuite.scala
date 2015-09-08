@@ -51,6 +51,7 @@ class CpuDvfsModulesSuite(system: ActorSystem) extends UnitTest(system) {
       override def getProcessCpuTime(process: Process): Option[Long] = None
       override def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
       override def getProcesses(application: Application): Set[Process] = Set()
+      override def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }
 
     val module = new CpuDvfsModule(osHelper, 10, 0.5, Map(1 -> 10))

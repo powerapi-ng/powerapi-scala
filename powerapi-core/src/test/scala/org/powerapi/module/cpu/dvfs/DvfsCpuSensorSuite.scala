@@ -82,6 +82,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => TimeInStates(Map())
         }
       }
+
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }), "dvfs-CpuSensor1")(system)
 
     val muid = UUID.randomUUID()
@@ -156,6 +158,8 @@ class DvfsCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
           case _ => TimeInStates(Map())
         }
       }
+
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }), "dvfs-CpuSensor2")(system)
 
     val muid = UUID.randomUUID()

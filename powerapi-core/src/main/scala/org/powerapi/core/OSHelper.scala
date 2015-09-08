@@ -154,6 +154,11 @@ trait OSHelper {
       case _ => TargetUsageRatio(0.0)
     }
   }
+
+  /**
+   * Get the function name with a binary program and an hexadecimal address.
+   */
+  def getFunctionNameByAddress(binaryPath: String, address: String): Option[String]
 }
 
 /**
@@ -364,6 +369,11 @@ class LinuxHelper extends Configuration(None) with OSHelper {
 
     TimeInStates(result.toMap[Long, Long])
   }
+
+  def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = {
+    val result = Seq("addr2line", "-C", "-f", "-e", binaryPath, address).lineStream.toSeq
+    if(result.size == 2 && result.head != "??") Some(result.head) else None
+  }
 }
 
 /**
@@ -444,4 +454,5 @@ class SigarHelper extends Configuration(None) with OSHelper {
   }
 
   def getTimeInStates: TimeInStates = throw new SigarException("sigar cannot be able to get how many time CPU spent under each frequency")
+  def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = throw new SigarException("sigar cannot be able to get the function name from an address")
 }

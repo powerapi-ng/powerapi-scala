@@ -47,4 +47,9 @@ class JFreeChartDisplay extends PowerDisplay {
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
     Chart.process(Map(s"${targets.mkString(",")}" -> power.toWatts), timestamp)
   }
+
+  override def equals(that: Any): Boolean = that match {
+    case that: JFreeChartDisplay => true
+    case _ => false
+  }
 }

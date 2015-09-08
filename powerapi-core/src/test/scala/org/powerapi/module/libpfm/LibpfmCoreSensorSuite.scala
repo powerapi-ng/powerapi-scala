@@ -30,7 +30,7 @@ import akka.testkit.{TestActorRef, TestProbe}
 import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
-import org.powerapi.core.target.All
+import org.powerapi.core.target.{Process, All}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
@@ -71,17 +71,22 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) with M
     helper.disablePC _ expects * anyNumberOfTimes() returning true
     helper.closePC _ expects * anyNumberOfTimes() returning true
 
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
-    helper.configurePC _ expects(CID(0), configuration, "event1") returning Some(1)
-    helper.configurePC _ expects(CID(1), configuration, "event") returning Some(2)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(3)
-    helper.configurePC _ expects(CID(2), configuration, "event") returning Some(4)
-    helper.configurePC _ expects(CID(2), configuration, "event1") returning Some(5)
-    helper.configurePC _ expects(CID(3), configuration, "event") returning Some(6)
-    helper.configurePC _ expects(CID(3), configuration, "event1") returning Some(7)
+    helper.configurePC _ expects(-1, 0, configuration, "event", -1, 0l) returning Some(0)
+    helper.configurePC _ expects(-1, 0, configuration, "event1", -1, 0l) returning Some(1)
+    helper.configurePC _ expects(-1, 1, configuration, "event", -1, 0l) returning Some(2)
+    helper.configurePC _ expects(-1, 1, configuration, "event1", -1, 0l) returning Some(3)
+    helper.configurePC _ expects(-1, 2, configuration, "event", -1, 0l) returning Some(4)
+    helper.configurePC _ expects(-1, 2, configuration, "event1", -1, 0l) returning Some(5)
+    helper.configurePC _ expects(-1, 3, configuration, "event", -1, 0l) returning Some(6)
+    helper.configurePC _ expects(-1, 3, configuration, "event1", -1, 0l) returning Some(7)
     helper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid1, 1, ClockTick("clock", 1.second))
-    expectNoMsg()
+    expectMsgClass(classOf[PCReport]) match {
+      case PCReport(_, _, target, wrappers, _) => {
+        target should equal(Process(1))
+        wrappers.isEmpty should equal(true)
+      }
+    }
     sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
       case PCReport(_, _, target, wrappers, _) => {
@@ -94,7 +99,7 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) with M
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(2l)
             }
           }
         }
@@ -170,14 +175,14 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) with M
     helper.disablePC _ expects * anyNumberOfTimes() returning true
     helper.closePC _ expects * anyNumberOfTimes() returning true
 
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
-    helper.configurePC _ expects(CID(0), configuration, "event1") returning Some(1)
-    helper.configurePC _ expects(CID(1), configuration, "event") returning Some(2)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(3)
-    helper.configurePC _ expects(CID(2), configuration, "event") returning Some(4)
-    helper.configurePC _ expects(CID(2), configuration, "event1") returning Some(5)
-    helper.configurePC _ expects(CID(3), configuration, "event") returning Some(6)
-    helper.configurePC _ expects(CID(3), configuration, "event1") returning Some(7)
+    helper.configurePC _ expects(-1, 0, configuration, "event", -1, 0l) returning Some(0)
+    helper.configurePC _ expects(-1, 0, configuration, "event1", -1, 0l) returning Some(1)
+    helper.configurePC _ expects(-1, 1, configuration, "event", -1, 0l) returning Some(2)
+    helper.configurePC _ expects(-1, 1, configuration, "event1", -1, 0l) returning Some(3)
+    helper.configurePC _ expects(-1, 2, configuration, "event", -1, 0l) returning Some(4)
+    helper.configurePC _ expects(-1, 2, configuration, "event1", -1, 0l) returning Some(5)
+    helper.configurePC _ expects(-1, 3, configuration, "event", -1, 0l) returning Some(6)
+    helper.configurePC _ expects(-1, 3, configuration, "event1", -1, 0l) returning Some(7)
     helper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
@@ -191,20 +196,20 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) with M
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(2l)
             }
           }
         }
       }
     }
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(8)
-    helper.configurePC _ expects(CID(0), configuration, "event1") returning Some(9)
-    helper.configurePC _ expects(CID(1), configuration, "event") returning Some(10)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(11)
-    helper.configurePC _ expects(CID(2), configuration, "event") returning Some(12)
-    helper.configurePC _ expects(CID(2), configuration, "event1") returning Some(13)
-    helper.configurePC _ expects(CID(3), configuration, "event") returning Some(14)
-    helper.configurePC _ expects(CID(3), configuration, "event1") returning Some(15)
+    helper.configurePC _ expects(-1, 0, configuration, "event", -1, 0l) returning Some(8)
+    helper.configurePC _ expects(-1, 0, configuration, "event1", -1, 0l) returning Some(9)
+    helper.configurePC _ expects(-1, 1, configuration, "event", -1, 0l) returning Some(10)
+    helper.configurePC _ expects(-1, 1, configuration, "event1", -1, 0l) returning Some(11)
+    helper.configurePC _ expects(-1, 2, configuration, "event", -1, 0l) returning Some(12)
+    helper.configurePC _ expects(-1, 2, configuration, "event1", -1, 0l) returning Some(13)
+    helper.configurePC _ expects(-1, 3, configuration, "event", -1, 0l) returning Some(14)
+    helper.configurePC _ expects(-1, 3, configuration, "event1", -1, 0l) returning Some(15)
     helper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
     sensor ! MonitorTick("monitor", muid2, All, ClockTick("clock", 1.second))
     expectMsgClass(classOf[PCReport]) match {
@@ -218,7 +223,7 @@ class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) with M
           Future.sequence(wrapper.values) onSuccess {
             case coreValues: List[Long] => {
               val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
+              aggValue should equal(2l)
             }
           }
         }

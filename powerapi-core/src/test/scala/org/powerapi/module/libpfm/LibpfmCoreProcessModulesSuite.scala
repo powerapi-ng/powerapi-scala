@@ -53,6 +53,7 @@ class LibpfmCoreProcessModulesSuite(system: ActorSystem) extends UnitTest(system
       override def getProcessCpuTime(process: Process): Option[Long] = None
       override def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
       override def getProcesses(application: Application): Set[Process] = Set()
+      override def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }
 
     val libpfmHelper = new LibpfmHelper
@@ -100,7 +101,7 @@ class LibpfmCoreProcessModulesSuite(system: ActorSystem) extends UnitTest(system
     module1.underlyingSensorsClasses.size should equal(1)
     module1.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreProcessSensor])
     module1.underlyingSensorsClasses(0)._2.size should equal(7)
-    module2.underlyingSensorsClasses(0)._2(0).getClass should equal(classOf[LinuxHelper])
+    module1.underlyingSensorsClasses(0)._2(0).getClass should equal(classOf[LinuxHelper])
     module1.underlyingSensorsClasses(0)._2(1) should equal(libpfmHelper)
     module1.underlyingSensorsClasses(0)._2(2) should equal(Timeout(10.seconds))
     module1.underlyingSensorsClasses(0)._2(3) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))

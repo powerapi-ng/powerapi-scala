@@ -118,6 +118,8 @@ class RAPLSensorSuite(system: ActorSystem) extends UnitTest(system) {
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
 
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
+
     }, new RAPLHelper {
       var energy = 2
       override def getRAPLEnergy: Double = {

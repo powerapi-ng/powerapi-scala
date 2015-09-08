@@ -36,9 +36,9 @@ import org.scalamock.scalatest.MockFactory
 import scala.collection.BitSet
 import scala.concurrent.duration.DurationInt
 
-class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) with MockFactory {
+class LibpfmPickerSuite(system: ActorSystem) extends UnitTest(system) with MockFactory {
 
-  def this() = this(ActorSystem("LibpfmCoreSensorChildSuite"))
+  def this() = this(ActorSystem("LibpfmPickerSuite"))
 
   val timeout = Timeout(1.seconds)
 
@@ -50,22 +50,22 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) w
     val eventBus = new MessageBus
   }
 
-  "A LibpfmCoreSensorChild" should "collect the performance counter values" in new Bus {
+  "A DefaultLibpfmPicker" should "open, configure and collect values from a performance counter" in new Bus {
     val configuration = BitSet()
     val helper = mock[LibpfmHelper]
     val muid = UUID.randomUUID()
 
-    val child = TestActorRef(Props(classOf[LibpfmCoreSensorChild], helper, "event", 0, None, configuration), testActor, "child1")(system)
+    val child = TestActorRef(Props(classOf[DefaultLibpfmPicker], helper, "event", -1, 0, configuration), testActor, "child1")(system)
 
     helper.resetPC _ expects * anyNumberOfTimes() returning true
     helper.enablePC _ expects * anyNumberOfTimes() returning true
     helper.disablePC _ expects * anyNumberOfTimes() returning true
     helper.closePC _ expects * anyNumberOfTimes() returning true
 
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
+    helper.configurePC _ expects(-1, 0, configuration, "event", -1, 0l) returning Some(0)
     helper.readPC _ expects 0 repeat 2 returning Array(1, 1, 1)
     child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
-    expectMsgClass(classOf[Long]) should equal(0l)
+    expectMsgClass(classOf[Long]) should equal(1l)
     child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
     expectMsgClass(classOf[Long]) should equal(0l)
 
@@ -80,14 +80,38 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) w
     system.stop(child)
   }
 
-  it should "close correctly the resources" in {
+  "A FDLibpfmPicker" should "collect values from a performance counter" in new Bus {
+    val configuration = BitSet()
+    val helper = mock[LibpfmHelper]
+    val muid = UUID.randomUUID()
+
+    val child = TestActorRef(Props(classOf[FDLibpfmPicker], helper, Some(3)), testActor, "child1")(system)
+
+    helper.readPC _ expects 3 repeat 2 returning Array(1, 1, 1)
+    child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
+    expectMsgClass(classOf[Long]) should equal(1l)
+    child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
+    expectMsgClass(classOf[Long]) should equal(0l)
+
+    helper.readPC _ expects 3 returning Array(10, 2, 2)
+    helper.scale _ expects where {
+      (now: Array[Long], old: Array[Long]) => now.deep == Array(10l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
+    } returning Some(8)
+
+    child ! MonitorTick("monitor", muid, All, ClockTick("clock", 500.milliseconds))
+    expectMsgClass(classOf[Long]) should equal(8l)
+
+    system.stop(child)
+  }
+
+  "A LibpfmPicker" should "close correctly the resources" in {
     val configuration = BitSet()
     val helper = mock[LibpfmHelper]
     val reaper = TestProbe()(system)
     val muid1 = UUID.randomUUID()
 
-    val child1 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], helper, "event", 0, None, configuration), testActor, "child1")(system)
-    val child2 = TestActorRef(Props(classOf[LibpfmCoreSensorChild], helper, "event1", 1, None, configuration), testActor, "child2")(system)
+    val child1 = TestActorRef(Props(classOf[DefaultLibpfmPicker], helper, "event", 1, 0, configuration), testActor, "child1")(system)
+    val child2 = TestActorRef(Props(classOf[FDLibpfmPicker], helper, Some(4)), testActor, "child2")(system)
     reaper.watch(child1)
     reaper.watch(child2)
 
@@ -96,8 +120,7 @@ class LibpfmCoreSensorChildSuite(system: ActorSystem) extends UnitTest(system) w
     helper.disablePC _ expects * anyNumberOfTimes() returning true
     helper.closePC _ expects * anyNumberOfTimes() returning true
 
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(1)
+    helper.configurePC _ expects(1, 0, configuration, "event", -1, 0l) returning Some(0)
 
     child1 ! MonitorStop("sensor", muid1)
     reaper.expectTerminated(child1, timeout.duration)

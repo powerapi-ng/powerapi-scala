@@ -39,7 +39,7 @@ trait Target
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class Process(pid: Int) extends Target {
-  override def toString(): String = s"$pid"
+  override def toString: String = s"$pid"
 }
 
 /**
@@ -51,7 +51,7 @@ case class Process(pid: Int) extends Target {
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class Application(name: String) extends Target {
-  override def toString(): String = name
+  override def toString: String = name
 }
 
 /**
@@ -71,4 +71,14 @@ case class TargetUsageRatio(ratio: Double)
  */
 object All extends Target {
   override def toString = "All"
+}
+
+/**
+ * Monitoring an external piece of code represented as a label.
+ * The targeted software has to send the required data associated to this label.
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+case class Code(label: String) extends Target {
+  override def toString: String = label
 }

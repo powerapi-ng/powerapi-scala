@@ -28,7 +28,7 @@ import akka.util.Timeout
 import org.powerapi.core.{ExternalPMeter, MessageBus}
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
-import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmCoreSensorModule, LibpfmHelper, LibpfmCoreModule, LibpfmModule, LibpfmProcessModule}
+import org.powerapi.module.libpfm.{AncillaryHelper, LibpfmCoreProcessModule, LibpfmCoreSensorModule, LibpfmHelper, LibpfmCoreModule, LibpfmModule, LibpfmProcessModule, LibpfmCoreCodeModule}
 import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
 import org.powerapi.module.extPMeter.g5k.G5kOmegaWattModule
 import org.powerapi.module.rapl.RAPLModule
@@ -95,6 +95,11 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "load the LibpfmCoreProcessModule" in new EventBus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreProcessModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+  }
+
+  it should "load the LibpfmCoreCodeModule" in new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreCodeModule(libpfmHelper = new LibpfmHelper, ancillaryHelper = new AncillaryHelper)), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
 

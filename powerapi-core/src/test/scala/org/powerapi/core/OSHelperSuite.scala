@@ -97,6 +97,8 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }
 
     val p1Time = 33 + 2
@@ -135,6 +137,8 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
 
       def getTimeInStates: TimeInStates = TimeInStates(Map())
+
+      def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = ???
     }
 
     val p1Usage = 0.73

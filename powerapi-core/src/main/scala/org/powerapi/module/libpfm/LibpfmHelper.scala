@@ -31,16 +31,6 @@ import perfmon2.libpfm.{pfm_pmu_info_t, perf_event_attr, pfm_perf_encode_arg_t, 
 import perfmon2.libpfm.LibpfmLibrary.{pfm_attr_t, pfm_pmu_t, pfm_os_t}
 import scala.collection.BitSet
 
-/**
- * Internal wrappers
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait Identifier
-case class TID(identifier: Int) extends Identifier
-case class CID(core: Int) extends Identifier
-case class TCID(identifier: Int, core: Int) extends Identifier
-
 case class Event(pmu: String, name: String, code: String) extends Ordered[Event] {
   override def equals(that: Any): Boolean = {
     that.isInstanceOf[Event] && java.lang.Long.parseLong(code, 16) == java.lang.Long.parseLong(that.asInstanceOf[Event].code, 16) && (pmu.equals("*") || pmu.equals(that.asInstanceOf[Event].name))
@@ -113,11 +103,14 @@ class LibpfmHelper extends Configuration {
   /**
    * Open a file descriptor with the given configuration options.
    *
-   * @param identifier: identifier used to open the counter
+   * @param pid: process to monitor (could be also a Thread IDentifier)
+   * @param cpu: attached CPU to monitor
    * @param configuration: bits configuration
-   * @param name: name of the performance counter to open
+   * @param name: event name
+   * @param group: event group (only if needed) (default: -1)
+   * @param flags: specify more options (only if needed) (default: 0)
    */
-  def configurePC(identifier: Identifier, configuration: BitSet, name: String): Option[Int] = {
+  def configurePC(pid: Int, cpu: Int, configuration: BitSet, name: String, group: Int = -1, flags: Long = 0): Option[Int] = {
     val cName = pointerToCString(name)
     val argEncoded = new pfm_perf_encode_arg_t
     val argEncodedPointer = getPointer(argEncoded)
@@ -131,23 +124,14 @@ class LibpfmHelper extends Configuration {
     // PFM_PLM0: measure at kernel level.
     // PFM_PLMH: measure at hypervisor level.
     // PFM_OS_PERF_EVENT_EXT is used to extend the default perf_event library with libpfm.
-    val ret = LibpfmLibrary.pfm_get_os_event_encoding(cName, LibpfmLibrary.PFM_PLM0|LibpfmLibrary.PFM_PLM3|LibpfmLibrary.PFM_PLMH, pfm_os_t.PFM_OS_PERF_EVENT, argEncodedPointer)
+    val ret = LibpfmLibrary.pfm_get_os_event_encoding(cName, LibpfmLibrary.PFM_PLM0|LibpfmLibrary.PFM_PLM3|LibpfmLibrary.PFM_PLMH, pfm_os_t.PFM_OS_PERF_EVENT_EXT, argEncodedPointer)
 
     if(ret == LibpfmLibrary.PFM_SUCCESS) {
       // Set the bits in the structure.
       eventAttr.read_format(format)
       eventAttr.bits_config(configuration: Long)
 
-      // Open the file descriptor.
-      val fd = identifier match {
-        case TID(tid) => CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, tid, -1, -1, 0)
-        case CID(cid) => CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, -1, cid, -1, 0)
-        case TCID(tid, cid) => CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, tid, cid, -1, 0)
-        case _ => {
-          log.error("The type of the first parameter is unknown.")
-          -1
-        }
-      }
+      val fd = CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, pid, cpu, group, flags)
 
       if(fd > 0) {
         Some(fd)
@@ -318,7 +302,7 @@ class LibpfmHelper extends Configuration {
     var scaling = false
 
     while(!scaling && nbEvents <= genericEvents.size) {
-      val fd = configurePC(CID(0), BitSet(), s"${pinfo.name.getCString}::${genericEvents(nbEvents).name}")
+      val fd = configurePC(-1, 0, BitSet(), s"${pinfo.name.getCString}::${genericEvents(nbEvents).name}")
       fds += fd
 
       fd match {

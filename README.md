@@ -61,6 +61,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [spray-routing](http://spray.io/) (version 1.3.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a high-level, very flexible routing DSL for elegantly defining RESTful web services.
 * [spray-json](http://spray.io/) (version 1.2.2 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for (de)serializing JSON.
 * [nscala-time](https://github.com/nscala-time/nscala-time) (version 2.0.0 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for using a scala wrapper for Joda Time (quality replacement for the Java date and time classes).
+* [jnr-unixsocket](https://github.com/jnr/jnr-unixsocket) (version 0.8 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for native I/O access.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.

@@ -90,7 +90,7 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
     val configuration = BitSet(0, 1)
 
     helper.init() should equal(true)
-    helper.configurePC(TID(pid), configuration, "cycles") match {
+    helper.configurePC(pid, -1, configuration, "cycles") match {
       case Some(fd) => {
         helper.resetPC(fd) should equal(true)
         helper.enablePC(fd) should equal(true)

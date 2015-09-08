@@ -30,46 +30,14 @@ import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 import scala.collection.BitSet
 
 /**
- * Base trait for each LibpfmCoreSensorChild.
- * A LibpfmCoreSensorChild is reponsible to handle one performance counter, to collect its value and then to process the result.
+ * Main contract for a Libpfm picker.
+ * A picker is responsible to collect and to scale the PC's value upon request, and to send the scaled value to the enquirer.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class LibpfmCoreSensorChild(helper: LibpfmHelper, event: String, core: Int, tid: Option[Int], configuration: BitSet) extends ActorComponent {
-  private var _fd: Option[Int] = None
-
-  def fd: Option[Int] = {
-    if(_fd == None) {
-      val identifier = tid match {
-        case Some(value) => TCID(value, core)
-        case None => CID(core)
-      }
-
-      helper.configurePC(identifier, configuration, event) match {
-        case Some(value: Int) => {
-          helper.resetPC(value)
-          helper.enablePC(value)
-          _fd = Some(value)
-        }
-        case None => {
-          log.warning("Libpfm is not able to open the counter for the identifier {}", identifier)
-          _fd = None
-        }
-      }
-    }
-
-    _fd
-  }
-
-  override def postStop(): Unit = {
-    fd match {
-      case Some(fdValue) => {
-        helper.disablePC(fdValue)
-        helper.closePC(fdValue)
-      }
-      case _ => {}
-    }
-  }
+trait LibpfmPicker extends ActorComponent {
+  def helper: LibpfmHelper
+  def fd: Option[Int]
 
   def receive: PartialFunction[Any, Unit] = running(true, Array(0,0,0))
 
@@ -86,7 +54,10 @@ class LibpfmCoreSensorChild(helper: LibpfmHelper, event: String, core: Int, tid:
 
         val scaledValue: Long = {
           if(first) {
-            0l
+            if(now(1) > 0) {
+              now(0) * (now(2) / now(1))
+            }
+            else 0l
           }
 
           else if(now(1) != old(1) && now(2) != old(2)) {
@@ -99,6 +70,8 @@ class LibpfmCoreSensorChild(helper: LibpfmHelper, event: String, core: Int, tid:
           else 0l
         }
 
+        log.debug(s"Value read from fd: $scaledValue")
+
         sender ! scaledValue
         context.become(running(false, now))
       }
@@ -110,3 +83,49 @@ class LibpfmCoreSensorChild(helper: LibpfmHelper, event: String, core: Int, tid:
     self ! PoisonPill
   }
 }
+
+/**
+ * A DefaultLibpfmPicker has to open the PC (represented as a fd).
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+class DefaultLibpfmPicker(val helper: LibpfmHelper, event: String, pid: Int, cpu: Int, configuration: BitSet) extends LibpfmPicker {
+  private var _fd: Option[Int] = None
+
+  def fd: Option[Int] = {
+    if(_fd == None) {
+      helper.configurePC(pid, cpu, configuration, event) match {
+        case Some(value: Int) => {
+          helper.resetPC(value)
+          helper.enablePC(value)
+          _fd = Some(value)
+        }
+        case None => {
+          log.warning("Libpfm is not able to open the counter (pid: {}, cpu: {})", pid, cpu)
+          _fd = None
+        }
+      }
+    }
+
+    _fd
+  }
+
+  override def postStop(): Unit = {
+    fd match {
+      case Some(fdValue) => {
+        helper.disablePC(fdValue)
+        helper.closePC(fdValue)
+      }
+      case _ => {}
+    }
+
+    super.postStop()
+  }
+}
+
+/**
+ * A FDLibpfmPicker uses a given file descriptor (attached to a PC).
+ *
+ * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ */
+class FDLibpfmPicker(val helper: LibpfmHelper, val fd: Option[Int]) extends LibpfmPicker
