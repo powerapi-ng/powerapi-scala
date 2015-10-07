@@ -20,15 +20,25 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.core
+package org.powerapi.module.extPMeter.powerspy
+
+import java.util.concurrent.TimeUnit
+import org.powerapi.core.{ConfigValue, Configuration}
+import scala.concurrent.duration.{FiniteDuration, DurationLong}
 
 /**
- * Base trait for implementing external power meters.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-trait ExternalPMeter {
-  def init(bus: MessageBus): Unit
-  def start(): Unit
-  def stop(): Unit
+class PowerSpyPMeterConfiguration(prefix: Option[String]) extends Configuration(prefix) {
+  lazy val mac: String = load { _.getString(s"${configurationPath}powerspy.mac") } match {
+    case ConfigValue(address) => address
+    case _ => ""
+  }
+
+  lazy val interval: FiniteDuration = load { _.getDuration(s"${configurationPath}powerspy.interval", TimeUnit.NANOSECONDS) } match {
+    case ConfigValue(value) => value.nanoseconds
+    case _ => 1l.seconds
+  }
 }

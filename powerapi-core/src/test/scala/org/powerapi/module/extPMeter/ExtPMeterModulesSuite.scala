@@ -20,29 +20,29 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter
 
 import java.util.UUID
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.powerapi.UnitTest
-import org.powerapi.core.{MessageBus, GlobalCpuTime, TimeInStates, OSHelper, Thread}
+import org.powerapi.core.{ExternalPMeter, MessageBus, GlobalCpuTime, TimeInStates, OSHelper, Thread}
 import org.powerapi.core.target.{Application, TargetUsageRatio, Process}
 import org.powerapi.core.power._
 import scala.concurrent.duration.DurationInt
 
-class PowerSpyModulesSuite(system: ActorSystem) extends UnitTest(system) {
+class ExtPMeterModulesSuite(system: ActorSystem) extends UnitTest(system) {
 
   implicit val timeout = Timeout(1.seconds)
 
-  def this() = this(ActorSystem("PowerSpyModulesSuite"))
+  def this() = this(ActorSystem("ExtPMeterModulesSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
-  "The PowerSpyModule class" should "create the underlying classes (sensors/formulae)" in {
+  "The ExtPMeterModule class" should "create the underlying classes (sensors/formulae)" in {
     val osHelper = new OSHelper {
       override def getCPUFrequencies: Set[Long] = Set()
       override def getThreads(process: Process): Set[Thread] = Set()
@@ -53,17 +53,23 @@ class PowerSpyModulesSuite(system: ActorSystem) extends UnitTest(system) {
       override def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
       override def getProcesses(application: Application): Set[Process] = Set()
     }
+    
+    val mockPMeter = new ExternalPMeter {
+      def init(bus: MessageBus): Unit = {}
+      def start(): Unit = {}
+      def stop(): Unit = {}
+    }
 
-    val module = new PowerSpyModule(osHelper, "00:00:00:00:00:00", 10.seconds, 1.W) {
+    val module = new ExtPMeterModule(osHelper, mockPMeter, 1.W) {
       eventBus = Some(new MessageBus)
     }
     module.underlyingSensorsClasses.size should equal(1)
-    module.underlyingSensorsClasses(0)._1 should equal(classOf[PowerSpySensor])
+    module.underlyingSensorsClasses(0)._1 should equal(classOf[ExtPMeterSensor])
     module.underlyingSensorsClasses(0)._2.size should equal(1)
-    module.underlyingSensorsClasses(0)._2(0).getClass should equal(classOf[PowerSpyPMeter])
+    module.underlyingSensorsClasses(0)._2(0).getClass should equal(mockPMeter.getClass)
 
     module.underlyingFormulaeClasses.size should equal(1)
-    module.underlyingFormulaeClasses(0)._1 should equal(classOf[PowerSpyFormula])
+    module.underlyingFormulaeClasses(0)._1 should equal(classOf[ExtPMeterFormula])
     module.underlyingFormulaeClasses(0)._2.size should equal(2)
     module.underlyingFormulaeClasses(0)._2(0) should equal(osHelper)
     module.underlyingFormulaeClasses(0)._2(1) should equal(1.W)

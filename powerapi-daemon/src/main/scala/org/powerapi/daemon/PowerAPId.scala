@@ -40,7 +40,8 @@ import org.powerapi.core.power._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
 import org.powerapi.module.libpfm.{LibpfmHelper, LibpfmCoreProcessModule, LibpfmCoreModule}
-import org.powerapi.module.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.g5k.G5kOmegaWattModule
 
 /**
  * PowerAPI daemon.
@@ -113,7 +114,8 @@ class PowerAPId extends Daemon {
             libpfmHelper.get.init()
             LibpfmCoreProcessModule(None, libpfmHelper.get)
           }
-          case "powerspy" => PowerSpyModule()
+          case "powerspy" => PowerSpyModule(None)
+          case "g5k-omegawatt" => G5kOmegaWattModule(None)
           case "rapl" => RAPLModule()
         }
       }).toSeq

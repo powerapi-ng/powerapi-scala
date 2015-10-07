@@ -31,7 +31,8 @@ import org.powerapi.core.power._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
 import org.powerapi.module.libpfm.{LibpfmModule, LibpfmHelper, LibpfmCoreProcessModule, LibpfmCoreModule, LibpfmProcessModule}
-import org.powerapi.module.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.g5k.G5kOmegaWattModule
 import scala.concurrent.duration.DurationInt
 import scala.sys
 import scala.sys.process.stringSeqToProcess
@@ -43,7 +44,7 @@ import scala.sys.process.stringSeqToProcess
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
 object PowerAPI extends App {
-  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|rapl)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|rapl))*""".r
+  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl))*""".r
   val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
   val durationR = """\d+""".r
   val pidR = """(\d+)""".r
@@ -113,7 +114,7 @@ object PowerAPI extends App {
         |You can use different settings per software-defined power meter for some modules by using the optional prefix option.
         |Please, refer to the documentation inside the GitHub wiki for further details.
         |
-        |usage: ./powerapi modules [procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-proces|powerspy|rapl,...] *--prefix [name]* \
+        |usage: ./powerapi modules [procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-proces|powerspy|g5k-omegawatt|rapl,...] *--prefix [name]* \
         |                          monitor --frequency [ms] --targets [pid, ..., app, ...|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart] \
         |                  duration [s]
         |
@@ -180,7 +181,8 @@ object PowerAPI extends App {
           case "libpfm-process" => LibpfmProcessModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
           case "libpfm-core" => LibpfmCoreModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
           case "libpfm-core-process" => LibpfmCoreProcessModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
-          case "powerspy" => PowerSpyModule()
+          case "powerspy" => PowerSpyModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
+          case "g5k-omegawatt" => G5kOmegaWattModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
           case "rapl" => RAPLModule()
         }
       }).toSeq

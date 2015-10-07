@@ -32,7 +32,7 @@ import org.powerapi.module.libpfm.{LibpfmHelper, LibpfmCoreSensorModule}
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{subscribePCReport, PCReport}
 import org.powerapi.core.power._
 import org.powerapi.core.target.All
-import org.powerapi.module.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
 import scala.concurrent.duration.DurationInt
 import scala.sys.process.{ProcessLogger, stringSeqToProcess}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -356,7 +356,7 @@ object Sampling {
   def apply(outputPath: String, configuration: SamplingConfiguration, libpfmHelper: LibpfmHelper): Sampling = {
     libpfmHelper.init()
     powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(None, libpfmHelper, configuration.events)))
-    externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule()))
+    externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule(None)))
     new Sampling(outputPath, configuration, libpfmHelper, powerapi.get, externalPMeter.get)
   }
 }

@@ -20,15 +20,28 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.core
+package org.powerapi.module.extPMeter
 
-/**
- * Base trait for implementing external power meters.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait ExternalPMeter {
-  def init(bus: MessageBus): Unit
-  def start(): Unit
-  def stop(): Unit
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.powerapi.UnitTest
+import org.powerapi.core.power._
+import scala.concurrent.duration.DurationInt
+
+class ExtPMeterFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+
+  implicit val timeout = Timeout(1.seconds)
+
+  def this() = this(ActorSystem("ExtPMeterFormulaConfigurationSuite"))
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
+  }
+
+  "The ExtPMeterFormulaConfiguration" should "read correctly the values from a resource file" in {
+    val configuration = new ExtPMeterFormulaConfiguration {}
+
+    configuration.idlePower should equal(87.50.W)
+  }
 }

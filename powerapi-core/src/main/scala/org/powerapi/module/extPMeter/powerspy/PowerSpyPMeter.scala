@@ -20,12 +20,12 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter.powerspy
 
 import fr.inria.powerspy.core.PowerSpy
 import org.powerapi.core.{MessageBus, ExternalPMeter}
 import org.powerapi.core.power._
-import org.powerapi.module.powerspy.PowerSpyChannel.publishExternalPowerSpyPower
+import org.powerapi.module.extPMeter.ExtPMeterChannel.publishExternalPMeterPower
 import org.apache.logging.log4j.LogManager
 import scala.concurrent.duration.{FiniteDuration, DurationInt}
 
@@ -35,16 +35,19 @@ import scala.concurrent.duration.{FiniteDuration, DurationInt}
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
-class PowerSpyPMeter(eventBus: MessageBus, mac: String, interval: FiniteDuration) extends ExternalPMeter {
+class PowerSpyPMeter(mac: String, interval: FiniteDuration) extends ExternalPMeter {
 
   @volatile private var running = true
   @volatile private var thread: Option[java.lang.Thread] = None
   @volatile private var powerspy: Option[PowerSpy] = None
 
+  protected var eventBus: Option[MessageBus] = None
+
   private val log = LogManager.getLogger
 
-  def init(): Unit = {
+  def init(bus: MessageBus): Unit = {
     powerspy = PowerSpy.init(mac)
+    eventBus = Some(bus)
     running = true
   }
 
@@ -66,7 +69,7 @@ class PowerSpyPMeter(eventBus: MessageBus, mac: String, interval: FiniteDuration
               override def run(): Unit = {
                 while(running) {
                   pSpy.readRealTime() match {
-                    case Some(rtValue) => publishExternalPowerSpyPower(rtValue.power.W)(eventBus)
+                    case Some(rtValue)  if eventBus.get != None => publishExternalPMeterPower(rtValue.power.W)(eventBus.get)
                     case _ => {}
                   }
                 }

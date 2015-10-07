@@ -25,13 +25,20 @@ package org.powerapi
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.Timeout
-import org.powerapi.core.MessageBus
+import org.powerapi.core.{ExternalPMeter, MessageBus}
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
 import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmCoreSensorModule, LibpfmHelper, LibpfmCoreModule, LibpfmModule, LibpfmProcessModule}
-import org.powerapi.module.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
+import org.powerapi.module.extPMeter.g5k.G5kOmegaWattModule
 import org.powerapi.module.rapl.RAPLModule
 import scala.concurrent.duration.DurationInt
+
+class MockPMeter extends ExternalPMeter {
+  def init(bus: MessageBus): Unit = {}
+  def start(): Unit = {}
+  def stop(): Unit = {}
+}
 
 class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
 
@@ -102,7 +109,12 @@ class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
   }
 
   it should "load the PowerSpyModule" ignore new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(PowerSpyModule()), Timeout(1.seconds)))(system)
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(PowerSpyModule(None)), Timeout(1.seconds)))(system)
+    actor.children.size should equal(4)
+  }
+  
+  it should "load the G5kOmegaWattModule" ignore new EventBus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(G5kOmegaWattModule(None)), Timeout(1.seconds)))(system)
     actor.children.size should equal(4)
   }
 

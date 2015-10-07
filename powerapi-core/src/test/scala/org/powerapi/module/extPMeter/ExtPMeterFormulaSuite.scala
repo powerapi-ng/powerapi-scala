@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit}
@@ -32,18 +32,18 @@ import org.powerapi.core.{OSHelper, MessageBus, Thread, TimeInStates}
 import org.powerapi.core.MonitorChannel.publishMonitorTick
 import org.powerapi.core.target.{All, Application, intToProcess, Process, Target, TargetUsageRatio}
 import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
-import org.powerapi.module.powerspy.PowerSpyChannel.publishPowerSpyPower
+import org.powerapi.module.extPMeter.ExtPMeterChannel.publishPMeterPower
 import scala.concurrent.duration.DurationInt
 
-class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
+class ExtPMeterFormulaSuite(system: ActorSystem) extends UnitTest(system) {
 
-  def this() = this(ActorSystem("PowerSpyFormulaSuite"))
+  def this() = this(ActorSystem("ExtPMeterFormulaSuite"))
 
   override def afterAll() = {
     TestKit.shutdownActorSystem(system)
   }
 
-  "A PowerSpyFormula" should "listen PowerSpyPower/UsageReport messages and produce PowerReport messages" in {
+  "A ExtPMeterFormula" should "listen ExtPMeterPower/UsageReport messages and produce PowerReport messages" in {
     val eventBus = new MessageBus
 
     val globalElapsedTime1: Long = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
@@ -66,7 +66,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     val processRatio1 = TargetUsageRatio((p1ElapsedTime - oldP1ElapsedTime).toDouble / (activeElapsedTime1 - oldActiveElapsedTime1))
     val processRatio2 = TargetUsageRatio((p2ElapsedTime - oldP2ElapsedTime).toDouble / (activeElapsedTime2 - oldActiveElapsedTime2))
 
-    TestActorRef(Props(classOf[PowerSpyFormula], eventBus, new OSHelper {
+    TestActorRef(Props(classOf[ExtPMeterFormula], eventBus, new OSHelper {
       import org.powerapi.core.GlobalCpuTime
 
       private var targetTimes = Map[Target, List[Long]](
@@ -120,7 +120,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
     expectNoMsg(3.seconds)
 
-    publishPowerSpyPower(120.W)(eventBus)
+    publishPMeterPower(120.W)(eventBus)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
     var ret = expectMsgClass(classOf[RawPowerReport])
@@ -143,7 +143,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     ret.power should equal(120.W)
     ret.tick should equal(tickMock)
 
-    publishPowerSpyPower(150.W)(eventBus)
+    publishPMeterPower(150.W)(eventBus)
 
     publishMonitorTick(muid1, 1, tickMock)(eventBus)
     ret = expectMsgClass(classOf[RawPowerReport])
@@ -158,7 +158,7 @@ class PowerSpyFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     ret.power should equal((processRatio2.ratio * (150 - 90)).W)
     ret.tick should equal(tickMock)
 
-    publishPowerSpyPower(140.W)(eventBus)
+    publishPMeterPower(140.W)(eventBus)
 
     publishMonitorTick(muid3, All, tickMock)(eventBus)
     ret = expectMsgClass(classOf[RawPowerReport])

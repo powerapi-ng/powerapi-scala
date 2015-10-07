@@ -20,59 +20,60 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter
 
 import akka.actor.ActorRef
 import org.powerapi.core.{Channel, Message, MessageBus}
 import org.powerapi.core.power.Power
 
 /**
- * PowerSpyChannel channel and messages.
+ * ExtPMeterChannel channel and messages.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-object PowerSpyChannel extends Channel {
+object ExtPMeterChannel extends Channel {
 
-  type M = PowerSpyPower
+  type M = ExtPMeterPower
 
   /**
-   * PowerSpyPower is represented as a dedicated type of message.
+   * ExtPMeterPower is represented as a dedicated type of message.
    *
    * @param topic: subject used for routing the message.
    * @param power: power consumption got by an external device.
    */
-  case class PowerSpyPower(topic: String,
-                           power: Power) extends Message
+  case class ExtPMeterPower(topic: String,
+                            power: Power) extends Message
 
   /**
    * Topic for communicating with the Sensor actor.
    */
-  private val pMeterTopic = "powerspy:power"
+  private val pMeterTopic = "extpmeter:power"
 
   /**
    * Topic for communicating with the Formula actor.
    */
-  private val topic = "sensor:powerspy"
+  private val topic = "sensor:extpmeter"
 
   /**
-   * Publish a PowerSpyPower in the event bus.
+   * Publish a ExtPMeterPower in the event bus.
    */
-  def publishExternalPowerSpyPower(power: Power): MessageBus => Unit = {
-    publish(PowerSpyPower(pMeterTopic, power))
+  def publishExternalPMeterPower(power: Power): MessageBus => Unit = {
+    publish(ExtPMeterPower(pMeterTopic, power))
   }
 
-  def publishPowerSpyPower(power: Power): MessageBus => Unit = {
-    publish(PowerSpyPower(topic, power))
+  def publishPMeterPower(power: Power): MessageBus => Unit = {
+    publish(ExtPMeterPower(topic, power))
   }
 
   /**
    * External methods used for interacting with the bus.
    */
-  def subscribeExternalPowerSpyPower: MessageBus => ActorRef => Unit = {
+  def subscribeExternalPMeterPower: MessageBus => ActorRef => Unit = {
     subscribe(pMeterTopic)
   }
 
-  def subscribePowerSpyPower: MessageBus => ActorRef => Unit = {
+  def subscribePMeterPower: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 }

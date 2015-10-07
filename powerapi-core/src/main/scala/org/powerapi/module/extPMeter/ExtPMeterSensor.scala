@@ -20,22 +20,23 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter
 
 import akka.event.LoggingReceive
 import org.powerapi.core.{ExternalPMeter, MessageBus, APIComponent}
-import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, publishPowerSpyPower, subscribeExternalPowerSpyPower}
+import org.powerapi.module.extPMeter.ExtPMeterChannel.{ExtPMeterPower, publishPMeterPower, subscribeExternalPMeterPower}
 
 /**
- * PowerSpySensor's implementation by using an helper.
+ * ExtPMeterSensor's implementation by using an helper.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
+class ExtPMeterSensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APIComponent {
 
   override def preStart(): Unit = {
-    subscribeExternalPowerSpyPower(eventBus)(self)
-    pMeter.init()
+    subscribeExternalPMeterPower(eventBus)(self)
+    pMeter.init(eventBus)
     pMeter.start()
     super.preStart()
   }
@@ -46,10 +47,10 @@ class PowerSpySensor(eventBus: MessageBus, pMeter: ExternalPMeter) extends APICo
   }
 
   def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerSpyPower => sense(msg)
+    case msg: ExtPMeterPower => sense(msg)
   } orElse default
 
-  def sense(pSpyPower: PowerSpyPower): Unit = {
-    publishPowerSpyPower(pSpyPower.power)(eventBus)
+  def sense(epmPower: ExtPMeterPower): Unit = {
+    publishPMeterPower(epmPower.power)(eventBus)
   }
 }
