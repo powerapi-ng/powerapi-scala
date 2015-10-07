@@ -20,28 +20,25 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter.g5k
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
-import scala.concurrent.duration.DurationInt
+import java.util.concurrent.TimeUnit
+import org.powerapi.core.{ConfigValue, Configuration}
+import scala.concurrent.duration.{FiniteDuration, DurationLong}
 
-class PowerSpyPMeterConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
-
-  implicit val timeout = Timeout(1.seconds)
-
-  def this() = this(ActorSystem("PowerSpyPMeterConfigurationSuite"))
-
-  override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+/**
+ * Main configuration.
+ *
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+ */
+class G5kPMeterConfiguration(prefix: Option[String]) extends Configuration(prefix) {
+  lazy val probe: String = load { _.getString(s"${configurationPath}g5k.probe") } match {
+    case ConfigValue(address) => address
+    case _ => ""
   }
 
-  "The PowerSpyPMeterConfiguration" should "read correctly the values from a resource file" in {
-    val configuration = new PowerSpyPMeterConfiguration {}
-
-    configuration.mac should equal("00:0B:CE:07:1E:9B")
-    configuration.interval should equal(250.milliseconds)
+  lazy val interval: FiniteDuration = load { _.getDuration(s"${configurationPath}g5k.interval", TimeUnit.NANOSECONDS) } match {
+    case ConfigValue(value) => value.nanoseconds
+    case _ => 1l.seconds
   }
 }

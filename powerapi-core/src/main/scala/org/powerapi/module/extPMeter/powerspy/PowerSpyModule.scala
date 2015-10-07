@@ -20,29 +20,16 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter.powerspy
 
-import org.powerapi.PowerModule
-import org.powerapi.core.{OSHelper, LinuxHelper}
-import org.powerapi.core.power.Power
-import scala.concurrent.duration.FiniteDuration
+import org.powerapi.core.LinuxHelper
+import org.powerapi.module.extPMeter.{ExtPMeterFormulaConfiguration, ExtPMeterModule}
 
-class PowerSpyModule(osHelper: OSHelper, mac: String, interval: FiniteDuration, idlePower: Power) extends PowerModule {
-  lazy val underlyingClasses = eventBus match {
-    case Some(bus) => {
-      (Seq((classOf[PowerSpySensor], Seq(new PowerSpyPMeter(bus, mac, interval)))), Seq((classOf[PowerSpyFormula], Seq(osHelper, idlePower))))
-    }
-    case _ => (Seq(), Seq())
-  }
-
-  lazy val underlyingSensorsClasses = underlyingClasses._1
-  lazy val underlyingFormulaeClasses = underlyingClasses._2
-}
-
-object PowerSpyModule extends PowerSpyFormulaConfiguration with PowerSpyPMeterConfiguration {
-  def apply(): PowerSpyModule = {
+object PowerSpyModule extends ExtPMeterFormulaConfiguration {
+  def apply(prefixConfig: Option[String] = None): ExtPMeterModule = {
+    val conf = new PowerSpyPMeterConfiguration(prefixConfig)
     val linuxHelper = new LinuxHelper
 
-    new PowerSpyModule(linuxHelper, mac, interval, idlePower)
+    new ExtPMeterModule(linuxHelper, new PowerSpyPMeter(conf.mac, conf.interval), idlePower)
   }
 }

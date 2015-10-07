@@ -20,25 +20,28 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter.g5k
 
-import java.util.concurrent.TimeUnit
-import org.powerapi.core.{ConfigValue, Configuration}
-import scala.concurrent.duration.{FiniteDuration, DurationLong}
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.powerapi.UnitTest
+import scala.concurrent.duration.DurationInt
 
-/**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait PowerSpyPMeterConfiguration extends Configuration {
-  lazy val mac = load { _.getString("powerspy.mac") } match {
-    case ConfigValue(address) => address
-    case _ => ""
+class G5kPMeterConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+
+  implicit val timeout = Timeout(1.seconds)
+
+  def this() = this(ActorSystem("G5kPMeterConfigurationSuite"))
+
+  override def afterAll() = {
+    TestKit.shutdownActorSystem(system)
   }
 
-  lazy val interval: FiniteDuration = load { _.getDuration("powerspy.interval", TimeUnit.NANOSECONDS) } match {
-    case ConfigValue(value) => value.nanoseconds
-    case _ => 1l.seconds
+  "The G5kPMeterConfiguration" should "read correctly the values from a resource file" in {
+    val configuration = new G5kPMeterConfiguration(None)
+
+    configuration.probe should equal("http://kwapi.lyon.grid5000.fr:5000/probes/lyon.taurus-1/power/")
+    configuration.interval should equal(250.milliseconds)
   }
 }

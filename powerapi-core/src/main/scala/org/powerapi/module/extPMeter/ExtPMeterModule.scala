@@ -20,19 +20,22 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter
 
-import org.powerapi.core.{Configuration, ConfigValue}
-import org.powerapi.core.power._
+import org.powerapi.PowerModule
+import org.powerapi.core.{ExternalPMeter, OSHelper}
+import org.powerapi.core.power.Power
+import scala.concurrent.duration.FiniteDuration
 
-/**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-trait PowerSpyFormulaConfiguration extends Configuration {
-  lazy val idlePower = load { _.getDouble(s"powerapi.hardware.idle-power") } match {
-    case ConfigValue(idle) => idle.W
-    case _ => 0.W
+class ExtPMeterModule(osHelper: OSHelper, extPMeter: ExternalPMeter, idlePower: Power) extends PowerModule {
+  lazy val underlyingClasses = eventBus match {
+    case Some(bus) => {
+      (Seq((classOf[ExtPMeterSensor], Seq(extPMeter))), Seq((classOf[ExtPMeterFormula], Seq(osHelper, idlePower))))
+    }
+    case _ => (Seq(), Seq())
   }
+
+  lazy val underlyingSensorsClasses = underlyingClasses._1
+  lazy val underlyingFormulaeClasses = underlyingClasses._2
 }
+

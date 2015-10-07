@@ -20,7 +20,7 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter
 
 import akka.event.LoggingReceive
 import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
@@ -29,7 +29,7 @@ import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
 import org.powerapi.module.{Cache, CacheKey}
 import org.powerapi.module.PowerChannel.publishRawPowerReport
-import org.powerapi.module.powerspy.PowerSpyChannel.{PowerSpyPower, subscribePowerSpyPower}
+import org.powerapi.module.extPMeter.ExtPMeterChannel.{ExtPMeterPower, subscribePMeterPower}
 import scala.reflect.ClassTag
 
 /**
@@ -39,20 +39,21 @@ import scala.reflect.ClassTag
  * The simple CpuSensor is used for getting the Target cpu usage ratio (UsageReport).
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Power) extends APIComponent {
+class ExtPMeterFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Power) extends APIComponent {
 
   override def preStart(): Unit = {
-    subscribePowerSpyPower(eventBus)(self)
+    subscribePMeterPower(eventBus)(self)
     subscribeMonitorTick(eventBus)(self)
     super.preStart()
   }
 
   def receive: PartialFunction[Any, Unit] = running(None)
 
-  def running(pspyPower: Option[PowerSpyPower]): PartialFunction[Any, Unit] = LoggingReceive {
-    case msg: PowerSpyPower => context.become(running(Some(msg)))
-    case msg: MonitorTick => compute(pspyPower, msg)
+  def running(epmPower: Option[ExtPMeterPower]): PartialFunction[Any, Unit] = LoggingReceive {
+    case msg: ExtPMeterPower => context.become(running(Some(msg)))
+    case msg: MonitorTick => compute(epmPower, msg)
   } orElse default
 
   // In order to compute the target's ratio
@@ -98,17 +99,17 @@ class PowerSpyFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Power
     }
   }
 
-  def compute(pSpyPower: Option[PowerSpyPower], monitorTick: MonitorTick): Unit = {
-    pSpyPower match {
+  def compute(epmPower: Option[ExtPMeterPower], monitorTick: MonitorTick): Unit = {
+    epmPower match {
       case Some(pPower) => {
         lazy val dynamicP = if(pPower.power.toMilliWatts - idlePower.toMilliWatts > 0) pPower.power - idlePower else 0.W
 
         monitorTick.target match {
-          case All => publishRawPowerReport(monitorTick.muid, monitorTick.target, pPower.power, "PowerSpy", monitorTick.tick)(eventBus)
-          case _ => publishRawPowerReport(monitorTick.muid, monitorTick.target, dynamicP * targetCpuUsageRatio(monitorTick).ratio, "PowerSpy", monitorTick.tick)(eventBus)
+          case All => publishRawPowerReport(monitorTick.muid, monitorTick.target, pPower.power, "ExtPMeter", monitorTick.tick)(eventBus)
+          case _ => publishRawPowerReport(monitorTick.muid, monitorTick.target, dynamicP * targetCpuUsageRatio(monitorTick).ratio, "ExtPMeter", monitorTick.tick)(eventBus)
         }
       }
-      case _ => log.debug("{}", "no PowerSpyPower message received")
+      case _ => log.debug("{}", "no ExtPMeterPower message received")
     }
   }
 }

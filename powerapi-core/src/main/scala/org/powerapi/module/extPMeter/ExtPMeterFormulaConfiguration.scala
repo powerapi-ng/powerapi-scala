@@ -20,15 +20,20 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.core
+package org.powerapi.module.extPMeter
+
+import org.powerapi.core.{Configuration, ConfigValue}
+import org.powerapi.core.power._
 
 /**
- * Base trait for implementing external power meters.
+ * Main configuration.
  *
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-trait ExternalPMeter {
-  def init(bus: MessageBus): Unit
-  def start(): Unit
-  def stop(): Unit
+trait ExtPMeterFormulaConfiguration extends Configuration {
+  lazy val idlePower = load { _.getDouble(s"powerapi.hardware.idle-power") } match {
+    case ConfigValue(idle) => idle.W
+    case _ => 0.W
+  }
 }

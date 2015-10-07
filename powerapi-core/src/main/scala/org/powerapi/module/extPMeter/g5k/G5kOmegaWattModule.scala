@@ -20,28 +20,16 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.module.powerspy
+package org.powerapi.module.extPMeter.g5k
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
-import org.powerapi.core.power._
-import scala.concurrent.duration.DurationInt
+import org.powerapi.core.LinuxHelper
+import org.powerapi.module.extPMeter.{ExtPMeterFormulaConfiguration, ExtPMeterModule}
 
-class PowerSpyFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+object G5kOmegaWattModule extends ExtPMeterFormulaConfiguration {
+  def apply(prefixConfig: Option[String] = None): ExtPMeterModule = {
+    val conf = new G5kPMeterConfiguration(prefixConfig)
+    val linuxHelper = new LinuxHelper
 
-  implicit val timeout = Timeout(1.seconds)
-
-  def this() = this(ActorSystem("PowerSpyFormulaConfigurationSuite"))
-
-  override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
-  }
-
-  "The PowerSpyFormulaConfiguration" should "read correctly the values from a resource file" in {
-    val configuration = new PowerSpyFormulaConfiguration {}
-
-    configuration.idlePower should equal(87.50.W)
+    new ExtPMeterModule(linuxHelper, new G5kPMeter(conf.probe, conf.interval), idlePower)
   }
 }
