@@ -25,7 +25,7 @@ package org.powerapi.module.cpu.simple
 import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.SensorComponent
 import org.powerapi.core.MonitorChannel.MonitorTick
-import org.powerapi.core.target.{All, Application, Process, TargetUsageRatio}
+import org.powerapi.core.target.{All, Application, Container, Process, TargetUsageRatio}
 import org.powerapi.module.cpu.UsageMetricsChannel.publishUsageReport
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
 import scala.reflect.ClassTag
@@ -44,12 +44,14 @@ class CpuSensor(eventBus: MessageBus, osHelper: OSHelper) extends SensorComponen
   def targetCpuUsageRatio(monitorTick: MonitorTick): TargetUsageRatio = {
     val processClaz = implicitly[ClassTag[Process]].runtimeClass
     val appClaz = implicitly[ClassTag[Application]].runtimeClass
+    val containerClaz = implicitly[ClassTag[Container]].runtimeClass
 
     monitorTick.target match {
-      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+      case target if processClaz.isInstance(target) || appClaz.isInstance(target) || containerClaz.isInstance(target) => {
         osHelper.getTargetCpuPercent(monitorTick.muid, target)
       }
       case All => osHelper.getGlobalCpuPercent(monitorTick.muid)
+      case _ => log.warning("Only Process, Application, Container or All targets can be used with this Sensor"); TargetUsageRatio(0.0)
     }
   }
 

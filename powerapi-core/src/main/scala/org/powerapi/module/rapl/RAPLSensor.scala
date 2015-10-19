@@ -26,7 +26,7 @@ import org.powerapi.core.{MessageBus, OSHelper}
 import org.powerapi.module.SensorComponent
 import scala.reflect.ClassTag
 import org.powerapi.core.power.Power
-import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
+import org.powerapi.core.target.{Application, All, Container, Process, TargetUsageRatio}
 import org.powerapi.core.MonitorChannel.MonitorTick
 import org.powerapi.module.{Cache, CacheKey}
 import org.powerapi.module.rapl.RAPLChannel.publishRAPLPower
@@ -48,12 +48,13 @@ class RAPLSensor(eventBus: MessageBus, osHelper: OSHelper, raplHelper: RAPLHelpe
 
     val processClaz = implicitly[ClassTag[Process]].runtimeClass
     val appClaz = implicitly[ClassTag[Application]].runtimeClass
+    val containerClaz = implicitly[ClassTag[Container]].runtimeClass
 
     lazy val now = monitorTick.target match {
-      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+      case target if processClaz.isInstance(target) || appClaz.isInstance(target) || containerClaz.isInstance(target) => {
         lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
           case Some(time) => time
-          case _ => 0l
+          case _ => log.warning("Only Process, Application, Container or All targets can be used with this Sensor"); 0l
         }
 
         (targetCpuTime, activeCpuTime)

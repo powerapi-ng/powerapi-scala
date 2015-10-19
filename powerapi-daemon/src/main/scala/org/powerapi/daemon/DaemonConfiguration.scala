@@ -42,18 +42,23 @@ trait DaemonConfiguration extends Configuration {
    * A power-meter is described by:
    * - a list of power modules
    * - a list of monitors described by:
-   *   _ a list of target
+   *   _ a list of pid
+   *   _ a list of application
+   *   _ a list of container
    *   _ a frequency
    *   _ an aggregator
    *   _ an output 
    */
-  lazy val powerMeters: List[(Set[String], List[(Set[String], FiniteDuration, String, String)])] = load { conf =>
+  lazy val powerMeters: List[(Set[String], List[(Boolean, Set[String], Set[String], Set[String], FiniteDuration, String, String)])] = load { conf =>
     (for (powerMeter: Config <- conf.getConfigList("powerapi.daemon.load"))
     yield (
       powerMeter.getStringList("power-modules").toSet,
       (for (monitor: Config <- powerMeter.getConfigList("monitors"))
       yield (
-        monitor.getStringList("targets").toSet,
+        monitor.getBoolean("all"),
+        monitor.getStringList("pids").toSet,
+        monitor.getStringList("apps").toSet,
+        monitor.getStringList("containers").toSet,
         monitor.getDuration("frequency", TimeUnit.MILLISECONDS).milliseconds,
         monitor.getString("agg"),
         monitor.getString("output")

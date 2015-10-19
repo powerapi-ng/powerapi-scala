@@ -29,10 +29,11 @@ import org.apache.logging.log4j.LogManager
 import org.hyperic.sigar.{Sigar, SigarException, SigarProxyCache}
 import org.hyperic.sigar.ptql.ProcessFinder
 import org.powerapi.core.FileHelper.using
-import org.powerapi.core.target.{All, Application, Process, Target, TargetUsageRatio}
+import org.powerapi.core.target.{All, Application, Container, Process, Target, TargetUsageRatio}
 import org.powerapi.module.{Cache, CacheKey}
 import scala.collection.JavaConversions._
 import scala.sys.process.stringSeqToProcess
+import com.github.dockerjava.core.DockerClientBuilder
 
 /**
  * This is not a monitoring target. It's an internal wrapper for the Thread IDentifier.
@@ -78,6 +79,13 @@ trait OSHelper {
    * @param application: targeted application.
    */
   def getProcesses(application: Application): Set[Process]
+  
+  /**
+   * Get the list of processes running on a container.
+   *
+   * @param container: targeted container.
+   */
+  def getProcesses(container: Container): Set[Process] = throw new Exception("The container handling is not available on this operating system.")
 
   /**
    * Get the list of thread behind a Process.
@@ -131,6 +139,16 @@ trait OSHelper {
           }
         }
       )
+      case container: Container => Some(
+        getProcesses(container).foldLeft(0: Long) {
+          (acc, process: Process) => {
+            getProcessCpuTime(process) match {
+              case Some(value) => acc + value
+              case _ => acc
+            }
+          }
+        }
+      )
       case _ => None
     }
   }
@@ -143,6 +161,16 @@ trait OSHelper {
       case process: Process => getProcessCpuPercent(muid, process)
       case application: Application => TargetUsageRatio(
         getProcesses(application).foldLeft(0.0: Double) {
+          (acc, process: Process) => {
+            getProcessCpuPercent(muid, process) match {
+              case TargetUsageRatio(value) => acc + value
+              case _ => acc
+            }
+          }
+        }
+      )
+      case container: Container => TargetUsageRatio(
+        getProcesses(container).foldLeft(0.0: Double) {
           (acc, process: Process) => {
             getProcessCpuPercent(muid, process) match {
               case TargetUsageRatio(value) => acc + value
@@ -167,6 +195,8 @@ class LinuxHelper extends Configuration(None) with OSHelper {
   private val PSFormat = """^\s*(\d+)\s*""".r
   private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
   private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
+
+  val docker = DockerClientBuilder.getInstance("unix:///var/run/docker.sock").build()
 
   /**
    * This file allows to get all the cpu frequencies with the help of procfs and cpufreq_utils.
@@ -241,6 +271,12 @@ class LinuxHelper extends Configuration(None) with OSHelper {
     Seq("ps", "-C", application.name, "-o", "pid", "--no-headers").lineStream_!.map {
       case PSFormat(pid) => Process(pid.toInt)
     }.toSet
+  }
+  
+  override def getProcesses(container: Container): Set[Process] = {
+    docker.topContainerCmd(container.id).withPsArgs("-Aopid").exec.getProcesses.flatten.map(
+      process => Process(process.toInt)
+    ).toSet
   }
 
   def getThreads(process: Process): Set[Thread] = {

@@ -27,7 +27,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import java.util.UUID
 import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
-import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.core.target.{Application, Container, Process, Target}
 import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
 import org.powerapi.module.SensorComponent
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
@@ -44,6 +44,7 @@ import scala.reflect.ClassTag
 class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean) extends SensorComponent(eventBus) {
   val processClaz = implicitly[ClassTag[Process]].runtimeClass
   val appClaz = implicitly[ClassTag[Application]].runtimeClass
+  val containerClaz = implicitly[ClassTag[Container]].runtimeClass
 
   val wrappers = scala.collection.mutable.Map[(Int, String), PCWrapper]()
   val targets = scala.collection.mutable.Map[UUID, Set[Target]]()
@@ -71,6 +72,12 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, libpfmHe
       }
       case app: Application => {
         (for(process <- osHelper.getProcesses(app)) yield {
+          if(inDepth) osHelper.getThreads(process).map(_.tid) ++ Iterable(process.pid)
+          else List(process.pid)
+        }).flatten.toSet
+      }
+      case container: Container => {
+        (for(process <- osHelper.getProcesses(container)) yield {
           if(inDepth) osHelper.getThreads(process).map(_.tid) ++ Iterable(process.pid)
           else List(process.pid)
         }).flatten.toSet

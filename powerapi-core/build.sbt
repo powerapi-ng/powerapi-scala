@@ -3,7 +3,8 @@ name := "powerapi-core"
 organization := "org.powerapi"
 
 resolvers ++= Seq(
-  "JBoss Thirdparty Uploads" at "https://repository.jboss.org/nexus/content/repositories/thirdparty-uploads/"
+  "JBoss Thirdparty Uploads" at "https://repository.jboss.org/nexus/content/repositories/thirdparty-uploads/",
+  "softprops-maven" at "http://dl.bintray.com/content/softprops/maven"
 )
 
 // App
@@ -22,7 +23,8 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-routing" % "1.3.3",
   "io.spray" %% "spray-json" % "1.3.2",
   "com.github.nscala-time" %% "nscala-time" % "2.0.0",
-  "net.java.dev.jna" % "jna" % "4.1.0"
+  "net.java.dev.jna" % "jna" % "4.1.0",
+  "com.github.docker-java" % "docker-java" % "2.1.1"
 )
 
 // Tests
