@@ -26,7 +26,7 @@ import akka.event.LoggingReceive
 import org.powerapi.core.{OSHelper, APIComponent, MessageBus}
 import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
 import org.powerapi.core.power._
-import org.powerapi.core.target.{Application, All, Process, TargetUsageRatio}
+import org.powerapi.core.target.{Application, All, Container, Process, TargetUsageRatio}
 import org.powerapi.module.{Cache, CacheKey}
 import org.powerapi.module.PowerChannel.publishRawPowerReport
 import org.powerapi.module.extPMeter.ExtPMeterChannel.{ExtPMeterPower, subscribePMeterPower}
@@ -66,12 +66,13 @@ class ExtPMeterFormula(eventBus: MessageBus, osHelper: OSHelper, idlePower: Powe
 
     val processClaz = implicitly[ClassTag[Process]].runtimeClass
     val appClaz = implicitly[ClassTag[Application]].runtimeClass
+    val containerClaz = implicitly[ClassTag[Container]].runtimeClass
 
     lazy val now = monitorTick.target match {
-      case target if processClaz.isInstance(target) || appClaz.isInstance(target) => {
+      case target if processClaz.isInstance(target) || appClaz.isInstance(target) || containerClaz.isInstance(target) => {
         lazy val targetCpuTime = osHelper.getTargetCpuTime(target) match {
           case Some(time) => time
-          case _ => 0l
+          case _ => log.warning("Only Process, Application, Container or All targets can be used with this Sensor"); 0l
         }
 
         (targetCpuTime, activeCpuTime)

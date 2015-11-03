@@ -32,7 +32,7 @@ import akka.actor.Props
 
 import org.apache.commons.daemon.{ Daemon, DaemonContext, DaemonInitException }
 
-import org.powerapi.core.target.{Application, All, Process, Target}
+import org.powerapi.core.target.{Application, All, Container, Process, Target}
 import org.powerapi.module.rapl.RAPLModule
 import org.powerapi.reporter.{FileDisplay, JFreeChartDisplay, ConsoleDisplay}
 import org.powerapi.{PowerMonitoring, PowerMeter}
@@ -56,9 +56,6 @@ class PowerAPId extends Daemon {
   // --- PowerAPI part ---
 
   val configuration = new DaemonConfiguration {}
-  
-  val pidR = """(\d+)""".r
-  val appR = """(.+)""".r
 
   @volatile var launchedPowerMeters = Seq[PowerMeter]()
   @volatile var launchedMonitors = Seq[PowerMonitoring]()
@@ -78,21 +75,6 @@ class PowerAPId extends Daemon {
       case "variance" => VARIANCE
       case _ => SUM
     }
-  }
-  
-  implicit def targetsStrToTargets(targets: Set[String]): Seq[Target] = {
-    if(targets.contains("all")) {
-      Seq(All)
-    }
-
-    (for(target <- targets) yield {
-      target match {
-        case "all" => All
-        case pidR(pid) => Process(pid.toInt)
-        case appR(app) => Application(app)
-        case _ => Process(ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt)
-      }
-    }).toSeq
   }
   
   def beforeStart() {
@@ -123,7 +105,11 @@ class PowerAPId extends Daemon {
       val powerMeter = PowerMeter.loadModule(modules: _*)
       launchedPowerMeters :+= powerMeter
       
-      for ((targets, frequency, agg, output) <- monitors) {
+      for ((all, pids, apps, containers, frequency, agg, output) <- monitors) {
+        val targets = {
+          if (all) Seq(All)
+          else Seq(pids.map(pid => Process(pid.toInt)) ++ apps.map(Application(_)) ++ containers.map(Container(_))).asInstanceOf[Seq[Target]]
+        }
         val monitor = powerMeter.monitor(frequency)(targets: _*)(agg)
         launchedMonitors :+= monitor
       

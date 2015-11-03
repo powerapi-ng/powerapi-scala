@@ -23,19 +23,20 @@
 package org.powerapi.app
 
 import java.lang.management.ManagementFactory
-import org.powerapi.core.target.{Application, All, Process, Target}
+import org.powerapi.core.target._
 import org.powerapi.module.rapl.RAPLModule
 import org.powerapi.reporter.{FileDisplay, JFreeChartDisplay, ConsoleDisplay}
-import org.powerapi.{PowerMonitoring, PowerMeter}
+import org.powerapi.{PowerDisplay, PowerMonitoring, PowerMeter}
 import org.powerapi.core.power._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
-import org.powerapi.module.libpfm.{LibpfmModule, LibpfmHelper, LibpfmCoreProcessModule, LibpfmCoreModule, LibpfmProcessModule}
+import org.powerapi.module.libpfm._
 import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
 import org.powerapi.module.extPMeter.g5k.G5kOmegaWattModule
 import scala.concurrent.duration.DurationInt
 import scala.sys
 import scala.sys.process.stringSeqToProcess
+import scala.util.matching.Regex
 
 /**
  * PowerAPI CLI.
@@ -47,8 +48,9 @@ object PowerAPI extends App {
   val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl))*""".r
   val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
   val durationR = """\d+""".r
-  val pidR = """(\d+)""".r
-  val appR = """(.+)""".r
+  val pidsR = """(\d+)(,(\d+))*""".r
+  val appsR = """([^,]+)(,([^,]+))*""".r
+  val containersR = """([^,]+)(,([^,]+))*""".r
 
   @volatile var powerMeters = Seq[PowerMeter]()
   @volatile var monitors = Seq[PowerMonitoring]()
@@ -60,13 +62,8 @@ object PowerAPI extends App {
     powerMeters = Seq()
   }
 
-  def validateModules(str: String) = str match {
-    case modulesR(_*) => true
-    case _ => false
-  }
-
-  def validateAgg(str: String): Boolean = str match {
-    case aggR(_*) => true
+  def validate(regex: Regex, str: String) = str match {
+    case regex(_*) => true
     case _ => false
   }
 
@@ -84,42 +81,25 @@ object PowerAPI extends App {
     }
   }
 
-  def validateDuration(str: String): Boolean = str match {
-    case durationR(_*) => true
-    case _ => false
-  }
-
-  implicit def targetsStrToTargets(str: String): Seq[Target] = {
-    val strTargets = if(str.split(",").contains("all")) {
-      "all"
-    }
-    else str
-
-    (for(target <- strTargets.split(",")) yield {
-      target match {
-        case "" => Process(ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt)
-        case "all" => All
-        case pidR(pid) => Process(pid.toInt)
-        case appR(app) => Application(app)
-      }
-    }).toSeq
-  }
-
   def printHelp(): Unit = {
     val str =
       """
         |PowerAPI, Spirals Team
         |
         |Build a software-defined power meter. Do not forget to configure correctly the modules.
-        |You can use different settings per software-defined power meter for some modules by using the optional prefix option.
+        |Different settings can be used per software-defined power meter by using the prefix option.
         |Please, refer to the documentation inside the GitHub wiki for further details.
         |
-        |usage: ./powerapi modules [procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-proces|powerspy|g5k-omegawatt|rapl,...] *--prefix [name]* \
-        |                          monitor --frequency [ms] --targets [pid, ..., app, ...|all] --agg [max|min|geomean|logsum|mean|median|stdev|sum|variance] --[console,file [filepath],chart] \
+        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl (1, *) *--prefix [name]*
+        |                          monitor (1, *)
+        |                            --frequency $MILLISECONDS
+        |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
+        |                            --agg max|min|geomean|logsum|mean|median|stdev|sum|variance
+        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1)
         |                  duration [s]
         |
-        |example: ./powerapi modules procfs-cpu-simple monitor --frequency 1000 --targets firefox,chrome --agg max --console \
-        |                    modules powerspy --prefix powermeter2 monitor --frequency 1000 --targets all --agg max --console \
+        |example: ./powerapi modules procfs-cpu-simple monitor --frequency 1000 --apps firefox,chrome --agg max --console \
+        |                    modules powerspy --prefix powermeter2 monitor --frequency 1000 --all --agg max --console \
         |                    duration 30
       """.stripMargin
 
@@ -128,30 +108,34 @@ object PowerAPI extends App {
 
   def cli(options: List[Map[Symbol, Any]], duration: String, args: List[String]): (List[Map[Symbol, Any]], String) = args match {
     case Nil => (options, duration)
-    case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validateModules(value) => {
+    case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validate(modulesR, value) => {
       val (remainingArgs, monitors) = cliMonitorsSubcommand(List(), Map(), tail.map(_.toString))
       cli(options :+ Map('modules -> value, 'prefix -> Some(prefix), 'monitors -> monitors), duration, remainingArgs)
     }
-    case "modules" :: value :: "monitor" :: tail if validateModules(value) => {
+    case "modules" :: value :: "monitor" :: tail if validate(modulesR, value) => {
       val (remainingArgs, monitors) = cliMonitorsSubcommand(List(), Map(), tail.map(_.toString))
       cli(options :+ Map('modules -> value, 'prefix -> None, 'monitors -> monitors), duration, remainingArgs)
     }
-    case "duration" :: value :: tail if validateDuration(value) => cli(options, value, tail)
+    case "duration" :: value :: tail if validate(durationR, value) => cli(options, value, tail)
     case option :: tail => println(s"unknown cli option $option"); sys.exit(1)
   }
 
   def cliMonitorsSubcommand(options: List[Map[Symbol, Any]], currentMonitor: Map[Symbol, Any], args: List[String]): (List[String], List[Map[Symbol, Any]]) = args match {
     case Nil => (List(), options :+ currentMonitor)
-    case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validateModules(value) => (List("modules", value, "--prefix", prefix, "monitor") ++ tail, options :+ currentMonitor)
-    case "modules" :: value :: "monitor" :: tail if validateModules(value) => (List("modules", value, "monitor") ++ tail, options :+ currentMonitor)
-    case "duration" :: value :: tail if validateDuration(value) => (List("duration", value) ++ tail, options :+ currentMonitor)
+    case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validate(modulesR, value) => (List("modules", value, "--prefix", prefix, "monitor") ++ tail, options :+ currentMonitor)
+    case "modules" :: value :: "monitor" :: tail if validate(modulesR, value) => (List("modules", value, "monitor") ++ tail, options :+ currentMonitor)
+    case "duration" :: value :: tail if validate(durationR, value) => (List("duration", value) ++ tail, options :+ currentMonitor)
     case "monitor" :: tail => cliMonitorsSubcommand(options :+ currentMonitor, Map(), tail)
-    case "--frequency" :: value :: tail if validateDuration(value) => cliMonitorsSubcommand(options, currentMonitor ++ Map('frequency -> value), tail)
-    case "--targets" :: value :: tail => cliMonitorsSubcommand(options, currentMonitor ++ Map('targets -> value), tail)
-    case "--agg" :: value :: tail if validateAgg(value) => cliMonitorsSubcommand(options, currentMonitor ++ Map('agg -> value), tail)
-    case "--console" :: tail => cliMonitorsSubcommand(options, currentMonitor ++ Map('console -> "true"), tail)
-    case "--file" :: value :: tail => cliMonitorsSubcommand(options, currentMonitor ++ Map('file -> value), tail)
-    case "--chart" :: tail => cliMonitorsSubcommand(options, currentMonitor ++ Map('chart -> "true"), tail)
+    case "--frequency" :: value :: tail if validate(durationR, value) => cliMonitorsSubcommand(options, currentMonitor ++ Map('frequency -> value), tail)
+    case "--self" :: tail => cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] + Process(ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt))), tail)
+    case "--pids" :: value :: tail if validate(pidsR, value) => cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(pid => Process(pid.toInt)))), tail)
+    case "--apps" :: value :: tail if validate(appsR, value) => cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(app => Application(app)))), tail)
+    case "--containers" :: value :: tail if validate(containersR, value) => cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(container => Container(container)))), tail)
+    case "--all" :: tail => cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] + All)), tail)
+    case "--agg" :: value :: tail if validate(aggR, value) => cliMonitorsSubcommand(options, currentMonitor ++ Map('agg -> value), tail)
+    case "--console" :: tail => cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new ConsoleDisplay)), tail)
+    case "--file" :: value :: tail => cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new FileDisplay(value))), tail)
+    case "--chart" :: tail => cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new JFreeChartDisplay)), tail)
     case option :: tail => println(s"unknown monitor option $option"); sys.exit(1)
   }
 
@@ -162,6 +146,8 @@ object PowerAPI extends App {
 
   else {
     if(System.getProperty("os.name").toLowerCase.indexOf("nix") >= 0 || System.getProperty("os.name").toLowerCase.indexOf("nux") >= 0) Seq("bash", "scripts/system.bash").!
+    System.setProperty("java.library.path", "lib")
+
     val (configuration, duration) = cli(List(), "3600", args.toList)
 
     var libpfmHelper: Option[LibpfmHelper] = None
@@ -192,28 +178,18 @@ object PowerAPI extends App {
 
       for(monitorConf <- powerMeterConf('monitors).asInstanceOf[List[Map[Symbol, Any]]]) {
         val frequency = monitorConf.getOrElse('frequency, "1000").toString.toInt.milliseconds
-        val targets: Seq[Target] = monitorConf.getOrElse('targets, "").toString.toLowerCase
+        val targets = {
+          val uniqueTargets = monitorConf.getOrElse('targets, Set(Process(ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt))).asInstanceOf[Set[Target]].toSeq
+          if(uniqueTargets.contains(All)) Seq(All) else uniqueTargets
+        }
         val agg: Seq[Power] => Power = aggStrToAggFunction(monitorConf.getOrElse('agg, "max").toString.toLowerCase)
-        val console = monitorConf.getOrElse('console, "").toString
-        val file = monitorConf.getOrElse('file, "").toString
-        val chart = monitorConf.getOrElse('chart, "").toString
+        val displays = monitorConf.getOrElse('displays, Set(new ConsoleDisplay)).asInstanceOf[Set[PowerDisplay]]
 
         val monitor = powerMeter.monitor(frequency)(targets: _*)(agg)
         monitors :+= monitor
 
-        if(console != "") {
-          val consoleDisplay = new ConsoleDisplay()
-          monitor.to(consoleDisplay)
-        }
-
-        if(file != "") {
-          val fileDisplay = new FileDisplay(file)
-          monitor.to(fileDisplay)
-        }
-
-        if(chart != "") {
-          val chartDisplay = new JFreeChartDisplay()
-          monitor.to(chartDisplay)
+        for(display <- displays) {
+          monitor.to(display)
         }
       }
     }
@@ -231,3 +207,4 @@ object PowerAPI extends App {
   shutdownHookThread.remove()
   sys.exit(0)
 }
+

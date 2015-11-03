@@ -45,14 +45,14 @@ class DaemonConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
         (
           Set("procfs-cpu-simple","libpfm-core-process"),
           List(
-            (Set("firefox"),1000.milliseconds,"SUM","console"),
-            (Set("compiz"),2000.milliseconds,"AVG","chart")
+            (false,Set(),Set("firefox"),Set(),1000.milliseconds,"SUM","console"),
+            (false,Set(),Set("compiz"),Set(),2000.milliseconds,"AVG","chart")
           )
         ),
         (
           Set("rapl"),
           List(
-            (Set("all"),3000.milliseconds,"SUM","file:out.papi")
+            (true,Set(),Set(),Set(),3000.milliseconds,"SUM","file:out.papi")
           )
         )
       )

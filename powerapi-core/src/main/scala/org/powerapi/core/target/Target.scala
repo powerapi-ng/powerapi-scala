@@ -39,7 +39,7 @@ trait Target
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class Process(pid: Int) extends Target {
-  override def toString(): String = s"$pid"
+  override def toString: String = s"$pid"
 }
 
 /**
@@ -51,7 +51,18 @@ case class Process(pid: Int) extends Target {
  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
  */
 case class Application(name: String) extends Target {
-  override def toString(): String = name
+  override def toString: String = name
+}
+
+/**
+ * Monitoring targets for a specific container.
+ *
+ * @param name: id of the container.
+ *
+ * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+ */
+case class Container(id: String) extends Target {
+  override def toString: String = id
 }
 
 /**

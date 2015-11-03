@@ -30,7 +30,7 @@ import java.util.UUID
 import org.powerapi.UnitTest
 import org.powerapi.core.MessageBus
 import org.powerapi.core.{OSHelper, Thread, TimeInStates}
-import org.powerapi.core.target.{All, Application, intToProcess, stringToApplication, Process, Target, TargetUsageRatio}
+import org.powerapi.core.target.{All, Application, Container, intToProcess, stringToApplication, Process, Target, TargetUsageRatio}
 import org.powerapi.core.ClockChannel.ClockTick
 import org.powerapi.core.MonitorChannel.publishMonitorTick
 import org.powerapi.module.cpu.UsageMetricsChannel.UsageReport
@@ -53,6 +53,7 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     val muid1 = UUID.randomUUID()
     val muid2 = UUID.randomUUID()
     val muid3 = UUID.randomUUID()
+    val muid4 = UUID.randomUUID()
 
     val processRatio1 = 0.05
     val processRatio2 = 0.23
@@ -76,6 +77,8 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
       def getCPUFrequencies: Set[Long] = Set()
 
       def getProcesses(application: Application): Set[Process] = Set(Process(2), Process(3))
+      
+      override def getProcesses(container: Container): Set[Process] = Set(Process(1), Process(2))
 
       def getThreads(process: Process): Set[Thread] = Set()
 
@@ -100,9 +103,13 @@ class SimpleCpuSensorSuite(system: ActorSystem) extends UnitTest(system) {
     expectMsgClass(classOf[UsageReport]) match {
       case ur: UsageReport => ur.muid should equal(muid2); ur.target should equal(Application("app")); ur.targetRatio should equal(TargetUsageRatio(0.67))
     }
-    publishMonitorTick(muid3, All, tickMock)(eventBus)
+    publishMonitorTick(muid3, Container("ship"), tickMock)(eventBus)
     expectMsgClass(classOf[UsageReport]) match {
-      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(All); ur.targetRatio should equal(TargetUsageRatio(0.87))
+      case ur: UsageReport => ur.muid should equal(muid3); ur.target should equal(Container("ship")); ur.targetRatio should equal(TargetUsageRatio(0.28))
+    }
+    publishMonitorTick(muid4, All, tickMock)(eventBus)
+    expectMsgClass(classOf[UsageReport]) match {
+      case ur: UsageReport => ur.muid should equal(muid4); ur.target should equal(All); ur.targetRatio should equal(TargetUsageRatio(0.87))
     }
 
     gracefulStop(cpuSensor, 1.seconds)

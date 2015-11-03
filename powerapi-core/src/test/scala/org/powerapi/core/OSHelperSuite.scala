@@ -28,7 +28,7 @@ import akka.testkit.TestKit
 import akka.util.Timeout
 import org.hyperic.sigar.SigarException
 import org.powerapi.UnitTest
-import org.powerapi.core.target.{All, Application, Process, intToProcess, stringToApplication, TargetUsageRatio}
+import org.powerapi.core.target.{All, Application, Container, Process, intToProcess, stringToApplication, TargetUsageRatio}
 import org.powerapi.module.CacheKey
 import scala.concurrent.duration.DurationInt
 
@@ -80,11 +80,19 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
         case Application("bad-app") => Set(Process(-1), Process(2))
         case _ => Set()
       }
+      
+      override def getProcesses(container: Container): Set[Process] = container match {
+        case Container("ship") => Set(Process(4), Process(5))
+        case Container("bad-ship") => Set(Process(-1), Process(4))
+        case _ => Set()
+      }
 
       def getProcessCpuTime(process: Process): Option[Long] = process match {
         case Process(1) => Some(33 + 2)
         case Process(2) => Some(10 + 5)
         case Process(3) => Some(3 + 5)
+        case Process(4) => Some(6 + 8)
+        case Process(5) => Some(20 + 7)
         case _ => None
       }
 
@@ -102,10 +110,14 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     val p1Time = 33 + 2
     val goodAppTime = 10 + 5 + 3 + 5
     val badAppTime = 10 + 5
+    val goodShipTime = 6 + 8 + 20 + 7
+    val badShipTime = 6 + 8
 
     helper.getTargetCpuTime(1) should equal(Some(p1Time))
     helper.getTargetCpuTime("app") should equal(Some(goodAppTime))
     helper.getTargetCpuTime("bad-app") should equal(Some(badAppTime))
+    helper.getTargetCpuTime(Container("ship")) should equal(Some(goodShipTime))
+    helper.getTargetCpuTime(Container("bad-ship")) should equal(Some(badShipTime))
     helper.getTargetCpuTime(All) should equal(None)
   }
   
@@ -116,6 +128,12 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       def getProcesses(application: Application): Set[Process] = application match {
         case Application("app") => Set(Process(2), Process(3))
         case Application("bad-app") => Set(Process(-1), Process(2))
+        case _ => Set()
+      }
+      
+      override def getProcesses(container: Container): Set[Process] = container match {
+        case Container("ship") => Set(Process(4), Process(5))
+        case Container("bad-ship") => Set(Process(-1), Process(4))
         case _ => Set()
       }
 
@@ -129,6 +147,8 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
         case Process(1) => TargetUsageRatio(0.73)
         case Process(2) => TargetUsageRatio(0.49)
         case Process(3) => TargetUsageRatio(0.14)
+        case Process(4) => TargetUsageRatio(0.67)
+        case Process(5) => TargetUsageRatio(0.05)
         case _ => TargetUsageRatio(0.0)
       }
 
@@ -140,10 +160,14 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     val p1Usage = 0.73
     val goodAppUsage = 0.49 + 0.14
     val badAppUsage = 0.49
+    val goodShipUsage = 0.67 + 0.05
+    val badShipUsage = 0.67
 
     helper.getTargetCpuPercent(UUID.randomUUID(), 1) should equal(TargetUsageRatio(p1Usage))
     helper.getTargetCpuPercent(UUID.randomUUID(), "app") should equal(TargetUsageRatio(goodAppUsage))
     helper.getTargetCpuPercent(UUID.randomUUID(), "bad-app") should equal(TargetUsageRatio(badAppUsage))
+    helper.getTargetCpuPercent(UUID.randomUUID(), Container("ship")) should equal(TargetUsageRatio(goodShipUsage))
+    helper.getTargetCpuPercent(UUID.randomUUID(), Container("bad-ship")) should equal(TargetUsageRatio(badShipUsage))
     helper.getTargetCpuPercent(UUID.randomUUID(), All) should equal(TargetUsageRatio(0.0))
   }
 
