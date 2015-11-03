@@ -22,7 +22,9 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-routing" % "1.3.3",
   "io.spray" %% "spray-json" % "1.3.2",
   "com.github.nscala-time" %% "nscala-time" % "2.0.0",
-  "net.java.dev.jna" % "jna" % "4.1.0"
+  "net.java.dev.jna" % "jna" % "4.1.0",
+  "org.jogamp.jogl" % "jogl-all-main" % "2.0.2",
+  "org.jogamp.gluegen" % "gluegen-rt-main" % "2.0.2"
 )
 
 // Tests
