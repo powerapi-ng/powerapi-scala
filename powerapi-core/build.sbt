@@ -8,7 +8,7 @@ resolvers ++= Seq(
 
 // App
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.11",
+  "com.typesafe.akka" %% "akka-actor" % "2.3.14",
   "com.typesafe" % "config" % "1.2.1",
   "fr.inria.powerspy" % "powerspy-core_2.11" % "1.2",
   "com.nativelibs4java" % "bridj" % "0.7.0",

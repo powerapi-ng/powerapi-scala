@@ -113,7 +113,6 @@ object Analysis extends Configuration(None) with App {
   libpfmHelper.init()
 
   val system = ActorSystem("app-system")
-  val nbCores = Runtime.getRuntime.availableProcessors()
 
   Seq("bash", "-c", "chmod +x scripts/*").!
   Path("results", '/').deleteRecursively(force = true)
@@ -121,7 +120,6 @@ object Analysis extends Configuration(None) with App {
 
   for(workload <- workloads) {
     log.info("Start workload execution: {}", workload.name)
-
     start = System.currentTimeMillis
     Path(s"results/${workload.name}", '/').createDirectory()
     val display = new PowerDisplay(s"results/${workload.name}/powerapi.txt")
@@ -129,58 +127,58 @@ object Analysis extends Configuration(None) with App {
     Seq(s"./${workload.script}", s"${workload.name}").!
     papi.cancel()
     stop = System.currentTimeMillis
-
     log.info("Duration: {}", formatter.print(new Period(stop - start)))
-
-    val resolverRouter = system.actorOf(Props(classOf[AddressResolver], linuxHelper, timeout, nbCores))
-    val parserRouter = system.actorOf(Props(classOf[Parser], timeout, workload.binaryFilePath, nbCores, resolverRouter))
 
     val traceFiles = (Path(s"results/${workload.name}", '/') * ((p: Path) => p.name != "powerapi.txt")).toSeq.map(_.toRealPath().path)
 
     if(traceFiles.nonEmpty) {
-      log.info("Start to process traces and create call graphs, workload: {}", workload.name)
-
+      log.info("Start to process traces, workload: {}", workload.name)
       start = System.currentTimeMillis
+      // TODO: find a way to put a non-arbitrary number of routees
+      val resolverRouter = system.actorOf(Props(classOf[AddressResolver], linuxHelper, timeout, 30))
+      val parserRouter = system.actorOf(Props(classOf[Parser], timeout, workload.binaryFilePath, 8, resolverRouter))
       val powers = Source.fromFile(s"results/${workload.name}/powerapi.txt").getLines().map(_.toDouble).toList
 
       val futureGraphs = Future.sequence(for(traceFilePath <- traceFiles) yield {
         parserRouter.ask(StartParsing(Source.fromFile(traceFilePath).getLines().toIterable, interval, powers))(timeout).asInstanceOf[Future[Seq[Node]]]
       })
 
-      val graphsPerTid = Await.result(futureGraphs, timeout.duration)
+      val graphs = Await.result(futureGraphs, timeout.duration)
 
-      val graphPerPid = for(graphs <- graphsPerTid) yield {
-        val mergedRawGraph = graphs.head
+      val graphPerPid = for(seq <- graphs) yield {
+        val rawGraph = seq.head
 
-        for(rawGraph <- graphs.tail) {
-          mergedRawGraph.mergeRawGraph(rawGraph)
+        for(graph <- seq.tail) {
+          rawGraph.addCallee(graph)
         }
 
-        mergedRawGraph
+        rawGraph
       }
 
-      val mergedGraph = graphPerPid.head
+      val softwareGraph = Node(workload.name, interval, powers)
 
-      for(rawGraph <- graphPerPid.tail) {
-        mergedGraph.mergeRawGraph(rawGraph)
+      for(graph <- graphPerPid) {
+        softwareGraph.addCallee(graph)
       }
-
-      val graph = GraphUtil.buildCallgraph(mergedGraph)
-
-      stop = System.currentTimeMillis
-
       log.info("Duration: {}", formatter.print(new Period(stop - start)))
-      log.info("Start to process the call graph into json, workload: {}", workload.name)
 
+      log.info("Start to build callgraph, workload: {}", workload.name)
+      start = System.currentTimeMillis
+      val graph = GraphUtil.buildCallgraph(softwareGraph)
+      graph.executionIntervals = graph.callees.head._2.head.executionIntervals
+      stop = System.currentTimeMillis
+      log.info("Duration: {}", formatter.print(new Period(stop - start)))
+
+      log.info("Start to process the call graph into json, workload: {}", workload.name)
       start = System.currentTimeMillis
       Resource.fromFile(s"results/${workload.name}/${workload.name}.json").append(graph.toJson(JSONProtocol.NodeFormat).toString)
       stop = System.currentTimeMillis
-
       log.info("Duration: {}", formatter.print(new Period(stop - start)))
+
+      system.stop(resolverRouter)
+      system.stop(parserRouter)
     }
 
-    system.stop(resolverRouter)
-    system.stop(parserRouter)
     system.shutdown()
     system.awaitTermination()
   }

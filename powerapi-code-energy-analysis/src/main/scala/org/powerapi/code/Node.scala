@@ -28,7 +28,7 @@ import org.powerapi.core.{Configuration, ConfigValue}
 import scala.concurrent.duration.{FiniteDuration, DurationLong}
 import scala.concurrent.duration.SECONDS
 import spray.json._
-import scala.util.control.Breaks
+import scalaz.Scalaz._
 
 object NodeConfiguration extends Configuration {
   lazy val timeout: Timeout = load { _.getDuration("powerapi.actors.timeout", TimeUnit.MILLISECONDS) } match {
@@ -53,9 +53,7 @@ object GraphUtil {
     val nodes: Map[String, List[Node]] = for((name, nodes) <- node.callees) yield {
       val n = Node(name, monitoringFrequency, powers)
 
-      val mergedCallees: Map[String, List[Node]] = (for(node <- nodes) yield node.callees).foldLeft(Map[String, List[Node]]())((acc, map) => acc ++ map.map {
-        case (key, value) => key -> (acc.getOrElse(key, List[Node]()) ++ value)
-      })
+      val mergedCallees: Map[String, List[Node]] = nodes.map(_.callees).reduce(_ |+| _)
 
       n.callees = mergedCallees
       n.executionIntervals = nodes.map(rawNode => (rawNode.rawStartTime, rawNode.rawStopTime))
@@ -100,17 +98,6 @@ case class Node(name: String, monitoringFrequency: FiniteDuration, powers: List[
     _callees ++= callees
   }
 
-  def mergeRawGraph(rawGraph: Node): Unit = {
-    if(name == rawGraph.name) {
-      if(rawGraph.rawStartTime > 0 && rawGraph.rawStopTime > 0) _executionIntervals :+= (rawGraph.rawStartTime, rawGraph.rawStopTime)
-      _callees ++= rawGraph.callees.map {
-        case (key, value) => key -> (_callees.getOrElse(key, List[Node]()) ++ value)
-      }
-    }
-    // we merge the graph from the root node
-    else _callees += rawGraph.name -> (_callees.getOrElse(rawGraph.name, List[Node]()) :+ rawGraph)
-  }
-
   def addCallee(node: Node): Unit = _callees += node.name -> (callees.getOrElse(node.name, List()) :+ node)
 
   lazy val fullName: String = parent match {
@@ -122,11 +109,20 @@ case class Node(name: String, monitoringFrequency: FiniteDuration, powers: List[
     executionIntervals.size
   }
 
+  lazy val root: Node = {
+    var _p = this
+
+    while(_p.parent.isDefined) _p = _p.parent.get
+
+    _p
+  }
+
   lazy val executionStartTime: Long = {
-    parent match {
-      case Some(_p) => _p.executionStartTime
-      case None => executionIntervals.minBy(_._1)._1
-    }
+    root.allStartTimes.min
+  }
+
+  lazy val executionStopTime: Long = {
+    root.allStopTimes.max
   }
 
   lazy val duration: FiniteDuration = {
@@ -176,11 +172,7 @@ case class Node(name: String, monitoringFrequency: FiniteDuration, powers: List[
 
   def totalDuration(windowInterval: (Long, Long)): FiniteDuration = {
     if(!_totalDurations.contains(windowInterval)) {
-      var _p = this
-
-      while(_p.parent.isDefined) _p = _p.parent.get
-
-      _totalDurations += windowInterval -> _p.overallDuration(windowInterval)
+      _totalDurations += windowInterval -> root.overallDuration(windowInterval)
     }
 
     _totalDurations(windowInterval)
@@ -197,6 +189,11 @@ case class Node(name: String, monitoringFrequency: FiniteDuration, powers: List[
     }
 
     _effectiveDurations(windowInterval)
+  }
+
+  def updateStopTime(stop: Long): Unit = {
+    executionIntervals = executionIntervals.map(interval => if(interval._2 == -1) (interval._1, stop) else (interval._1, interval._2))
+    callees.foreach { case (_, nodes) => nodes.head.updateStopTime(stop) }
   }
 
   private[Node] lazy val overallEnergy: Double = {
@@ -220,31 +217,27 @@ case class Node(name: String, monitoringFrequency: FiniteDuration, powers: List[
 
     def _computeIntervals(rawIntervals: Seq[(Long, Long)]): Seq[(Long, Long)] = {
       var _rawIntervals = (Seq() ++ rawIntervals).sortBy(_._1)
+      val _intervals = scala.collection.mutable.ListBuffer[(Long, Long)]()
 
-      Breaks.breakable {
-        var i = 0
+      var (start, end): (Long, Long) = if(_rawIntervals.headOption.nonEmpty) _rawIntervals.head else (-1, -1)
+      _rawIntervals = if(_rawIntervals.nonEmpty) _rawIntervals.tail else Seq()
 
-        while (true) {
-          _rawIntervals = _rawIntervals.sortBy(_._1)
-          i = 0
-
-          Breaks.breakable {
-            while (i < _rawIntervals.size) {
-              val (start, end) = _rawIntervals(i)
-              val filteredIntervals = _rawIntervals.diff(List((start, end))).filter(tuple => end >= tuple._1 && end <= tuple._2)
-              val _intervals = Seq((start, end)) ++ filteredIntervals
-              _rawIntervals = _rawIntervals.diff(_intervals) :+ ((_intervals.minBy(_._1)._1, _intervals.maxBy(_._2)._2))
-
-              if (filteredIntervals.nonEmpty) Breaks.break
-              i += 1
-            }
-          }
-
-          if (i == _rawIntervals.size) Breaks.break
+      while(_rawIntervals.nonEmpty) {
+        val (t1, t2): (Long, Long) = _rawIntervals.head
+        if(t1 > start && t1 < end) {
+          end = t2
         }
+        else {
+          _intervals += ((start, end))
+          if(_rawIntervals.tail.isEmpty) _intervals += ((t1, t2))
+          start = t1
+          end = t2
+        }
+
+        _rawIntervals = _rawIntervals.tail
       }
 
-      _rawIntervals
+      if(_intervals.nonEmpty) _intervals else Seq((start, end))
     }
 
     def _computeDuration(rawIntervals: Seq[(Long, Long)]): FiniteDuration = {
@@ -269,6 +262,14 @@ case class Node(name: String, monitoringFrequency: FiniteDuration, powers: List[
     }
 
     _durations(windowTime)
+  }
+
+  private def allStartTimes: Seq[Long] = {
+    executionIntervals.map(_._1) ++ callees.foldLeft(Seq[Long]()) { case (acc, (_, nodes)) => acc ++ nodes.head.allStartTimes }
+  }
+
+  private def allStopTimes: Seq[Long] = {
+    executionIntervals.map(_._2) ++ callees.foldLeft(Seq[Long]()) { case (acc, (_, nodes)) => acc ++ nodes.head.allStopTimes }
   }
 }
 
@@ -307,7 +308,7 @@ object JSONProtocol extends DefaultJsonProtocol {
           "totalDuration" -> JsNumber(totalDuration.toNanos),
           "nbOfCalls" -> JsNumber(nbOfCalls),
           "children" ->
-            JsArray((for((_, n) <- node.callees) yield n.head.asInstanceOf[Node].toJson(SunburstChartForEnergyFormat)).toVector ++ Vector(
+            JsArray((for((_, n) <- node.callees) yield n.head.toJson(SunburstChartForEnergyFormat)).toVector ++ Vector(
               JsObject(
                 "name" -> JsString("self"),
                 "selfEnergy" -> JsNumber(selfEnergy),

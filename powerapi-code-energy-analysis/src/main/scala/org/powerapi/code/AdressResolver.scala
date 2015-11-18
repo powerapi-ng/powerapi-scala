@@ -45,6 +45,9 @@ class AddressResolver(osHelper: OSHelper, timeout: Timeout, nbRoutees: Int) exte
 
   def running(converted: Map[String, Future[String]]): Actor.Receive = {
     case msg: ConvertAddress => {
+      val name = router.ask(msg)(timeout).asInstanceOf[Future[String]]
+      pipe(name) to sender
+
       if(!converted.contains(msg.address)) {
         val name = router.ask(msg)(timeout).asInstanceOf[Future[String]]
         pipe(name) to sender

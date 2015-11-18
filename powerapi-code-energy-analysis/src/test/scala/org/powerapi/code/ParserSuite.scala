@@ -78,15 +78,15 @@ class ParserSuite(system: ActorSystem) extends UnitTest(system) {
     val parserRouter = TestActorRef(Props(classOf[Parser], timeout, "/bin/test", 1, resolverRouter))(system)
 
     val traces = Source.fromFile(s"${basepath}code-energy-trace.txt").getLines().toIterable
-    val graphs = Await.result(parserRouter.ask(StartParsing(traces, frequency, powers))(timeout), timeout.duration).asInstanceOf[Seq[Node]]
+    val rawGraphs = Await.result(parserRouter.ask(StartParsing(traces, frequency, powers))(timeout), timeout.duration).asInstanceOf[Seq[Node]]
 
-    val mergedRawGraph = graphs.head
+    val rawGraph = rawGraphs.head
 
-    for(rawGraph <- graphs.tail) {
-      mergedRawGraph.mergeRawGraph(rawGraph)
+    for(oGraph <- rawGraphs.tail) {
+      rawGraph.addCallee(oGraph)
     }
 
-    val graph = GraphUtil.buildCallgraph(mergedRawGraph)
+    val graph = GraphUtil.buildCallgraph(rawGraph)
 
     graph.callees.keys should contain only("thread", "a", "i", "h")
     graph.callees("h").head.callees.keys should be ('empty)

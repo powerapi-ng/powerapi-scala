@@ -55,7 +55,6 @@ class NodeSuite(system: ActorSystem) extends UnitTest(system) {
 
     rawGraph.parent = None
     rawGraph.rawStartTime = startTime
-    rawGraph.rawStopTime = startTime + 1000l.millis.toNanos
     rawGraph.executionIntervals = List((rawGraph.rawStartTime, rawGraph.rawStopTime))
 
     node1.parent = Some(rawGraph)
@@ -86,6 +85,8 @@ class NodeSuite(system: ActorSystem) extends UnitTest(system) {
 
     val graph = GraphUtil.buildCallgraph(rawGraph)
 
+    graph.updateStopTime(startTime + 1000l.millis.toNanos)
+
     graph.callees.keys should contain only("a", "b")
     graph.callees("a").head.callees.keys should contain only("b", "c")
     graph.callees("b").head.callees.keys should contain only("c")
@@ -103,6 +104,13 @@ class NodeSuite(system: ActorSystem) extends UnitTest(system) {
     graph.callees("a").head.callees("b").head.executionStartTime should equal(startTime)
     graph.callees("a").head.callees("c").head.executionStartTime should equal(startTime)
     graph.callees("b").head.callees("c").head.executionStartTime should equal(startTime)
+
+    graph.executionStopTime should equal(startTime + 1000l.millis.toNanos)
+    graph.callees("a").head.executionStopTime should equal(startTime + 1000l.millis.toNanos)
+    graph.callees("b").head.executionStopTime should equal(startTime + 1000l.millis.toNanos)
+    graph.callees("a").head.callees("b").head.executionStopTime should equal(startTime + 1000l.millis.toNanos)
+    graph.callees("a").head.callees("c").head.executionStopTime should equal(startTime + 1000l.millis.toNanos)
+    graph.callees("b").head.callees("c").head.executionStopTime should equal(startTime + 1000l.millis.toNanos)
 
     graph.effectiveDuration(startTime, startTime + 1000l.millis.toNanos) should
       (be >= 0l.nanos and equal((1000 - ((140 - 100) + (800 - 180))).toLong.millis))

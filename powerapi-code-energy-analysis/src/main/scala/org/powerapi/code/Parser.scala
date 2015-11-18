@@ -78,24 +78,26 @@ class ParserRoutee(timeout: Timeout, binaryFilePath: String, addressResolver: Ac
       for (line <- traces) {
         val fields = line.split(" ")
 
-        fields(1).toLowerCase match {
-          case "e" => {
-            val nodeName = Await.result(addressResolver.ask(ConvertAddress(binaryFilePath, fields(2)))(timeout).asInstanceOf[Future[Option[String]]], timeout.duration)
-            val node = Node(nodeName.get, monitoringFrequency, powers)
-            node.parent = Some(current)
-            node.rawStartTime = fields(4).toLong
+        if(fields.size == 5) {
+          fields(1).toLowerCase match {
+            case "e" => {
+              val nodeName = Await.result(addressResolver.ask(ConvertAddress(binaryFilePath, fields(2)))(timeout).asInstanceOf[Future[Option[String]]], timeout.duration)
+              val node = Node(nodeName.get, monitoringFrequency, powers)
+              node.parent = Some(current)
+              node.rawStartTime = fields(4).toLong
 
-            current.addCallee(node)
-            current = node
-          }
-          case "x" => {
-            current.rawStopTime = fields(4).toLong
-
-            if(current.parent.isDefined) {
-              current = current.parent.get
+              current.addCallee(node)
+              current = node
             }
+            case "x" => {
+              current.rawStopTime = fields(4).toLong
 
-            else graph.executionIntervals = List((graph.rawStartTime, graph.rawStopTime))
+              if(current.parent.isDefined) {
+                current = current.parent.get
+              }
+
+              else graph.executionIntervals = List((graph.rawStartTime, graph.rawStopTime))
+            }
           }
         }
       }

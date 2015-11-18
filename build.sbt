@@ -2,7 +2,7 @@ name := "powerapi"
 
 version in ThisBuild := "3.3"
 
-scalaVersion in ThisBuild := "2.11.6"
+scalaVersion in ThisBuild := "2.11.7"
 
 scalacOptions in ThisBuild ++= Seq(
   "-language:reflectiveCalls",

@@ -46,13 +46,12 @@ class ResolverSuite(system: ActorSystem) extends UnitTest(system) {
 
   "An AddressResolver actor" should "create routees for resolving hexadecimal addresses to function names" in {
     val osHelper = new OSHelper {
-      var cpt = Map[String, Int]()
       def getThreads(process: Process): Set[Thread] = ???
       def getTimeInStates: TimeInStates = ???
       def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = ???
       def getFunctionNameByAddress(binaryPath: String, address: String): Option[String] = address match {
-        case "0x1" => val res = if(cpt.getOrElse(address, 0) == 0) Some("a") else Some("unknown") ; cpt += (address -> (cpt.getOrElse(address, 0) + 1)) ; res
-        case "0x2" => val res = if(cpt.getOrElse(address, 0) == 0) Some("b") else Some("unknown") ; cpt += (address -> (cpt.getOrElse(address, 0) + 1)) ; res
+        case "0x1" => Some("a")
+        case "0x2" => Some("b")
         case _ => Some("unknown")
       }
       def getCPUFrequencies: Set[Long] = ???
