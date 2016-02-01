@@ -61,11 +61,12 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [spray-routing](http://spray.io/) (version 1.3.3 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a high-level, very flexible routing DSL for elegantly defining RESTful web services.
 * [spray-json](http://spray.io/) (version 1.2.2 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for (de)serializing JSON.
 * [nscala-time](https://github.com/nscala-time/nscala-time) (version 2.0.0 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for using a scala wrapper for Joda Time (quality replacement for the Java date and time classes).
+* [docker-java](https://github.com/docker-java/docker-java) (version 2.1.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for using the JAVA Docker API.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.
 
-Copyright (C) 2011-2015 Inria, University of Lille 1.
+Copyright (C) 2011-2016 Inria, University of Lille 1.
 
 PowerAPI is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
