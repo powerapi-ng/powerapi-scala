@@ -180,7 +180,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  "A Clocks actor" should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
+  // "A Clocks actor"
+  ignore should "handle ClockChild actors and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest4")
 
     val frequency1 = 50.milliseconds
@@ -257,7 +258,8 @@ class ClockSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  it can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in new Bus {
+
+  ignore can "handle a large number of clocks and the subscribers have to receive tick messages for their frequencies" in new Bus {
     val _system = ActorSystem("ClockSuiteTest5")
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")

@@ -154,7 +154,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  it can "handle a large number of targets" in new Bus {
+  ignore can "handle a large number of targets" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest3")
 
     val frequency = 25.milliseconds
@@ -201,7 +201,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  "A Monitors actor" should "handle its MonitorChild actors and subscribers have to receive messages" in new Bus {
+  //"A Monitors actor"
+  ignore should "handle its MonitorChild actors and subscribers have to receive messages" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest4")
 
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks4")
@@ -247,7 +248,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  it should "publish a message to the sensor actors for let them know that the monitor(s) is/are stopped" in new Bus {
+  // it
+  "A Monitors actor" should "publish a message to the sensor actors for let them know that the monitor(s) is/are stopped" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest5")
 
     val monitors = TestActorRef(Props(classOf[Monitors], eventBus), "monitors5")(_system)
@@ -297,7 +299,7 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  it should "handle a large number of monitors" in new Bus {
+  ignore should "handle a large number of monitors" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest5")
     val clocks = _system.actorOf(Props(classOf[Clocks], eventBus), "clocks5")
     val monitors = _system.actorOf(Props(classOf[Monitors], eventBus), "monitors5")
@@ -392,7 +394,8 @@ class MonitorSuite(system: ActorSystem) extends UnitTest(system) {
     _system.awaitTermination(timeout.duration)
   }
 
-  it can "handle a large number of power reports" in new Bus {
+  // it
+  ignore can "handle a large number of power reports" in new Bus {
     val _system = ActorSystem("MonitorSuiteTest7", eventListener)
 
     val muid = UUID.randomUUID()
