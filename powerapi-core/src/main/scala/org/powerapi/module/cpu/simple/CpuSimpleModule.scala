@@ -22,8 +22,9 @@
  */
 package org.powerapi.module.cpu.simple
 
+import org.hyperic.sigar.{Sigar, SigarProxyCache}
 import org.powerapi.PowerModule
-import org.powerapi.core.{SigarHelper, LinuxHelper, OSHelper}
+import org.powerapi.core.{SigarHelperConfiguration, SigarHelper, LinuxHelper, OSHelper}
 
 class CpuSimpleModule(osHelper: OSHelper, tdp: Double, tdpFactor: Double) extends PowerModule {
   lazy val underlyingSensorsClasses  = Seq((classOf[CpuSensor], Seq(osHelper)))
@@ -38,9 +39,14 @@ object ProcFSCpuSimpleModule extends CpuFormulaConfiguration {
   }
 }
 
-object SigarCpuSimpleModule extends CpuFormulaConfiguration {
+object SigarCpuSimpleModule extends CpuFormulaConfiguration with SigarHelperConfiguration {
+  val sigar = {
+    System.setProperty("java.library.path", libNativePath)
+    SigarProxyCache.newInstance(new Sigar(), 100)
+  }
+
   def apply(): CpuSimpleModule = {
-    val sigarHelper = new SigarHelper
+    val sigarHelper =  new SigarHelper(sigar)
 
     new CpuSimpleModule(sigarHelper, tdp, tdpFactor)
   }

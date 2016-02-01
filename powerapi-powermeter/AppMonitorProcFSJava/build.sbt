@@ -1,4 +1,4 @@
-scalaVersion in ThisBuild := "2.11.6"
+scalaVersion in ThisBuild := "2.11.7"
 
 resolvers ++= Seq(
   "OSS Sonatype snapshot repository" at "https://oss.sonatype.org/content/repositories/snapshots"
@@ -9,3 +9,5 @@ libraryDependencies in ThisBuild ++= Seq(
 )
 
 mainClass in (Compile, run) := Some("AppMonitorExample")
+
+fork in ThisBuild := true

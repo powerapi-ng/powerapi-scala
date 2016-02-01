@@ -26,7 +26,7 @@ import com.typesafe.config.Config
 import java.io.{IOException, File}
 import java.util.UUID
 import org.apache.logging.log4j.LogManager
-import org.hyperic.sigar.{Sigar, SigarException, SigarProxyCache}
+import org.hyperic.sigar.{SigarProxy, Sigar, SigarException, SigarProxyCache}
 import org.hyperic.sigar.ptql.ProcessFinder
 import org.powerapi.core.FileHelper.using
 import org.powerapi.core.target.{All, Application, Container, Process, Target, TargetUsageRatio}
@@ -402,34 +402,28 @@ class LinuxHelper extends Configuration(None) with OSHelper {
   }
 }
 
+trait SigarHelperConfiguration extends Configuration {
+  /**
+    * Sigar native libraries
+    */
+  lazy val libNativePath = load { _.getString("powerapi.sigar.native-path") } match {
+    case ConfigValue(p) => p
+    case _ => "./lib/sigar-bin"
+  }
+}
+
 /**
  * SIGAR special helper.
  *
  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
  */
-class SigarHelper extends Configuration(None) with OSHelper {
+class SigarHelper(sigar: SigarProxy) extends OSHelper {
   private val log = LogManager.getLogger
 
   /**
-   * Sigar native libraries
-   */
-  lazy val libNativePath = load { _.getString("powerapi.sigar.native-path") } match {
-    case ConfigValue(p) => p
-    case _ => "./lib"
-  }
-
-  /**
-   * SIGAR's proxy instance.
-   */
-  lazy val sigar = {
-    System.setProperty("java.library.path", libNativePath)
-    SigarProxyCache.newInstance(new Sigar(), 100)
-  }
-  
-  /**
    * CPU cores number.
    */
-  lazy val cores = sigar.getCpuInfoList()(0).getTotalCores()
+  lazy val cores = sigar.getCpuInfoList()(0).getTotalCores
 
   def getCPUFrequencies: Set[Long] = throw new SigarException("sigar cannot be able to get CPU frequencies")
 

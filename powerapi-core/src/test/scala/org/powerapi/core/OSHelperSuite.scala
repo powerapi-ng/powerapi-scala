@@ -26,7 +26,7 @@ import java.util.UUID
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
-import org.hyperic.sigar.SigarException
+import org.hyperic.sigar.{Sigar, SigarProxyCache, SigarException}
 import org.powerapi.UnitTest
 import org.powerapi.core.target.{All, Application, Container, Process, intToProcess, stringToApplication, TargetUsageRatio}
 import org.powerapi.module.CacheKey
@@ -250,17 +250,19 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     (timesLeft - timesRight) should equal(TimeInStates(Map(1l -> 9l, 2l -> 18l, 3l -> 27l, 4l -> 15l)))
   }
 
-  "The SigarHelper" should "be able to read configuration parameters" in {
-    val sigarHelper = new SigarHelper
+  "The SigarHelperConfiguration" should "be able to read configuration parameters" in {
+    val sigarHelper = new SigarHelperConfiguration {}
 
     sigarHelper.libNativePath should equal("p2")
   }
 
-  "The SigarHelper methods" should "return correct values" in {
-    val helper = new SigarHelper {
-      override lazy val libNativePath = "./powerapi-core/lib"
+  "The SigarHelper methods" should "return correct values" ignore {
+    val sigar = {
+      System.setProperty("java.library.path", s"./../external-libs/sigar-bin")
+      SigarProxyCache.newInstance(new Sigar(), 100)
     }
-    
+
+    val helper = new SigarHelper(sigar)
     val pid = Process(java.lang.management.ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt)
     
     intercept[SigarException] { helper.getCPUFrequencies }

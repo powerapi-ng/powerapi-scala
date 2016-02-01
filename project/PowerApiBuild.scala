@@ -20,15 +20,34 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
+import com.typesafe.sbt.packager.archetypes.{JavaServerAppPackaging, JavaAppPackaging}
+import sbt.Keys._
 import sbt._
-import scoverage.ScoverageSbtPlugin.ScoverageKeys
 
 object PowerApiBuild extends Build {
-  lazy val powerapi = Project(id = "powerapi", base = file(".")).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
 
-  lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core"))
-  lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
-  lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
-  lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val rootSettings = Seq(
+    version := "3.4",
+    scalaVersion := "2.11.7",
+    scalacOptions := Seq(
+      "-language:reflectiveCalls",
+      "-language:implicitConversions",
+      "-feature",
+      "-deprecation"
+    ),
+    fork := true,
+    parallelExecution := false,
+    unmanagedBase := baseDirectory.value / "external-libs"
+  )
+
+  lazy val subSettings = rootSettings ++ Seq(
+    unmanagedBase :=  baseDirectory.value / ".." / "external-libs"
+  )
+
+  lazy val powerapi = Project(id = "powerapi", base = file(".")).settings(rootSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
+
+  lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core")).settings(subSettings: _*)
+  lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(subSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(BluecovePackaging, JavaAppPackaging)
+  lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).settings(subSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(BluecovePackaging, JavaServerAppPackaging)
+  lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).settings(subSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(BluecovePackaging, JavaAppPackaging)
 }

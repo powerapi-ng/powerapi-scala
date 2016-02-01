@@ -94,7 +94,6 @@ class CpuSimpleModulesSuite(system: ActorSystem) extends UnitTest(system) {
     module.underlyingSensorsClasses(0)._1 should equal(classOf[CpuSensor])
     module.underlyingSensorsClasses(0)._2.size should equal(1)
     module.underlyingSensorsClasses(0)._2(0).getClass should equal(classOf[SigarHelper])
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[SigarHelper].libNativePath should equal("p2")
 
     module.underlyingFormulaeClasses.size should equal(1)
     module.underlyingFormulaeClasses(0)._1 should equal(classOf[CpuFormula])

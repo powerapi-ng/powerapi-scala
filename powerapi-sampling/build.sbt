@@ -4,10 +4,10 @@ NativePackagerKeys.executableScriptName := "sampling"
 
 // App
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.6",
+  "com.typesafe.akka" %% "akka-actor" % "2.3.14",
   "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
   "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
-  "org.scala-saddle" %% "saddle-core" % "1.3.3"
+  "org.scala-saddle" %% "saddle-core" % "1.3.4"
 )
 
 // Tests
@@ -16,36 +16,27 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.2" % "test"
 )
 
-lazy val downloadBluecoveSampling = taskKey[File]("download-bluecove-sampling")
-lazy val downloadBluecoveGplSampling = taskKey[File]("download-bluecove-gpl-sampling")
+mappings in Universal += downloadBluecove.value -> s"lib/${downloadBluecove.value.name}"
 
-downloadBluecoveSampling := {
-  val locationBluecove = baseDirectory.value / "lib" / "bluecove-2.1.0.jar"
-  if(!locationBluecove.getParentFile.exists()) locationBluecove.getParentFile.mkdirs()
-  if(!locationBluecove.exists()) IO.download(url("https://bluecove.googlecode.com/files/bluecove-2.1.0.jar"), locationBluecove)
-  locationBluecove
-}
-
-downloadBluecoveGplSampling := {
-  val locationBluecoveGpl = baseDirectory.value / "lib" / "bluecove-gpl-2.1.0.jar"
-  if(!locationBluecoveGpl.getParentFile.exists()) locationBluecoveGpl.getParentFile.mkdirs()
-  if(!locationBluecoveGpl.exists()) IO.download(url("https://bluecove.googlecode.com/files/bluecove-gpl-2.1.0.jar"), locationBluecoveGpl)
-  locationBluecoveGpl
-}
-
-mappings in Universal += downloadBluecoveSampling.value -> s"lib/${downloadBluecoveSampling.value.name}"
-
-mappings in Universal += downloadBluecoveGplSampling.value -> s"lib/${downloadBluecoveGplSampling.value.name}"
+mappings in Universal += downloadBluecoveGpl.value -> s"lib/${downloadBluecoveGpl.value.name}"
 
 mappings in Universal ++= {
-  ((baseDirectory.value.getParentFile * "README*").get map {
-    readmeFile: File =>
-      readmeFile -> readmeFile.getName
-  }) ++
-    ((baseDirectory.value.getParentFile * "LICENSE*").get map {
-      licenseFile: File =>
-        licenseFile -> licenseFile.getName
-    })
+  val dir = baseDirectory.value.getParentFile
+
+  (for {
+    (file, relativePath) <- (dir * "README*" --- dir) pair relativeTo (dir)
+  } yield file -> s"$relativePath") ++
+    (for {
+      (file, relativePath) <- (dir * "LICENSE*" --- dir) pair relativeTo (dir)
+    } yield file -> s"$relativePath")
+}
+
+mappings in Universal ++= {
+  val dir = baseDirectory.value.getParentFile / "external-libs" / "sigar-bin"
+
+  for {
+    (file, relativePath) <-  (dir.*** --- dir) pair relativeTo(dir)
+  } yield file -> s"/lib/sigar-bin/$relativePath"
 }
 
 scriptClasspath ++= Seq("../scripts", "../conf")
