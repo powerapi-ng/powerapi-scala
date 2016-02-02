@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%level] [%d{MM/dd/yyyy HH:mm:ss.SSS}] [%t] [%logger{36}] - %msg%n" />
+        </Console>
+        <File name="hpc-analysis" fileName="logs/hpc-analysis.log">
+            <PatternLayout pattern="[%level] [%d{MM/dd/yyyy HH:mm:ss.SSS}] [%t] [%logger{36}] - %msg%n" />
+        </File>
+    </Appenders>
+    <Loggers>
+        <Logger name="org.powerapi.module.libpfm.LibpfmHelper" level="info" additivity="false">
+            <AppenderRef ref="hpc-analysis" />
+        </Logger>
+        <Logger name="org.powerapi.jss.analysis" level="info" additivity="false">
+            <AppenderRef ref="hpc-analysis" />
+        </Logger>
+        <Root level="error">
+            <AppenderRef ref="Console" />
+        </Root>
+    </Loggers>
+</Configuration>
