@@ -27,7 +27,7 @@ import sbt._
 object PowerApiBuild extends Build {
 
   lazy val rootSettings = Seq(
-    version := "3.4",
+    version := "3.5",
     scalaVersion := "2.11.7",
     scalacOptions := Seq(
       "-language:reflectiveCalls",

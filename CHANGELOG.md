@@ -1,5 +1,14 @@
 # Change Log
 
+## [3.4](https://github.com/Spirals-Team/powerapi/tree/3.4) (2016-02-02)
+
+[Full Changelog](https://github.com/Spirals-Team/powerapi/compare/3.4...3.3)
+
+**Fixed bugs:**
+
+- Link error while using Sigar module [\#75](https://github.com/Spirals-Team/powerapi/issues/75)
+
+
 ## [3.3](https://github.com/Spirals-Team/powerapi/tree/3.3) (2015-11-03)
 [Full Changelog](https://github.com/Spirals-Team/powerapi/compare/3.2...3.3)
 
