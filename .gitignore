@@ -34,5 +34,6 @@ target/
 .worksheet
 
 #bluecove
-*bluecove*
+*bluecove*.jar
+
 
