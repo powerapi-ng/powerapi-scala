@@ -22,23 +22,21 @@
  */
 package org.powerapi.core.target
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
-class TargetSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  def this() = this(ActorSystem("TargetSuite"))
+import org.powerapi.UnitTest
+
+class TargetSuite extends UnitTest {
 
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  "The implicit methods" should "convert an int or a string to the corresponding targets" in {
+  "The implicit methods" should "convert an int to a Process and a string to an Application" in {
     val process: Target = 1
     process should equal(Process(1))
     val application: Target = "app"

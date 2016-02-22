@@ -22,81 +22,99 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorRef
 import java.util.UUID
-import org.powerapi.core.{Channel, MessageBus}
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.target.Target
-import org.powerapi.module.SensorChannel.SensorReport
+
 import scala.concurrent.Future
 
+import akka.actor.ActorRef
+
+import org.powerapi.core.target.Target
+import org.powerapi.core.{Channel, Message, MessageBus, Tick}
+
 /**
- * PerformanceCounterChannel channel and messages.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * PerformanceCounterChannel channel and messages.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 object PerformanceCounterChannel extends Channel {
-  type M = org.powerapi.module.SensorChannel.M
+
+  type M = PCReport
 
   /**
-   * Internal message.
-   * One message per core/event.
-   * Values is a list of performance counter values for each element of a core.
-   */
-  case class PCWrapper(core: Int, event: String, values: List[Future[Long]]) {
-    def +(value: Future[Long]): PCWrapper = {
-      PCWrapper(core, event, values :+ value)
-    }
+    * Publish a PerformanceCounterReport in the event bus.
+    */
+  def publishPCReport(muid: UUID, target: Target, wrappers: Seq[PCWrapper], tick: Tick): MessageBus => Unit = {
+    publish(PCReport(pcReportToTopic(muid, target), muid, target, wrappers, tick))
   }
 
   /**
-   * PCReport is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param target: monitor target.
-   * @param wrappers: performance counter wrappers.
-   * @param tick: tick origin.
-   */
-  case class PCReport(topic: String,
-                      muid: UUID,
-                      target: Target,
-                      wrappers: List[PCWrapper],
-                      tick: ClockTick) extends SensorReport
-
-  /**
-   * Topic for communicating with the Formula actors.
-   */
-  private val topic = "sensor:libpfm-core"
-
-  /**
-   * Publish a PerformanceCounterReport in the event bus.
-   */
-  def publishPCReport(muid: UUID, target: Target, wrappers: List[PCWrapper], tick: ClockTick): MessageBus => Unit = {
-    publish(PCReport(topic = topic,
-                     muid = muid,
-                     target = target,
-                     wrappers = wrappers,
-                     tick = tick))
+    * Used to format the topic used to interact with the FormulaChild actors.
+    */
+  def pcReportToTopic(muid: UUID, target: Target): String = {
+    s"libpfm-sensor:$muid-$target"
   }
 
   /**
-   * External method used by the Formula for interacting with the bus.
-   */
-  def subscribePCReport: MessageBus => ActorRef => Unit = {
-    subscribe(topic)
+    * Used to subscribe to PCReport on the right topic.
+    */
+  def subscribePCReport(muid: UUID, target: Target): MessageBus => ActorRef => Unit = {
+    subscribe(pcReportToTopic(muid, target))
   }
 
   /**
-   * Use to format the names.
-   *
-   * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its name otherwise.
-   */
+    * Used to unsubscribe to PCReport on the rigth topic.
+    */
+  def unsubscribePCReport(muid: UUID, target: Target): MessageBus => ActorRef => Unit = {
+    unsubscribe(pcReportToTopic(muid, target))
+  }
+
+  /**
+    * Used to format the LibpfmCoreSensorChild names.
+    *
+    * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its name otherwise.
+    */
   def formatLibpfmCoreSensorChildName(core: Int, event: String, muid: UUID): String = {
     s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_"
   }
 
+  /**
+    * Used to format the LibpfmCoreProcessSensorChild names
+    *
+    * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its name otherwise.
+    */
   def formatLibpfmCoreProcessSensorChildName(core: Int, event: String, muid: UUID, identifier: Int): String = {
     s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_${identifier}_"
   }
+
+  /**
+    * Internal message.
+    * One message per core/event.
+    */
+  case class PCWrapper(core: Int, event: String, values: Seq[Future[HWCounter]])
+
+  /**
+    * Internal message used to wrap a performance counter value for a period in ns.
+    */
+  case class HWCounter(value: Long)
+
+  /**
+    * PCReport is represented as a dedicated type of message.
+    *
+    * @param topic    : subject used for routing the message.
+    * @param muid     : monitor unique identifier (MUID), which is at the origin of the report flow.
+    * @param target   : monitor target.
+    * @param wrappers : performance counter wrappers.
+    * @param tick     : tick origin.
+    */
+  case class PCReport(topic: String,
+                      muid: UUID,
+                      target: Target,
+                      wrappers: Seq[PCWrapper],
+                      tick: Tick) extends Message
+
+  /**
+    * Internal message used to stop a LibpfmPicker and clean its internal resources.
+    */
+  object LibpfmPickerStop
+
 }

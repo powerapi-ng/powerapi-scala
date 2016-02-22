@@ -22,130 +22,112 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.{PoisonPill, Props}
-import akka.pattern.ask
-import akka.util.Timeout
 import java.util.UUID
-import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick}
-import org.powerapi.core.target.{Application, Container, Process, Target}
-import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll, subscribeSensorsChannel}
-import org.powerapi.module.SensorComponent
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{formatLibpfmCoreProcessSensorChildName, PCWrapper, publishPCReport}
-import org.powerapi.core.{OSHelper, MessageBus}
+
 import scala.collection.BitSet
 import scala.concurrent.Future
-import scala.reflect.ClassTag
+
+import akka.actor.{Actor, PoisonPill, Props}
+import akka.pattern.ask
+import akka.util.Timeout
+
+import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick, unsubscribeMonitorTick}
+import org.powerapi.core.target.{All, Target}
+import org.powerapi.core.{MessageBus, OSHelper}
+import org.powerapi.module.Sensor
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, LibpfmPickerStop, PCWrapper, formatLibpfmCoreProcessSensorChildName, publishPCReport}
 
 /**
- * Main actor for getting the performance counter value per core/event/process.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-class LibpfmCoreProcessSensor(eventBus: MessageBus, osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean) extends SensorComponent(eventBus) {
-  val processClaz = implicitly[ClassTag[Process]].runtimeClass
-  val appClaz = implicitly[ClassTag[Application]].runtimeClass
-  val containerClaz = implicitly[ClassTag[Container]].runtimeClass
+  * Libpfm sensor component that collects metrics with libpfm at a core level.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
+class LibpfmCoreProcessSensor(eventBus: MessageBus, muid: UUID, target: Target, osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout,
+                              topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean) extends Sensor(eventBus, muid, target) {
 
-  val wrappers = scala.collection.mutable.Map[(Int, String), PCWrapper]()
-  val targets = scala.collection.mutable.Map[UUID, Set[Target]]()
-  val timestamps = scala.collection.mutable.Map[UUID, Long]()
-  val identifiers = scala.collection.mutable.Map[(UUID, Target), Set[Int]]()
+  def init(): Unit = subscribeMonitorTick(muid, target)(eventBus)(self)
 
-  override def preStart(): Unit = {
-    subscribeMonitorTick(eventBus)(self)
-    subscribeSensorsChannel(eventBus)(self)
-    super.preStart()
+  def terminate(): Unit = {
+    context.actorSelection("*") ! LibpfmPickerStop
+    unsubscribeMonitorTick(muid, target)(eventBus)(self)
   }
 
-  def sense(monitorTick: MonitorTick): Unit = {
-    if(!timestamps.contains(monitorTick.muid)) {
-      timestamps += monitorTick.muid -> monitorTick.tick.timestamp
-    }
+  def currentIdentifiers: Set[Int] = {
+    if (inDepth) osHelper.getProcesses(target).flatMap(process => osHelper.getThreads(process).map(_.tid) + process.pid)
+    else osHelper.getProcesses(target).map(_.pid)
+  }
 
-    /**
-     * Get the identifiers for the current target.
-     */
-    val tickIdentifiers: Set[Int] = monitorTick.target match {
-      case process: Process => {
-        if(inDepth) osHelper.getThreads(process).map(_.tid).toSet + process.pid
-        else Set(process.pid)
+  def handler: Actor.Receive = {
+    if (target != All) {
+      val initIdentifiers = currentIdentifiers
+
+      if (initIdentifiers.isEmpty) {
+        self ! PoisonPill
+        sensorDefault
       }
-      case app: Application => {
-        (for(process <- osHelper.getProcesses(app)) yield {
-          if(inDepth) osHelper.getThreads(process).map(_.tid) ++ Iterable(process.pid)
-          else List(process.pid)
-        }).flatten.toSet
-      }
-      case container: Container => {
-        (for(process <- osHelper.getProcesses(container)) yield {
-          if(inDepth) osHelper.getThreads(process).map(_.tid) ++ Iterable(process.pid)
-          else List(process.pid)
-        }).flatten.toSet
-      }
-    }
 
-    /**
-     * Clean the resources for the old identifiers linked to the requested target.
-     */
-    val newTickIdentifiers = tickIdentifiers -- identifiers.getOrElse((monitorTick.muid, monitorTick.target), Set())
-    val oldTickIdentifiers = identifiers.getOrElse((monitorTick.muid, monitorTick.target), Set()) -- tickIdentifiers
+      else {
+        val combinations = {
+          for {
+            core: Int <- topology.keys
+            index: Int <- topology(core)
+            event: String <- events
+            id: Int <- initIdentifiers
+          } yield (core, index, event, id)
+        }.toParArray
 
-    oldTickIdentifiers.foreach(id => {
-      context.actorSelection(s"*$id") ! PoisonPill
-    })
-
-    /**
-     * Clean the resources for the old targets linked to the MUID.
-     */
-    if(monitorTick.tick.timestamp > timestamps(monitorTick.muid)) {
-      identifiers.filter(entry => entry._1._1 == monitorTick.muid && !targets(monitorTick.muid).contains(entry._1._2)).foreach {
-        case (key, ids) => {
-          ids.foreach(id => context.actorSelection(s"*$id") ! PoisonPill)
-          identifiers -= key
+        combinations.foreach {
+          case (_, index, event, id) =>
+            val name = formatLibpfmCoreProcessSensorChildName(index, event, muid, id)
+            context.actorOf(Props(classOf[LibpfmPicker], libpfmHelper, event, index, Some(id), configuration), name)
         }
-      }
 
-      targets += monitorTick.muid -> Set()
-      timestamps += monitorTick.muid -> monitorTick.tick.timestamp
+        sense(initIdentifiers)
+      }
     }
 
-    targets += monitorTick.muid -> (targets.getOrElse(monitorTick.muid, Set()) + monitorTick.target)
-    identifiers += (monitorTick.muid, monitorTick.target) -> (identifiers.getOrElse((monitorTick.muid, monitorTick.target), Set()) -- oldTickIdentifiers ++ newTickIdentifiers)
+    else {
+      unsubscribeMonitorTick(muid, target)(eventBus)(self)
+      self ! PoisonPill
+      sensorDefault
+    }
+  }
 
-    for((core, indexes) <- topology) {
-      for(index <- indexes) {
-        for(event <- events) {
-          for(id <- identifiers(monitorTick.muid, monitorTick.target)) {
-            val name = formatLibpfmCoreProcessSensorChildName(index, event, monitorTick.muid, id)
+  def sense(oldIdentifiers: Set[Int]): Actor.Receive = {
+    case msg: MonitorTick =>
+      val newIdentifiers = currentIdentifiers
 
+      (oldIdentifiers -- newIdentifiers).foreach(id => context.actorSelection(s"*_${id}_*") ! LibpfmPickerStop)
+
+      if (newIdentifiers.isEmpty) {
+        unsubscribeMonitorTick(muid, target)(eventBus)(self)
+        self ! PoisonPill
+      }
+      else {
+        val combinations = {
+          for {
+            core: Int <- topology.keys
+            index: Int <- topology(core)
+            event: String <- events
+            id: Int <- newIdentifiers
+          } yield (core, index, event, id)
+        }.toParArray
+
+        val allWrappers = combinations.map {
+          case (core, index, event, id) =>
+            val name = formatLibpfmCoreProcessSensorChildName(index, event, muid, id)
             val actor = context.child(name) match {
               case Some(ref) => ref
-              case None => context.actorOf(Props(classOf[LibpfmCoreSensorChild], libpfmHelper, event, index, Some(id), configuration), name)
+              case _ => context.actorOf(Props(classOf[LibpfmPicker], libpfmHelper, event, index, Some(id), configuration), name)
             }
-
-            wrappers += (core, event) -> (wrappers.getOrElse((core, event), PCWrapper(core, event, List())) + actor.?(monitorTick)(timeout).asInstanceOf[Future[Long]])
-          }
+            PCWrapper(core, event, List(actor.?(msg.tick)(timeout).asInstanceOf[Future[HWCounter]]))
         }
+
+        publishPCReport(muid, target, allWrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).map {
+          case ((core, event), wrappers) => PCWrapper(core, event, wrappers.flatMap(_.values).toList)
+        }.toList, msg.tick)(eventBus)
+
+        context.become(sense(newIdentifiers) orElse sensorDefault)
       }
-    }
-
-    publishPCReport(monitorTick.muid, monitorTick.target, wrappers.values.toList, monitorTick.tick)(eventBus)
-    wrappers.clear()
-  }
-
-  def monitorStopped(msg: MonitorStop): Unit = {
-    context.actorSelection(s"*${msg.muid}*") ! msg
-    targets --= targets.keys.filter(muid => muid == msg.muid)
-    timestamps --= timestamps.keys.filter(muid => muid == msg.muid)
-    identifiers --= identifiers.keys.filter(key => key._1 == msg.muid)
-    wrappers.clear()
-  }
-
-  def monitorAllStopped(msg: MonitorStopAll): Unit = {
-    context.actorSelection("*") ! msg
-    targets.clear()
-    timestamps.clear()
-    identifiers.clear()
-    wrappers.clear()
   }
 }

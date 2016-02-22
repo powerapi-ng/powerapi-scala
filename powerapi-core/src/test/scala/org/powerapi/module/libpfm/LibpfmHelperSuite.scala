@@ -22,21 +22,19 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import org.powerapi.UnitTest
 import scala.collection.BitSet
 import scala.sys.process.stringSeqToProcess
 
-class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
-  def this() = this(ActorSystem("LibpfmHelperSuite"))
+import org.powerapi.UnitTest
 
-  override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
-  }
+class LibpfmHelperSuite extends UnitTest {
 
   val helper = new LibpfmHelper() {
     override lazy val nrPerfEventOpen = 298 // Linux Intel/AMD 64 bits.
+  }
+
+  override def afterAll() = {
+    system.shutdown()
   }
 
   "An implicit method" should "convert a BitSet to a long" in {
@@ -96,7 +94,7 @@ class LibpfmHelperSuite(system: ActorSystem) extends UnitTest(system) {
         helper.enablePC(fd) should equal(true)
         Seq("kill", "-SIGCONT", s"$pid").!
 
-        for(_ <- 0 to 5) {
+        for (_ <- 0 to 5) {
           val values = helper.readPC(fd)
           println(s"value: ${values(0)}, enabled time: ${values(1)}, running time: ${values(2)}")
           Thread.sleep(500)

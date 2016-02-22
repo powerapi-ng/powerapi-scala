@@ -16,10 +16,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.2" % "test"
 )
 
-mappings in Universal += downloadBluecove.value -> s"lib/${downloadBluecove.value.name}"
-
-mappings in Universal += downloadBluecoveGpl.value -> s"lib/${downloadBluecoveGpl.value.name}"
-
 mappings in Universal ++= {
   val dir = baseDirectory.value.getParentFile
 

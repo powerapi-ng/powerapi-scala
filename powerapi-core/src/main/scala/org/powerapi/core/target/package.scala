@@ -23,14 +23,15 @@
 package org.powerapi.core
 
 /**
- * Implicit conversions.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Implicit conversions.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 package object target {
   /**
-   * Implicit conversions
-   */
+    * Implicit conversions
+    */
   implicit def intToProcess(pid: Int): Process = Process(pid)
+
   implicit def stringToApplication(name: String): Application = Application(name)
 }

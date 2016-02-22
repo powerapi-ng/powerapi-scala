@@ -22,83 +22,66 @@
  */
 package org.powerapi.module.cpu.simple
 
-import java.util.UUID
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
-import org.powerapi.core.{LinuxHelper, GlobalCpuTime, TimeInStates, OSHelper, SigarHelper, Thread}
-import org.powerapi.core.target.{TargetUsageRatio, Process, Application}
 import scala.concurrent.duration.DurationInt
 
-class CpuSimpleModulesSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.powerapi.UnitTest
+import org.powerapi.core.{LinuxHelper, OSHelper, SigarHelper}
+import org.scalamock.scalatest.MockFactory
 
-  def this() = this(ActorSystem("CpuSimpleModulesSuite"))
+class CpuSimpleModulesSuite extends UnitTest with MockFactory {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  "The CpuSimpleModule class" should "create the underlying classes (sensors/formulae)" in {
-    val osHelper = new OSHelper {
-      override def getCPUFrequencies: Set[Long] = Set()
-      override def getThreads(process: Process): Set[Thread] = Set()
-      override def getTimeInStates: TimeInStates = TimeInStates(Map())
-      override def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
-      override def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = TargetUsageRatio(0.0)
-      override def getProcessCpuTime(process: Process): Option[Long] = None
-      override def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
-      override def getProcesses(application: Application): Set[Process] = Set()
-    }
+  "The CpuSimpleModule class" should "create the underlying classes (sensor/formula)" in {
+    val osHelper = mock[OSHelper]
 
     val module = new CpuSimpleModule(osHelper, 10, 0.5)
-    module.underlyingSensorsClasses.size should equal(1)
-    module.underlyingSensorsClasses(0)._1 should equal(classOf[CpuSensor])
-    module.underlyingSensorsClasses(0)._2.size should equal(1)
-    module.underlyingSensorsClasses(0)._2(0) should equal(osHelper)
 
-    module.underlyingFormulaeClasses.size should equal(1)
-    module.underlyingFormulaeClasses(0)._1 should equal(classOf[CpuFormula])
-    module.underlyingFormulaeClasses(0)._2.size should equal(2)
-    module.underlyingFormulaeClasses(0)._2(0) should equal(10)
-    module.underlyingFormulaeClasses(0)._2(1) should equal(0.5)
+    module.sensor.get._1 should equal(classOf[CpuSimpleSensor])
+    module.sensor.get._2.size should equal(1)
+    module.sensor.get._2(0) should equal(osHelper)
+
+    module.formula.get._1 should equal(classOf[CpuSimpleFormula])
+    module.formula.get._2.size should equal(2)
+    module.formula.get._2(0) should equal(10)
+    module.formula.get._2(1) should equal(0.5)
   }
 
   "The ProcFSSimpleCpuModule object" should "build correctly the companion class" in {
     val module = ProcFSCpuSimpleModule()
 
-    module.underlyingSensorsClasses.size should equal(1)
-    module.underlyingSensorsClasses(0)._1 should equal(classOf[CpuSensor])
-    module.underlyingSensorsClasses(0)._2.size should equal(1)
-    module.underlyingSensorsClasses(0)._2(0).getClass should equal(classOf[LinuxHelper])
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[LinuxHelper].frequenciesPath should equal("p1/%?core")
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[LinuxHelper].taskPath should equal("p2/%?pid")
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[LinuxHelper].globalStatPath should equal("p3")
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[LinuxHelper].processStatPath should equal("p4/%?pid")
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[LinuxHelper].timeInStatePath should equal("p5")
-    module.underlyingSensorsClasses(0)._2(0).asInstanceOf[LinuxHelper].topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    module.sensor.get._1 should equal(classOf[CpuSimpleSensor])
+    module.sensor.get._2.size should equal(1)
+    module.sensor.get._2(0).getClass should equal(classOf[LinuxHelper])
+    module.sensor.get._2(0).asInstanceOf[LinuxHelper].frequenciesPath should equal("p1/%?core")
+    module.sensor.get._2(0).asInstanceOf[LinuxHelper].taskPath should equal("p2/%?pid")
+    module.sensor.get._2(0).asInstanceOf[LinuxHelper].globalStatPath should equal("p3")
+    module.sensor.get._2(0).asInstanceOf[LinuxHelper].processStatPath should equal("p4/%?pid")
+    module.sensor.get._2(0).asInstanceOf[LinuxHelper].timeInStatePath should equal("p5")
+    module.sensor.get._2(0).asInstanceOf[LinuxHelper].topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
 
-    module.underlyingFormulaeClasses.size should equal(1)
-    module.underlyingFormulaeClasses(0)._1 should equal(classOf[CpuFormula])
-    module.underlyingFormulaeClasses(0)._2.size should equal(2)
-    module.underlyingFormulaeClasses(0)._2(0) should equal(120)
-    module.underlyingFormulaeClasses(0)._2(1) should equal(0.80)
+    module.formula.get._1 should equal(classOf[CpuSimpleFormula])
+    module.formula.get._2.size should equal(2)
+    module.formula.get._2(0) should equal(120)
+    module.formula.get._2(1) should equal(0.80)
   }
 
   "The SigarCpuSimpleModule object" should "build correctly the companion class" in {
     val module = SigarCpuSimpleModule()
 
-    module.underlyingSensorsClasses.size should equal(1)
-    module.underlyingSensorsClasses(0)._1 should equal(classOf[CpuSensor])
-    module.underlyingSensorsClasses(0)._2.size should equal(1)
-    module.underlyingSensorsClasses(0)._2(0).getClass should equal(classOf[SigarHelper])
+    module.sensor.get._1 should equal(classOf[CpuSimpleSensor])
+    module.sensor.get._2.size should equal(1)
+    module.sensor.get._2(0).getClass should equal(classOf[SigarHelper])
 
-    module.underlyingFormulaeClasses.size should equal(1)
-    module.underlyingFormulaeClasses(0)._1 should equal(classOf[CpuFormula])
-    module.underlyingFormulaeClasses(0)._2.size should equal(2)
-    module.underlyingFormulaeClasses(0)._2(0) should equal(120)
-    module.underlyingFormulaeClasses(0)._2(1) should equal(0.80)
+    module.formula.get._1 should equal(classOf[CpuSimpleFormula])
+    module.formula.get._2.size should equal(2)
+    module.formula.get._2(0) should equal(120)
+    module.formula.get._2(1) should equal(0.80)
   }
 }

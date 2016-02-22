@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ This software is licensed under the GNU Affero General Public License, quoted below.
+  ~
+  ~ This file is a part of PowerAPI.
+  ~
+  ~ Copyright (C) 2011-2016 Inria, University of Lille 1.
+  ~
+  ~ PowerAPI is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as
+  ~ published by the Free Software Foundation, either version 3 of
+  ~ the License, or (at your option) any later version.
+  ~
+  ~ PowerAPI is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with PowerAPI.
+  ~
+  ~ If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
+  -->
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+    <appender name="console" class="org.apache.log4j.ConsoleAppender">
+        <param name="Target" value="System.out"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="[%level] [%d{MM/dd/yyyy HH:mm:ss.SSS}] [%t] [%logger{36}] - %msg%n"/>
+        </layout>
+    </appender>
+
+    <root>
+        <priority value="error" />
+        <appender-ref ref="console" />
+    </root>
+</log4j:configuration>

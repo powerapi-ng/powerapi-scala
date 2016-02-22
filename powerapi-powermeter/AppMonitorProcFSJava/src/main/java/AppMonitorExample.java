@@ -16,7 +16,7 @@ public class AppMonitorExample {
     PowerMeter cpu_simple = PowerMeter.loadModule(JavaConversions.asScalaBuffer(modules));
     JFreeChartDisplay chart = new JFreeChartDisplay();
     ArrayList<Target> targets = new ArrayList<Target>(Arrays.asList(new Application(args[0])));
-    PowerMonitoring monitoring = cpu_simple.monitor(Duration.create(1L, "seconds"), JavaConversions.asScalaBuffer(targets));
+    PowerMonitoring monitoring = cpu_simple.monitor(JavaConversions.asScalaBuffer(targets)).every(Duration.create(1L, "seconds"));
     monitoring.to(chart);
     
     cpu_simple.waitFor(Duration.create(5, "minutes"));

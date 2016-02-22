@@ -23,63 +23,59 @@
 package org.powerapi.core.target
 
 /**
- * Targets are system elements that can be monitored by PowerAPI
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Targets are system elements that can be monitored by PowerAPI
+  *
+  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 trait Target
 
 /**
- * Monitoring target for a specific Process IDentifier.
- *
- * @param pid: process identifier.
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Monitoring target for a specific Process IDentifier.
+  *
+  * @param pid process identifier.
+  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 case class Process(pid: Int) extends Target {
   override def toString: String = s"$pid"
 }
 
 /**
- * Monitoring target for a specific application.
- *
- * @param name: name of the application.
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Monitoring target for a specific application.
+  *
+  * @param name name of the application.
+  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 case class Application(name: String) extends Target {
   override def toString: String = name
 }
 
 /**
- * Monitoring targets for a specific container.
- *
- * @param name: id of the container.
- *
- * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
- */
+  * Monitoring targets for a specific container.
+  *
+  * @param id id of the container.
+  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+  */
 case class Container(id: String) extends Target {
   override def toString: String = id
 }
 
 /**
- * Target usage ratio.
- *
- * @param ratio: usage ratio.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Target usage ratio.
+  *
+  * @param ratio usage ratio.
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 case class TargetUsageRatio(ratio: Double)
 
 /**
- * Monitoring target for the whole system.
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Monitoring target for the whole system.
+  *
+  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 object All extends Target {
   override def toString = "All"
 }

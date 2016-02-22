@@ -22,22 +22,23 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.util.Timeout
-import org.powerapi.PowerModule
-
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-/**
- * This module uses a general formula for representing the overall CPU's power consumption.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-class LibpfmModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
-                   formula: Map[String, Double], samplingInterval: FiniteDuration) extends PowerModule {
+import akka.util.Timeout
 
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
-  lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmFormula], Seq(formula, samplingInterval)))
+import org.powerapi.PowerModule
+
+/**
+  * This module uses a general formula for representing the overall CPU's power consumption.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
+class LibpfmModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
+                   pModel: Map[String, Double], samplingInterval: FiniteDuration) extends PowerModule {
+
+  val sensor = Some((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
+  val formula = Some((classOf[LibpfmFormula], Seq(pModel, samplingInterval)))
 }
 
 

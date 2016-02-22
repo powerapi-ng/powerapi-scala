@@ -22,34 +22,35 @@
  */
 package org.powerapi.core
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import com.typesafe.config.{Config, ConfigException}
-import org.powerapi.UnitTest
 import scala.collection.JavaConversions
 
+import com.typesafe.config.{Config, ConfigException}
+import org.powerapi.UnitTest
+
 class ConfigurationMock(prefix: Option[String]) extends Configuration(prefix) {
-  val existingKey = load { _.getString(s"${configurationPath}configuration-suite.key") }
-  val wrongKey = load { _.getString(s"${configurationPath}configuration-suite.wrong-key") }
+  val existingKey = load {
+    _.getString(s"${configurationPath}configuration-suite.key")
+  }
+  val wrongKey = load {
+    _.getString(s"${configurationPath}configuration-suite.wrong-key")
+  }
   val map = load {
     conf => {
-      (for(item: Config <- JavaConversions.asScalaBuffer(conf.getConfigList(s"${configurationPath}configuration-suite.hash-map")))
+      (for (item: Config <- JavaConversions.asScalaBuffer(conf.getConfigList(s"${configurationPath}configuration-suite.hash-map")))
         yield (item.getString("key"), item.getString("value"))).toMap
     }
   }
 }
 
-class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
-
-  def this() = this(ActorSystem("ConfigurationSuite"))
-
-  override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
-  }
+class ConfigurationSuite extends UnitTest {
 
   val simpleConfig = new ConfigurationMock(None)
   val prefixConfig1 = new ConfigurationMock(Some("prefix"))
   val prefixConfig2 = new ConfigurationMock(Some("prefix2."))
+
+  override def afterAll() = {
+    system.shutdown()
+  }
 
   "A Configuration class" can "be prefixed to search configuration values" in {
     simpleConfig.configurationPath should equal("")
@@ -76,17 +77,17 @@ class ConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
 
   it should "return the exception if the value asked does not exist" in {
     simpleConfig.wrongKey match {
-      case ConfigError(ex) => ex shouldBe a [ConfigException]
+      case ConfigError(ex) => ex shouldBe a[ConfigException]
       case _ => fail()
     }
 
     prefixConfig1.wrongKey match {
-      case ConfigError(ex) => ex shouldBe a [ConfigException]
+      case ConfigError(ex) => ex shouldBe a[ConfigException]
       case _ => fail()
     }
 
     prefixConfig2.wrongKey match {
-      case ConfigError(ex) => ex shouldBe a [ConfigException]
+      case ConfigError(ex) => ex shouldBe a[ConfigException]
       case _ => fail()
     }
   }

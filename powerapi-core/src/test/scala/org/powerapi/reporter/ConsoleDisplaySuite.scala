@@ -22,63 +22,40 @@
  */
 package org.powerapi.reporter
 
-import akka.actor.{ ActorRef, ActorSystem, Props }
-import akka.testkit.{ TestActorRef, TestKit }
-import akka.util.Timeout
 import java.util.UUID
-import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
-import org.powerapi.core.power.Power
-import org.powerapi.core.target.{intToProcess, Target}
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{ AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport }
+
 import scala.concurrent.duration.DurationInt
 
-class ConsoleDisplayMock(testActor: ActorRef) extends ConsoleDisplay {
-  override def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    testActor ! s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}"
-  }
-}
+import akka.util.Timeout
 
-class ConsoleDisplaySuite(system: ActorSystem) extends UnitTest(system) {
+import org.powerapi.UnitTest
+import org.powerapi.core.power._
+import org.powerapi.core.target.{Application, Process, Target}
 
-  implicit val timeout = Timeout(1.seconds)
+class ConsoleDisplaySuite extends UnitTest {
 
-  def this() = this(ActorSystem("ConsoleDisplaySuite"))
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  val eventBus = new MessageBus
-  val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new ConsoleDisplayMock(testActor)), "consoleReporter")(system)
-  
-  "A console reporter" should "process a PowerReport and then report energy information in a String format" in {
+  "A ConsoleDisplay" should "display an AggPowerReport message in console" in {
+    val stream = new java.io.ByteArrayOutputStream()
     val muid = UUID.randomUUID()
-    val device = "mock"
-    val tickMock = ClockTick("ticktest", 25.milliseconds)
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
-  
-    subscribeAggPowerReport(muid)(eventBus)(reporterMock)
-    
-    val aggR1 = AggregatePowerReport(muid, aggFunction)
-    aggR1 += RawPowerReport("topictest", muid, 1, 3.W, device, tickMock)
-    
-    val aggR2 = AggregatePowerReport(muid, aggFunction)
-    aggR2 += RawPowerReport("topictest", muid, 2, 1.W, device, tickMock)
-    
-    val aggR3 = AggregatePowerReport(muid, aggFunction)
-    aggR3 += RawPowerReport("topictest", muid, 3, 2.W, device, tickMock)
-    aggR3 += RawPowerReport("topictest", muid, 4, 4.W, device, tickMock)
-    
-    render(aggR1)(eventBus)
-    render(aggR2)(eventBus)
-    render(aggR3)(eventBus)
-    
-    expectMsgClass(classOf[String]) should equal(s"muid=$muid;timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}")
-    expectMsgClass(classOf[String]) should equal(s"muid=$muid;timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}")
-    expectMsgClass(classOf[String]) should equal(s"muid=$muid;timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
+    val timestamp = System.currentTimeMillis()
+    val targets = Set[Target](Application("firefox"), Process(1), Process(2))
+    val devices = Set[String]("cpu", "gpu", "ssd")
+    val power = 10.W
+
+    Console.withOut(stream) {
+      val out = new ConsoleDisplay
+      out.display(muid, timestamp, targets, devices, 10.W)
+    }
+
+    new String(stream.toByteArray) should equal(
+      s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW\n"
+    )
   }
 }
 

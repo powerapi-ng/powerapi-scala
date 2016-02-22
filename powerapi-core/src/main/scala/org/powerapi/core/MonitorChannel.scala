@@ -22,111 +22,52 @@
  */
 package org.powerapi.core
 
-import akka.actor.ActorRef
 import java.util.UUID
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.target.Target
-import org.powerapi.core.power.Power
+
 import scala.concurrent.duration.FiniteDuration
 
+import akka.actor.ActorRef
+
+import org.powerapi.core.power.Power
+import org.powerapi.core.target.Target
 
 /**
- * Monitor channel and messages.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
- */
+  * Monitor channel and messages.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+  */
 object MonitorChannel extends Channel {
-  
+
   type M = MonitorMessage
-
-  trait MonitorMessage extends Message
-
   /**
-   * MonitorTick is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param target: monitor target.
-   * @param tick: tick origin.
-   */
-  case class MonitorTick(topic: String,
-                         muid: UUID,
-                         target: Target,
-                         tick: ClockTick) extends MonitorMessage
-                         
-  /**
-   * MonitorAggFunction is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param aggFunction: aggregate power estimation for a specific sample of power reports.
-   */
-  case class MonitorAggFunction(topic: String,
-                                muid: UUID,
-                                aggFunction: Seq[Power] => Power) extends MonitorMessage
-
-  /**
-   * MonitorStart is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   * @param frequency: clock frequency.
-   * @param targets: monitor targets.
-   */
-  case class MonitorStart(topic: String,
-                          muid: UUID,
-                          frequency: FiniteDuration,
-                          targets: List[Target]) extends MonitorMessage
-
-  /**
-   * Acknowledgement message.
-   */
-  object MonitorStarted
-
-  /**
-   * Dedicated type of message to get the processes which are monitored
-   * by a power meter.
-   */
-  object GetMonitoredProcesses
-
-  /**
-   * MonitorStop is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param muid: monitor unique identifier (MUID), which is at the origin of the report flow.
-   */
-  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage
-
-  /**
-   * MonitorStopAll is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   */
-  case class MonitorStopAll(topic: String) extends MonitorMessage
-
-  /**
-   * Topic for communicating with the Monitors actor.
-   */
+    * Topic for communicating with the Monitors actor.
+    */
   private val topic = "monitor:handling"
 
   /**
-   * Topic for communicating with the Sensor actors.
-   */
-  private val topicToPublish = "monitor:target"
+    * Used to subscribe/unsubscribe to MonitorTick on the right topic.
+    */
+  def subscribeMonitorTick(muid: UUID, target: Target): MessageBus => ActorRef => Unit = {
+    subscribe(monitorTickTopic(muid, target))
+  }
 
-  /**
-   * External methods used by the Sensor actors for interacting with the bus.
-   */
-  def subscribeMonitorTick: MessageBus => ActorRef => Unit = {
-    subscribe(topicToPublish)
+  def unsubscribeMonitorTick(muid: UUID, target: Target): MessageBus => ActorRef => Unit = {
+    unsubscribe(monitorTickTopic(muid, target))
   }
 
   /**
-   * External Methods used by the API (or a Monitor object) for interacting with the bus.
-   */
-  def startMonitor(muid: UUID, frequency: FiniteDuration, targets: List[Target]): MessageBus => Unit = {
-    publish(MonitorStart(topic, muid, frequency, targets))
+    * Used to format the topic used to interact with the SensorChild actors.
+    */
+  def monitorTickTopic(muid: UUID, target: Target): String = {
+    s"monitor:$muid-$target"
+  }
+
+  /**
+    * Used to interact with the Supervisor.
+    */
+  def startMonitor(muid: UUID, targets: Set[Target]): MessageBus => Unit = {
+    publish(MonitorStart(topic, muid, targets))
   }
 
   def stopMonitor(muid: UUID): MessageBus => Unit = {
@@ -136,29 +77,97 @@ object MonitorChannel extends Channel {
   def stopAllMonitor: MessageBus => Unit = {
     publish(MonitorStopAll(topic))
   }
-  
-  def setAggFunction(muid: UUID, aggFunction: Seq[Power] => Power): MessageBus => Unit = {
-    publish(MonitorAggFunction(topic, muid, aggFunction))
+
+  def setAggregator(muid: UUID, aggFunction: Seq[Power] => Power): MessageBus => Unit = {
+    publish(MonitorAggregator(topic, muid, aggFunction))
+  }
+
+  def setFrequency(muid: UUID, frequency: FiniteDuration): MessageBus => Unit = {
+    publish(MonitorFrequency(topic, muid, frequency))
   }
 
   /**
-   * Internal methods used by the Monitors actor for interacting with the bus.
-   */
+    * Used to subscribe to MonitorMessage on the right topic.
+    */
   def subscribeMonitorsChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
   /**
-   * Internal methods used by the MonitorChild actors for interacting with the bus.
-   */
-  def publishMonitorTick(muid: UUID, target: Target, tick: ClockTick): MessageBus => Unit = {
-    publish(MonitorTick(topicToPublish, muid, target, tick))
+    * Used to publish MonitorTick on the right topic.
+    */
+  def publishMonitorTick(muid: UUID, target: Target, tick: Tick): MessageBus => Unit = {
+    publish(MonitorTick(monitorTickTopic(muid, target), muid, target, tick))
   }
 
   /**
-   * Use to format the MonitorChild name.
-   */
+    * Used to format the MonitorChild name.
+    */
   def formatMonitorChildName(muid: UUID): String = {
     s"monitor-$muid"
   }
+
+  trait MonitorMessage extends Message
+
+  /**
+    * MonitorTick is represented as a dedicated type of message.
+    *
+    * @param topic  subject used for routing the message.
+    * @param muid   monitor unique identifier (MUID), which is at the origin of the report flow.
+    * @param target monitor target.
+    * @param tick   tick origin.
+    */
+  case class MonitorTick(topic: String,
+                         muid: UUID,
+                         target: Target,
+                         tick: Tick) extends MonitorMessage
+
+  /**
+    * MonitorAggregator is represented as a dedicated type of message.
+    *
+    * @param topic      subject used for routing the message.
+    * @param muid       monitor unique identifier (MUID), which is at the origin of the report flow.
+    * @param aggregator aggregate power estimation for a specific sample of power reports.
+    */
+  case class MonitorAggregator(topic: String,
+                               muid: UUID,
+                               aggregator: Seq[Power] => Power) extends MonitorMessage
+
+  /**
+    * MonitorStart is represented as a dedicated type of message.
+    *
+    * @param topic   subject used for routing the message.
+    * @param muid    monitor unique identifier (MUID), which is at the origin of the report flow.
+    * @param targets monitor targets.
+    */
+  case class MonitorStart(topic: String,
+                          muid: UUID,
+                          targets: Set[Target]) extends MonitorMessage
+
+  /**
+    * MonitorFrequency is represented as a dedicated type of message.
+    *
+    * @param topic     subject used for routing the message.
+    * @param muid      monitor unique identifier (MUID), which is at the origin of the report flow.
+    * @param frequency clock frequency.
+    */
+  case class MonitorFrequency(topic: String,
+                              muid: UUID,
+                              frequency: FiniteDuration) extends MonitorMessage
+
+  /**
+    * MonitorStop is represented as a dedicated type of message.
+    *
+    * @param topic subject used for routing the message.
+    * @param muid  monitor unique identifier (MUID), which is at the origin of the report flow.
+    */
+  case class MonitorStop(topic: String, muid: UUID) extends MonitorMessage
+
+  /**
+    * MonitorStopAll is represented as a dedicated type of message.
+    *
+    * @param topic subject used for routing the message.
+    */
+  case class MonitorStopAll(topic: String) extends MonitorMessage
+
 }

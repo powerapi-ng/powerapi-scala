@@ -25,23 +25,24 @@ package org.powerapi.core
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 
 /**
- * Base trait for configuration result.
- */
+  * Base trait for configuration result.
+  */
 trait ConfigResult[T]
 
 /**
- * Subtypes to specify the different types of result.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Subtypes to specify the different types of result.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 case class ConfigValue[T](value: T) extends ConfigResult[T]
+
 case class ConfigError[T](exception: Throwable) extends ConfigResult[T]
 
 /**
- * Base trait for dealing with configuration files.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Base trait for dealing with configuration files.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 abstract class Configuration(prefix: Option[String] = None) {
   private lazy val conf = ConfigFactory.load()
 
@@ -52,10 +53,10 @@ abstract class Configuration(prefix: Option[String] = None) {
   }
 
   /**
-   * Method to load a value from a configuration file.
-   *
-   * @param request: request for getting information.
-   */
+    * Method to load a value from a configuration file.
+    *
+    * @param request request for getting information.
+    */
   protected def load[T](request: Config => T): ConfigResult[T] = {
     try {
       ConfigValue(request(conf))
@@ -64,6 +65,6 @@ abstract class Configuration(prefix: Option[String] = None) {
       case ce: ConfigException => {
         ConfigError(ce)
       }
-    } 
+    }
   }
 }

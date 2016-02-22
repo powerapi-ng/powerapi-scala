@@ -23,10 +23,10 @@
 package org.powerapi.core
 
 import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
-import akka.actor.{ActorRef, ActorSystem, Props, Terminated}
+import akka.actor.{ActorRef, Props, Terminated}
 import akka.event.LoggingReceive
-import akka.testkit.{EventFilter, TestActorRef, TestKit}
-import com.typesafe.config.ConfigFactory
+import akka.testkit.{EventFilter, TestActorRef}
+
 import org.powerapi.UnitTest
 
 class TestActorComponent extends ActorComponent {
@@ -54,12 +54,10 @@ class TestChild extends ActorComponent {
   }
 }
 
-class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
-
-  def this() = this(ActorSystem("ComponentSuite", ConfigFactory.parseResources("test.conf")))
+class ComponentSuite extends UnitTest {
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   trait Bus {
@@ -70,7 +68,9 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
     val component = TestActorRef(Props(classOf[TestActorComponent]))(system)
     component ! "msg"
     expectMsg("ok")
-    intercept[UnsupportedOperationException] { component.receive(new Exception("oups")) }
+    intercept[UnsupportedOperationException] {
+      component.receive(new Exception("oups"))
+    }
   }
 
   it can "handle failures if needed" in {
@@ -101,7 +101,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       expectMsg(0)
     })(system)
 
-    EventFilter[IllegalArgumentException](occurrences = 1, source = child.path.toString).intercept({      
+    EventFilter[IllegalArgumentException](occurrences = 1, source = child.path.toString).intercept({
       watch(child)
       child ! new IllegalArgumentException("bad argument")
       expectMsgPF() { case Terminated(_) => () }
@@ -115,7 +115,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
       child ! "state"
       expectMsg(42)
       child ! new Exception("crash")
-      expectMsgPF() { case t @ Terminated(_) if t.existenceConfirmed => () }
+      expectMsgPF() { case t@Terminated(_) if t.existenceConfirmed => () }
     })(system)
   }
 
@@ -131,7 +131,7 @@ class ComponentSuite(system: ActorSystem) extends UnitTest(system) {
     child ! 42
     child ! "state"
     expectMsg(42)
-    
+
     EventFilter[ArithmeticException](occurrences = 1, source = child.path.toString).intercept({
       child ! new ArithmeticException("bad operation")
       child ! "state"

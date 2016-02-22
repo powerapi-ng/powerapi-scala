@@ -23,37 +23,44 @@
 package org.powerapi.module.libpfm.cycles
 
 import java.util.concurrent.TimeUnit
-import com.typesafe.config.Config
-import org.powerapi.core.{Configuration, ConfigValue}
+
 import scala.collection.JavaConversions._
-import scala.concurrent.duration.DurationLong
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
+
+import com.typesafe.config.Config
+import org.powerapi.core.{ConfigValue, Configuration}
 
 /**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Main configuration.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class LibpfmCoreCyclesFormulaConfiguration(prefix: Option[String]) extends Configuration(prefix) {
-  lazy val cyclesThreadName: String = load { _.getString("powerapi.libpfm.formulae.cycles-thread") } match {
+  lazy val cyclesThreadName: String = load {
+    _.getString("powerapi.libpfm.formulae.cycles-thread")
+  } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:THREAD_P"
   }
 
-  lazy val cyclesRefName: String = load { _.getString("powerapi.libpfm.formulae.cycles-ref") } match {
+  lazy val cyclesRefName: String = load {
+    _.getString("powerapi.libpfm.formulae.cycles-ref")
+  } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:REF_P"
   }
 
   lazy val formulae: Map[Double, List[Double]] = load { conf =>
     (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.libpfm.formulae.cycles"))
-    yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
+      yield (item.getDouble("coefficient"), item.getDoubleList("formula").map(_.toDouble).toList)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
   }
 
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration(s"${configurationPath}powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
+  lazy val samplingInterval: FiniteDuration = load {
+    _.getDuration(s"${configurationPath}powerapi.sampling.interval", TimeUnit.NANOSECONDS)
+  } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
   }

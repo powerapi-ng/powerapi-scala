@@ -24,11 +24,12 @@ package org.powerapi
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-abstract class UnitTest(system: ActorSystem)
-  extends TestKit(system)
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers, OneInstancePerTest}
+
+abstract class UnitTest extends TestKit(ActorSystem("system"))
   with ImplicitSender
   with FlatSpecLike
   with Matchers
   with BeforeAndAfterAll
+  with OneInstancePerTest

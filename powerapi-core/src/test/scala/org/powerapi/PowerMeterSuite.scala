@@ -22,104 +22,91 @@
  */
 package org.powerapi
 
-import akka.actor.{Props, ActorSystem}
-import akka.testkit.{TestActorRef, TestKit}
-import akka.util.Timeout
-import org.powerapi.core.{ExternalPMeter, MessageBus}
-import org.powerapi.module.cpu.dvfs.CpuDvfsModule
-import org.powerapi.module.cpu.simple.{SigarCpuSimpleModule, ProcFSCpuSimpleModule}
-import org.powerapi.module.libpfm.{LibpfmCoreProcessModule, LibpfmCoreSensorModule, LibpfmHelper, LibpfmCoreModule, LibpfmModule, LibpfmProcessModule}
-import org.powerapi.module.extPMeter.powerspy.PowerSpyModule
-import org.powerapi.module.extPMeter.g5k.G5kOmegaWattModule
-import org.powerapi.module.rapl.RAPLModule
+import java.util.UUID
+
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
-class MockPMeter extends ExternalPMeter {
-  def init(bus: MessageBus): Unit = {}
-  def start(): Unit = {}
-  def stop(): Unit = {}
+import akka.actor.{Actor, Props, Terminated}
+import akka.pattern.{ask, gracefulStop}
+import akka.testkit.{TestActorRef, TestProbe}
+import akka.util.Timeout
+
+import org.powerapi.core.power.Power
+import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.core.{MessageBus, Monitor}
+import org.powerapi.module.{Formula, Sensor}
+
+class EmptySensor(eventBus: MessageBus, muid: UUID, target: Target) extends Sensor(eventBus, muid, target) {
+  def init(): Unit = {}
+
+  def terminate(): Unit = {}
+
+  def handler: Actor.Receive = sensorDefault
 }
 
-class PowerMeterSuite(system: ActorSystem) extends UnitTest(system) {
+class EmptyFormula(eventBus: MessageBus, muid: UUID, target: Target) extends Formula(eventBus, muid, target) {
+  def init(): Unit = {}
 
-  implicit val timeout = Timeout(1.seconds)
+  def terminate(): Unit = {}
 
-  def this() = this(ActorSystem("PowerMeterSuite"))
+  def handler: Actor.Receive = formulaDefault
+}
+
+object EmptyModule extends PowerModule {
+  val sensor = Some(classOf[EmptySensor], Seq())
+  val formula = Some(classOf[EmptyFormula], Seq())
+}
+
+class PowerMeterSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  trait EventBus {
+  trait Bus {
     val eventBus = new MessageBus()
   }
 
-  "The PowerMeter companion object" should "allow to load a PowerModule" in {
-    PowerMeter.loadModule(new PowerModule {
-      lazy val underlyingSensorsClasses = Seq()
-      lazy val underlyingFormulaeClasses = Seq()
-    })
-  }
-
-  "The PowerMeter configuration" should "be correctly read from a resource file" in {
+  "The PowerMeterConfiguration" should "be correctly read from a resource file" in {
     val configuration = new PowerMeterConfiguration()
     configuration.timeout should equal(Timeout(10.seconds))
   }
 
-  "The PowerMeter actor" should "load the ProcFSCpuSimpleModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(ProcFSCpuSimpleModule()), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
+  "A PowerMeterActor" should "be able to handle a software-defined power meter" in new Bus {
+    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(EmptyModule)))
+    val out = new PowerDisplay {
+      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {}
+    }
+
+    val watcher = TestProbe()
+    val monitor = Await.result(actor.ask(MonitorMessage(Set(Process(1), Application("java"))))(timeout), timeout.duration).asInstanceOf[Monitor]
+    monitor.to(out)
+    monitor.every(1.second)
+
+    watcher.watch(actor.actorRef)
+    val actorChildren = actor.children.seq
+    actorChildren foreach watcher.watch
+
+    Await.result(actor.ask(WaitForMessage(3.seconds))(10.seconds), 10.seconds).asInstanceOf[String] should equal("waitFor completed")
+
+    actor ! ShutdownMessage
+
+    watcher.receiveN(6).asInstanceOf[Seq[Terminated]].map(_.actor) should contain theSameElementsAs Seq(actor.actorRef) ++ actorChildren
+    Await.result(gracefulStop(actor, timeout.duration), timeout.duration)
   }
 
-  it should "load the SigarCpuSimpleModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(SigarCpuSimpleModule()), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
+  "A PowerMeter" should "act like a mirror to a PowerMeterActor" in {
+    val pMeter = new PowerMeter(system, Seq(EmptyModule))
 
-  it should "load the CpuDvfsModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(CpuDvfsModule()), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
+    pMeter.monitor(1, "java")
 
-  it should "load the LibpfmCoreModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
+    within(10.seconds) {
+      pMeter.waitFor(3.seconds)
+    }
 
-  it should "load the LibpfmCoreSensorModule" in new EventBus {
-    val actor1 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
-    val actor2 = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreSensorModule(None, new LibpfmHelper, Set("e1", "e2"))), Timeout(1.seconds)))(system)
-    actor1.children.size should equal(3)
-    actor2.children.size should equal(3)
-  }
-
-  it should "load the LibpfmCoreProcessModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmCoreProcessModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
-
-  it should "load the LibpfmModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
-
-  it should "load the LibpfmProcessModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(LibpfmProcessModule(libpfmHelper = new LibpfmHelper)), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
-
-  it should "load the PowerSpyModule" ignore new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(PowerSpyModule(None)), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
-  
-  it should "load the G5kOmegaWattModule" ignore new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(G5kOmegaWattModule(None)), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
-  }
-
-  it should "load the RAPLModule" in new EventBus {
-    val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(RAPLModule()), Timeout(1.seconds)))(system)
-    actor.children.size should equal(4)
+    pMeter.shutdown()
   }
 }

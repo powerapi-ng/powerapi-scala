@@ -22,27 +22,33 @@
  */
 package org.powerapi.module.libpfm.cycles
 
-import akka.actor.{ActorSystem, Props}
-import akka.testkit.TestKit
-import akka.testkit.TestActorRef
 import java.util.UUID
-import org.powerapi.UnitTest
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.power._
-import org.powerapi.core.target.{intToProcess, Process}
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{publishPCReport, PCWrapper}
-import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
-import scala.concurrent.duration.DurationInt
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
 
-class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system) {
-  import org.powerapi.core.MessageBus
+import akka.actor.Props
+import akka.pattern.gracefulStop
+import akka.testkit.{EventFilter, TestActorRef}
+import akka.util.Timeout
 
-  def this() = this(ActorSystem("LibpfmCoreCyclesFormulaSuite"))
+import org.powerapi.UnitTest
+import org.powerapi.core.power._
+import org.powerapi.core.target.{Target, intToProcess}
+import org.powerapi.core.{MessageBus, Tick}
+import org.powerapi.module.FormulaChannel.{startFormula, stopFormula}
+import org.powerapi.module.Formulas
+import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCWrapper, publishPCReport}
+import org.saddle.Vec
+
+class LibpfmCoreCyclesFormulaSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   trait Bus {
@@ -64,40 +70,47 @@ class LibpfmCoreCyclesFormulaSuite(system: ActorSystem) extends UnitTest(system)
     formulae += 22d -> List(104.356371072, 3.75414807806e-09, 6.73289818651e-20)
   }
 
-  "A LibpfmCoreCyclesFormula" should "compute the power when it receives a specific report (cycles/ref-cycles)" in new Bus with Formulae {
-    val actor = TestActorRef(Props(classOf[LibpfmCoreCyclesFormula], eventBus, "CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P", formulae, 1.seconds), "libpfm-cycles-formula1")(system)
+  "A LibpfmCoreCyclesFormula" should "process a SensorReport and then publish a RawPowerReport" in new Bus with Formulae {
     val muid = UUID.randomUUID()
-    val tick = ClockTick("clock", 1.seconds)
+    val target: Target = 1
+
+    val tick1 = new Tick {
+      val topic = "test"
+      val timestamp = System.currentTimeMillis()
+    }
+
+    val tick2 = new Tick {
+      val topic = "test"
+      val timestamp = System.currentTimeMillis() + 1000
+    }
+
+    val formulas = TestActorRef(Props(classOf[Formulas], eventBus), "formulas")
+    EventFilter.info(occurrences = 1, start = s"formula is started, class: ${classOf[LibpfmCoreCyclesFormula].getName}").intercept({
+      startFormula(muid, target, classOf[LibpfmCoreCyclesFormula], Seq(eventBus, muid, target, "thread_p", "ref_p", formulae, 250.millis))(eventBus)
+    })
     subscribeRawPowerReport(muid)(eventBus)(testActor)
 
-    var wrappers = List[PCWrapper]()
-    wrappers :+= PCWrapper(0, "CPU_CLK_UNHALTED:THREAD_P", List(Future[Long] {2606040442l}, Future[Long] {2606040442l}))
-    wrappers :+= PCWrapper(1, "CPU_CLK_UNHALTED:THREAD_P", List(Future[Long] {0l}, Future[Long] {0l}))
-    wrappers :+= PCWrapper(2, "CPU_CLK_UNHALTED:THREAD_P", List(Future[Long] {2606040442l}, Future[Long] {0l}))
-    wrappers :+= PCWrapper(3, "CPU_CLK_UNHALTED:THREAD_P", List(Future[Long] {0l}, Future[Long] {0l}))
-    wrappers :+= PCWrapper(0, "CPU_CLK_UNHALTED:REF_P", List(Future[Long] {130307030l}, Future[Long] {130307030l}))
-    wrappers :+= PCWrapper(1, "CPU_CLK_UNHALTED:REF_P", List(Future[Long] {0l}, Future[Long] {0l}))
-    wrappers :+= PCWrapper(2, "CPU_CLK_UNHALTED:REF_P", List(Future[Long] {130307030l}, Future[Long] {0l}))
-    wrappers :+= PCWrapper(3, "CPU_CLK_UNHALTED:REF_P", List(Future[Long] {0l}, Future[Long] {0l}))
+    var wrappers = Seq[PCWrapper]()
+    wrappers +:= PCWrapper(0, "thread_p", List[Future[HWCounter]](Future(HWCounter(650000000)), Future(HWCounter(651000000))))
+    wrappers +:= PCWrapper(0, "ref_p", List[Future[HWCounter]](Future(HWCounter(34475589)), Future(HWCounter(34075589))))
+    wrappers +:= PCWrapper(1, "thread_p", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(0))))
+    wrappers +:= PCWrapper(1, "ref_p", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(0))))
 
-    var formula = List[Double]()
-    var power = 0d
+    publishPCReport(muid, target, wrappers, tick1)(eventBus)
+    val rawPowerReport = expectMsgClass(classOf[RawPowerReport])
+    rawPowerReport.muid should equal(muid)
+    rawPowerReport.target should equal(target)
+    rawPowerReport.power should be > 0.W
+    rawPowerReport.device should equal("cpu")
+    rawPowerReport.tick should equal(tick1)
 
-    // Core 0
-    formula = formulae(math.round((2606040442l + 2606040442l) / (130307030l + 130307030l).toDouble).toDouble)
-    power += formula(1) * (2606040442l + 2606040442l) + formula(2) * math.pow(2606040442l + 2606040442l, 2)
+    EventFilter.info(occurrences = 1, start = s"formula is stopped, class: ${classOf[LibpfmCoreCyclesFormula].getName}").intercept({
+      stopFormula(muid)(eventBus)
+    })
 
-    // Core 2
-    formula = formulae(math.round(2606040442l / 130307030l.toDouble).toDouble)
-    power += formula(1) * 2606040442l + formula(2) * math.pow(2606040442l, 2)
+    publishPCReport(muid, target, wrappers, tick2)(eventBus)
+    expectNoMsg()
 
-    publishPCReport(muid, 1, wrappers, tick)(eventBus)
-
-    val ret = expectMsgClass(classOf[RawPowerReport])
-    ret.muid should equal(muid)
-    ret.target should equal(Process(1))
-    ret.power should equal(power.W)
-    ret.device should equal("cpu")
-    ret.tick should equal(tick)
+    Await.result(gracefulStop(formulas, timeout.duration), timeout.duration)
   }
 }

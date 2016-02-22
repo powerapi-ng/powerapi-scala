@@ -22,24 +22,23 @@
  */
 package org.powerapi.sampling
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 import scalax.file.Path
 
-class PolynomialCyclesRegressionSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
 
-  def this() = this(ActorSystem("PolynomialCyclesRegressionSuite"))
+import org.powerapi.UnitTest
+
+class PolynomialCyclesRegressionSuite extends UnitTest {
 
   val timeout = Timeout(1.seconds)
+  val basepath = getClass.getResource("/").getPath
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
-
-  val basepath = getClass.getResource("/").getPath
 
   trait Formulae {
     var formulae = List[String]()
@@ -72,6 +71,6 @@ class PolynomialCyclesRegressionSuite(system: ActorSystem) extends UnitTest(syst
     }
 
     new PolynomialCyclesRegression(s"${basepath}processing", "/tmp/formulae", polynomCyclesConfiguration).run()
-    (Path("/") / ("/tmp/formulae/libpfm-formula.conf", '/')).lines().toList should contain theSameElementsAs formulae
+    (Path("/") /("/tmp/formulae/libpfm-formula.conf", '/')).lines().toList should contain theSameElementsAs formulae
   }
 }

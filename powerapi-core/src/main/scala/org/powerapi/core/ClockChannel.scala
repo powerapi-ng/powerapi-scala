@@ -22,62 +22,26 @@
  */
 package org.powerapi.core
 
-import akka.actor.ActorRef
 import scala.concurrent.duration.FiniteDuration
 
+import akka.actor.ActorRef
+
 /**
- * Clock channel and messages.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Clock channel and messages.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 object ClockChannel extends Channel {
 
   type M = ClockMessage
-
-  trait ClockMessage extends Message
-
   /**
-   * ClockTick is represented as a dedicated type of message.
-   * 
-   * @param topic: subject used for routing the message.
-   * @param frequency: clock frequency.
-   */
-  case class ClockTick(topic: String,
-                       frequency: FiniteDuration,
-                       timestamp: Long = System.currentTimeMillis) extends ClockMessage
-
-  /**
-   * ClockStart is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param frequency: clock frequency.
-   */
-  case class ClockStart(topic: String, frequency: FiniteDuration) extends ClockMessage
-
-  /**
-   * ClockStop is represented as a dedicated type of message.
-   *
-   * @param topic: subject used for routing the message.
-   * @param frequency: clock frequency.
-   */
-  case class ClockStop(topic: String, frequency: FiniteDuration) extends ClockMessage
-
-  /**
-   * ClockStopAll is represented as a dedicated type of message.
-   *
-  * @param topic: subject used for routing the message.
-   */
-  case class ClockStopAll(topic: String) extends ClockMessage
-
-  /** 
-   * Topic for communicating with the Clock.
-   */
+    * Topic for communicating with the Clock.
+    */
   private val topic = "clock:handling"
 
   /**
-   * External methods used by the Monitor actors to subscribe/unsubscribe,
-   * start/stop a clock which runs at a frequency.
-   */
+    * Used to subscribe/unsubscribe to ClockTick on the right topic.
+    */
   def subscribeClockTick(frequency: FiniteDuration): MessageBus => ActorRef => Unit = {
     subscribe(clockTickTopic(frequency))
   }
@@ -86,11 +50,14 @@ object ClockChannel extends Channel {
     unsubscribe(clockTickTopic(frequency))
   }
 
+  /**
+    * Used to interact with the Supervisor.
+    */
   def startClock(frequency: FiniteDuration): MessageBus => Unit = {
     publish(ClockStart(topic, frequency))
   }
 
-  def stopClock(frequency: FiniteDuration): MessageBus => Unit ={
+  def stopClock(frequency: FiniteDuration): MessageBus => Unit = {
     publish(ClockStop(topic, frequency))
   }
 
@@ -99,30 +66,63 @@ object ClockChannel extends Channel {
   }
 
   /**
-   * Internal methods used by the Clocks actor for interacting with the bus.
-   */
+    * Used to subscribe to ClockMessage on the right topic.
+    */
   def subscribeClockChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
   /**
-   * Internal methods used by the ClockChild actors for interacting with the bus.
-   */
+    * Used to publish ClockTick on the right topic.
+    */
   def publishClockTick(frequency: FiniteDuration): MessageBus => Unit = {
-    publish(ClockTick(clockTickTopic(frequency), frequency))
+    publish(ClockTick(clockTickTopic(frequency)))
   }
 
   /**
-   * Use to format the ClockChild name.
-   */
+    * Use to format a frequency to an associated topic.
+    */
+  private def clockTickTopic(frequency: FiniteDuration): String = {
+    s"tick:${frequency.toNanos}"
+  }
+
+  /**
+    * Use to format the ClockChild name.
+    */
   def formatClockChildName(frequency: FiniteDuration): String = {
     s"clock-${frequency.toNanos}"
   }
 
+  trait ClockMessage extends Message
+
   /**
-   * Use to format a frequency to an associated topic.
-   */
-  private def clockTickTopic(frequency: FiniteDuration): String = {
-    s"tick:${frequency.toNanos}"
-  }
+    * ClockTick is represented as a dedicated type of message.
+    *
+    * @param topic subject used for routing the message.
+    */
+  case class ClockTick(topic: String, timestamp: Long = System.currentTimeMillis) extends ClockMessage with Tick
+
+  /**
+    * ClockStart is represented as a dedicated type of message.
+    *
+    * @param topic     subject used for routing the message.
+    * @param frequency clock frequency.
+    */
+  case class ClockStart(topic: String, frequency: FiniteDuration) extends ClockMessage
+
+  /**
+    * ClockStop is represented as a dedicated type of message.
+    *
+    * @param topic     subject used for routing the message.
+    * @param frequency clock frequency.
+    */
+  case class ClockStop(topic: String, frequency: FiniteDuration) extends ClockMessage
+
+  /**
+    * ClockStopAll is represented as a dedicated type of message.
+    *
+    * @param topic subject used for routing the message.
+    */
+  case class ClockStopAll(topic: String) extends ClockMessage
+
 }

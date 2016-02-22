@@ -26,23 +26,23 @@ import akka.actor.ActorRef
 import akka.event.LookupClassification
 
 /**
- * Messages are the messages used to route the messages in the bus.
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Messages are the messages used to route the messages in the bus.
+  *
+  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 trait Message {
   /**
-   * A message is associated with a topic which is used to route the messages on the bus.
-   */
+    * A message is associated with a topic which is used to route the messages on the bus.
+    */
   def topic: String
 }
 
 /**
- * Main types definition.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Main types definition.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 trait EventBus extends akka.event.EventBus {
   type Event = Message
   type Classifier = String
@@ -50,11 +50,11 @@ trait EventBus extends akka.event.EventBus {
 }
 
 /**
- * Common event bus used by PowerAPI components to communicate.
- *
- * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Common event bus used by PowerAPI components to communicate.
+  *
+  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class MessageBus extends EventBus with LookupClassification {
   // is used for extracting the classifier from the incoming events
   override protected def classify(event: Event): Classifier = event.topic
@@ -76,11 +76,11 @@ class MessageBus extends EventBus with LookupClassification {
 }
 
 /**
- * Used to specify the channels used by the components.
- *
- * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Used to specify the channels used by the components.
+  *
+  * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class Channel {
   type M <: Message
 

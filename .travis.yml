@@ -1,8 +1,21 @@
+sudo: required
+
+cache:
+  directories:
+    - $HOME/.m2/repository
+    - $HOME/.sbt
+    - $HOME/.ivy2
+
 language: scala
+
 scala:
-- 2.11.6
+- 2.11.7
+
 script:
-- sbt clean "project powerapi-core" coverage test
+- sbt compile test:compile
+- sbt 'set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)' "project powerapi-core" coverage test
+- find $HOME/.sbt -name "*.lock" | xargs rm
+
 after_success:
 - sbt "project powerapi-core" coverageReport
 - sbt "project powerapi-core" codacyCoverage
