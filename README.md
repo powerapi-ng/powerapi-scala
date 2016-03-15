@@ -58,6 +58,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Sigar](https://support.hyperic.com/display/SIGAR/Home) (version 1.6.5 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a portable interface for gathering system information.
 * [spray-json](http://spray.io/) (version 1.3.2 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for (de)serializing JSON.
 * [docker-java](https://github.com/docker-java/docker-java) (version 2.1.4 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for using the JAVA Docker API.
+* [influxdb-java](https://github.com/influxdata/influxdb-java) (version 2.1 under [MIT license](https://github.com/influxdata/influxdb-java/blob/master/LICENSE)), for using the JAVA InfluxDB API.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.

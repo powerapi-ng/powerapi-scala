@@ -182,7 +182,7 @@ object PowerMeter {
 }
 
 /**
-  * A PowerModule groups a sets of tightly coupled API components that need to be deployed together.
+  * A PowerModule groups a set of tightly coupled API components that need to be deployed together.
   *
   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
   */

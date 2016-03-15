@@ -90,7 +90,7 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorC
 }
 
 /**
-  * This clock listens the bus on a given topic and reacts on the received message.
+  * This clock listens to the bus on a given topic and reacts on the received message.
   * It is responsible to handle a pool of clocks for the monitored frequencies.
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>

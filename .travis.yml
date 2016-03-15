@@ -16,6 +16,13 @@ script:
 - sbt 'set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)' "project powerapi-core" coverage test
 - find $HOME/.sbt -name "*.lock" | xargs rm
 
+before_install:
+- wget -O influxdb.deb https://s3.amazonaws.com/influxdb/influxdb_0.10.2-1_amd64.deb
+- sudo dpkg -i influxdb.deb
+- sudo service influxdb start
+- sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi' WITH ALL PRIVILEGES"
+
+
 after_success:
 - sbt "project powerapi-core" coverageReport
 - sbt "project powerapi-core" codacyCoverage

@@ -37,7 +37,7 @@ import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.extpowermeter.rapl.RAPLModule
 import org.powerapi.module.libpfm.{LibpfmCoreModule, LibpfmCoreProcessModule, LibpfmHelper, LibpfmModule, LibpfmProcessModule}
-import org.powerapi.reporter.{ConsoleDisplay, FileDisplay, JFreeChartDisplay}
+import org.powerapi.reporter.{InfluxDisplay, ConsoleDisplay, FileDisplay, JFreeChartDisplay}
 import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
 
 /**
@@ -58,6 +58,7 @@ object PowerAPI extends App {
   @volatile var monitors = Seq[PowerMonitoring]()
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
+    println("PowerAPI is shutting down ...")
     monitors.foreach(monitor => monitor.cancel())
     monitors = Seq()
     powerMeters.foreach(powerMeter => powerMeter.shutdown())
@@ -97,7 +98,7 @@ object PowerAPI extends App {
         |                            --frequency $MILLISECONDS
         |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
         |                            --agg max|min|geomean|logsum|mean|median|stdev|sum|variance
-        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1)
+        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $USER $PWD $DB $MEASUREMENT (0, *)
         |                  duration [s]
         |
         |example: ./powerapi modules procfs-cpu-simple monitor --frequency 1000 --apps firefox,chrome --agg max --console \
@@ -155,6 +156,8 @@ object PowerAPI extends App {
       cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new FileDisplay(value))), tail)
     case "--chart" :: tail =>
       cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new JFreeChartDisplay)), tail)
+    case "--influx" :: host :: user :: pwd :: db :: measurement :: tail =>
+      cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new InfluxDisplay(host, user, pwd, db, measurement))), tail)
     case option :: tail =>
       println(s"unknown monitor option $option")
       sys.exit(1)

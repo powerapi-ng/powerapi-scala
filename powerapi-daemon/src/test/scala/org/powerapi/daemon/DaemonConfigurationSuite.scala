@@ -50,7 +50,7 @@ class DaemonConfigurationSuite extends UnitTest {
         (
           Set("rapl"),
           List(
-            (true,Set(),Set(),Set(),3000.milliseconds,"SUM","file:out.papi")
+            (true,Set(),Set(),Set(),3000.milliseconds,"SUM","file=>out.papi")
           )
         )
       )

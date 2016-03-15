@@ -33,7 +33,7 @@ import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.extpowermeter.rapl.RAPLModule
 import org.powerapi.module.libpfm.{LibpfmCoreModule, LibpfmCoreProcessModule, LibpfmHelper}
-import org.powerapi.reporter.{ConsoleDisplay, FileDisplay, JFreeChartDisplay}
+import org.powerapi.reporter.{InfluxDisplay, ConsoleDisplay, FileDisplay, JFreeChartDisplay}
 import org.powerapi.{PowerMeter, PowerMonitoring}
 
 /**
@@ -126,18 +126,21 @@ class PowerAPId extends Daemon {
         launchedMonitors :+= monitor
 
         output match {
-          case file: String if output.startsWith("file") => {
-            val fileDisplay = new FileDisplay(file.split(":")(1))
+          case file: String if output.startsWith("file") =>
+            // file=>powerapi.out
+            val fileDisplay = new FileDisplay(file.split("=>")(1))
             monitor.to(fileDisplay)
-          }
-          case "chart" => {
+          case influx: String if output.startsWith("influx") =>
+            // influx=>http://locahost:8086,powerapi,powerapi,test,event.powerapi
+            val parameters = influx.split("=>")(1).split(",")
+            val influxDisplay = new InfluxDisplay(parameters(0), parameters(1), parameters(2), parameters(3), parameters(4))
+            monitor.to(influxDisplay)
+          case "chart" =>
             val chartDisplay = new JFreeChartDisplay()
             monitor.to(chartDisplay)
-          }
-          case _ => {
+          case _ =>
             val consoleDisplay = new ConsoleDisplay()
             monitor.to(consoleDisplay)
-          }
         }
       }
     }

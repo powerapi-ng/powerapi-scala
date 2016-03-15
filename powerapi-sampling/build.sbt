@@ -1,7 +1,5 @@
 name := "powerapi-sampling"
 
-NativePackagerKeys.executableScriptName := "sampling"
-
 // App
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.14",
@@ -36,3 +34,9 @@ mappings in Universal ++= {
 }
 
 scriptClasspath ++= Seq("../scripts", "../conf")
+
+packageName in Universal := name.value
+
+topLevelDirectory := Some(name.value)
+
+NativePackagerKeys.executableScriptName := "sampling"

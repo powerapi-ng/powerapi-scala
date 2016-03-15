@@ -25,4 +25,8 @@ mappings in Universal ++= {
 
 scriptClasspath ++= Seq("../conf", "../scripts")
 
+packageName in Universal := name.value
+
+topLevelDirectory := Some(name.value)
+
 NativePackagerKeys.executableScriptName := "powerapid"

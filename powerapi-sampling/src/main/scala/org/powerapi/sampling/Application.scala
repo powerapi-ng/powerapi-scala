@@ -22,6 +22,8 @@
  */
 package org.powerapi.sampling
 
+import java.io.File
+
 import scala.sys
 import scala.sys.process.stringSeqToProcess
 import scalax.file.Path
@@ -41,8 +43,8 @@ object Application extends App {
 
   if (Path("/sys/devices/system/cpu/", '/').exists) {
     for (path <- Path("/sys/devices/system/cpu/", '/').descendants(depth = 1).filter(_.name matches """cpu\d+""")) {
-      val governor = Seq("bash", "-c", s"cat ${path.path}/cpufreq/scaling_governor").lineStream.toArray.apply(0)
-      val frequency = Seq("bash", "-c", s"cat ${path.path}/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
+      val governor = Seq("cat", s"${path.path}/cpufreq/scaling_governor").lineStream.toArray.apply(0)
+      val frequency = Seq("cat", s"${path.path}/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
 
       if (frequency matches """\d+""") {
         backup += (path.path ->(governor, Some(frequency.toLong)))
@@ -67,10 +69,10 @@ object Application extends App {
     }
 
     for ((path, (governor, frequency)) <- backup) {
-      Seq("bash", "-c", s"echo $governor > $path/cpufreq/scaling_governor").!
+      (Seq("echo", s"$governor") #>> new File(s"$path/cpufreq/scaling_governor")).!
 
       if (governor == "userspace" && frequency.isDefined) {
-        Seq("bash", "-c", s"echo ${frequency.get} > $path/cpufreq/scaling_setspeed").!
+        (Seq("echo", s"${frequency.get}") #>> new File(s"$path/cpufreq/scaling_setspeed")).!
       }
     }
   }

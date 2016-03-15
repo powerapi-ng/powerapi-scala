@@ -37,7 +37,7 @@ import org.joda.time.Period
 import org.powerapi.{PowerMonitoring, PowerMeter}
 import org.powerapi.core.power._
 import org.powerapi.core.target.All
-import org.powerapi.module.PowerChannel.{AggregatePowerReport}
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport, unsubscribePCReport}
 import org.powerapi.module.libpfm.{LibpfmCoreSensorModule, LibpfmHelper}
@@ -158,13 +158,17 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
       else {
         // Intel processor are homogeneous, we cannot control the frequencies per core.
         // Set the default governor with the userspace governor. It allows us to control the frequency.
-        Seq("bash", "-c", "echo userspace | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null").!
+        configuration.topology.values.flatten.foreach {
+          case cpu => (Seq("echo", "userspace") #>> new File(s"/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_governor")).!
+        }
 
         for (frequency <- frequencies) {
           Path(s"/tmp/sampling/$index/$frequency", '/').createDirectory()
 
           // Set the frequency
-          Seq("bash", "-c", s"echo $frequency | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_setspeed > /dev/null").!
+          configuration.topology.values.flatten.foreach {
+            case cpu => (Seq("echo", s"$frequency") #>> new File(s"/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_setspeed")).!
+          }
 
           sampling(index, frequency, turbo = false, allPapi, allExPMeter)
 
@@ -179,9 +183,12 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
             Path(s"/tmp/sampling/$index/$frequency", '/').createDirectory()
 
             // Special case for the turbo mode, we can't control the frequency to be able to capture the different heuristics.
-            Seq("bash", "-c", s"echo ${frequencies.head} | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_min_freq > /dev/null").!
-            Seq("bash", "-c", s"echo $frequency | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_max_freq > /dev/null").!
-            Seq("bash", "-c", "echo ondemand | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null").!
+            configuration.topology.values.flatten.foreach {
+              case cpu =>
+                (Seq("echo", s"${frequencies.head}") #>> new File(s"/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_min_freq")).!
+                (Seq("echo", s"$frequency") #>> new File(s"/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_max_freq")).!
+                (Seq("echo", "ondemand") #>> new File(s"/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_governor")).!
+            }
 
             sampling(index, frequency, turbo = true, allPapi, allExPMeter)
 
@@ -260,7 +267,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
         previous :+= index
       }
 
-      Seq("bash", "-c", "killall cpulimit stress").!(trash)
+      Seq("killall", "cpulimit", "stress").!(trash)
     }
 
     allExPMeter.unto(externalPMeterDisplay)
@@ -284,7 +291,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
       lastWorkerPids.foreach(pid => Seq("cpulimit", "-l", s"$step", "-p", s"$pid").run(trash))
       lastCpuLimitPids.foreach(pid => Seq("kill", "-9", pid).!(trash))
 
-      val cmd = Seq("bash", "-c", "ps -ef") #> Seq("bash", "-c", "egrep -i '" + lastWorkerPids.map("cpulimit.*-p " + _.toString + ".*").mkString("|") + "'") #> Seq("bash", "-c", "grep -v egrep")
+      val cmd = Seq("ps", "-ef") #> Seq("egrep", "-i", s"'${lastWorkerPids.map("cpulimit.*-p " + _.toString + ".*").mkString("|")}'") #> Seq("grep", "-v", "egrep")
       var outputs = List[String]()
       var nbMs = 0
 
