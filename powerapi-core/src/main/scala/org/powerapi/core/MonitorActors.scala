@@ -35,6 +35,7 @@ import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick
 import org.powerapi.core.MonitorChannel.{MonitorAggregator, MonitorFrequency, MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, publishMonitorTick, setAggregator, setFrequency, stopMonitor, subscribeMonitorsChannel}
 import org.powerapi.core.power._
 import org.powerapi.core.target.Target
+import org.powerapi.core.TickChannel.{subscribeTick, unsubscribeTick}
 import org.powerapi.module.FormulaChannel.stopFormula
 import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport, subscribeRawPowerReport, unsubscribeRawPowerReport, unsubscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.stopSensor
@@ -62,6 +63,11 @@ trait MonitorConfiguration extends Configuration {
   */
 class MonitorChild(eventBus: MessageBus, muid: UUID, targets: Set[Target]) extends ActorComponent {
 
+  override def preStart(): Unit = {
+    subscribeTick(muid)(eventBus)(self)
+    super.preStart()
+  }
+
   def receive: Actor.Receive = starting orElse default
 
   def starting: Actor.Receive = {
@@ -75,7 +81,7 @@ class MonitorChild(eventBus: MessageBus, muid: UUID, targets: Set[Target]) exten
     case tick: Tick => produceMessages(tick)
     case powerReport: RawPowerReport => aggregate(aggR, powerReport, aggregator)
     case msg: MonitorAggregator if msg.muid == muid => setAggregator(aggR, msg.aggregator)
-    case msg: MonitorFrequency if msg.muid == muid => setMonitorFrequency(aggR, aggregator, msg.frequency)
+    case msg: MonitorFrequency if msg.muid == muid => unsubscribeTick(msg.muid)(eventBus)(self); setMonitorFrequency(aggR, aggregator, msg.frequency)
     case msg: MonitorStop if msg.muid == muid => stop()
     case _: MonitorStopAll => stop()
   }

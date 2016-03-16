@@ -22,12 +22,16 @@
  */
 package org.powerapi.core
 
+import java.util.UUID
+
+import akka.actor.ActorRef
+
 /**
   * Base trait for Tick messages.
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-trait Tick {
+trait Tick extends Message {
   /**
     * Subject used for routing the message.
     */
@@ -37,4 +41,39 @@ trait Tick {
     * Origin timestamp.
     */
   def timestamp: Long
+}
+
+/**
+  * Tick channel.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
+object TickChannel extends Channel {
+
+  type M = Tick
+
+  /**
+    * Used to subscribe/unsubscribe to Tick on the right topic.
+    */
+  def subscribeTick(muid: UUID): MessageBus => ActorRef => Unit = {
+    subscribe(tickTopic(muid))
+  }
+
+  def unsubscribeTick(muid: UUID): MessageBus => ActorRef => Unit = {
+    unsubscribe(tickTopic(muid))
+  }
+
+  /**
+    * Used to format the topic used to interact with the MonitorChild actors.
+    */
+  def tickTopic(muid: UUID): String = {
+    s"tick:$muid"
+  }
+
+  /**
+    * Used to publish a Tick message built externally on the right topic.
+    */
+  def publishTick(tick: Tick): MessageBus => Unit = {
+    publish(tick)
+  }
 }

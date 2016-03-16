@@ -27,7 +27,7 @@ import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
-import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.actor.{Actor, Props, Terminated}
 import akka.event.Logging.Info
 import akka.pattern.gracefulStop
 import akka.testkit.{EventFilter, TestActorRef, TestProbe}
@@ -36,11 +36,12 @@ import akka.util.Timeout
 import org.powerapi.core.MonitorChannel._
 import org.powerapi.core.power._
 import org.powerapi.core.target.{All, Application, Process, Target, intToProcess, stringToApplication}
+import org.powerapi.core.TickChannel.{publishTick, tickTopic}
 import org.powerapi.module.FormulaChannel.startFormula
 import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, publishRawPowerReport, subscribeAggPowerReport, unsubscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.startSensor
 import org.powerapi.module.{Formula, Formulas, Sensor, Sensors}
-import org.powerapi.reporter.{Reporters}
+import org.powerapi.reporter.Reporters
 import org.powerapi.{PowerDisplay, UnitTest}
 
 class EmptySensor(eventBus: MessageBus, muid: UUID, target: Target) extends Sensor(eventBus, muid, target) {
@@ -124,6 +125,9 @@ class MonitorSuite extends UnitTest {
     val muid2 = UUID.randomUUID()
     val targets = Set[Target](1, "java", All)
 
+    case class ExtendedTick(topic: String, traces: Seq[String], timestamp: Long) extends Tick
+
+    val clocks = TestActorRef(Props(classOf[Clocks], eventBus), "clocks")
     val monitor1 = TestActorRef(Props(classOf[MonitorChild], eventBus, muid1, targets), "monitor1")
     val monitor2 = TestActorRef(Props(classOf[MonitorChild], eventBus, muid2, targets), "monitor2")
     val watcher = TestProbe()
@@ -143,20 +147,36 @@ class MonitorSuite extends UnitTest {
       monitor2 ! MonitorStart("test", muid2, targets)
     })
 
-    monitor1 ! new Tick {
-      val topic = ""
-      val timestamp = System.currentTimeMillis()
-    }
-    receiveN(targets.size).asInstanceOf[Seq[MonitorTick]].map(_.target) should contain theSameElementsAs targets
-    monitor2 ! new Tick {
-      val topic = ""
-      val timestamp = System.currentTimeMillis()
-    }
-    receiveN(targets.size).asInstanceOf[Seq[MonitorTick]].map(_.target) should contain theSameElementsAs targets
+    val tick1 = ExtendedTick(tickTopic(muid1), Seq("method", "a"), System.currentTimeMillis())
+    val tick2 = ExtendedTick(tickTopic(muid2), Seq("method", "b"), System.currentTimeMillis() + 1000)
+
+    publishTick(tick1)(eventBus)
+    var msgs = receiveN(targets.size).asInstanceOf[Seq[MonitorTick]]
+    msgs.map(_.target) should contain theSameElementsAs targets
+    msgs.map(_.muid).toSet should contain theSameElementsAs Seq(muid1)
+    msgs.map(_.tick).toSet should contain theSameElementsAs Seq(tick1)
+
+    publishTick(tick2)(eventBus)
+    msgs = receiveN(targets.size).asInstanceOf[Seq[MonitorTick]]
+    msgs.map(_.target) should contain theSameElementsAs targets
+    msgs.map(_.muid).toSet should contain theSameElementsAs Seq(muid2)
+    msgs.map(_.tick).toSet should contain theSameElementsAs Seq(tick2)
 
     EventFilter.info(occurrences = 1, source = monitor1.path.toString).intercept({
       monitor1 ! MonitorStop("test", muid1)
     })
+
+    val filter = EventFilter.custom({
+      case Info(_, claz, _) if claz == classOf[ClockChild] || claz == classOf[MonitorChild] => true
+    }, occurrences = 2)
+    filter.intercept({
+      monitor2 ! MonitorFrequency("test", muid2, 50.millis)
+    })
+
+    publishTick(tick2)(eventBus)
+    receiveWhile(5.seconds) {
+      case msg: MonitorTick if !msg.tick.isInstanceOf[ExtendedTick] => msg
+    }
 
     EventFilter.info(occurrences = 1, source = monitor2.path.toString).intercept({
       monitor2 ! MonitorStop("test", muid2)
@@ -164,6 +184,7 @@ class MonitorSuite extends UnitTest {
 
     watcher.receiveN(2).asInstanceOf[Seq[Terminated]].map(_.actor) should contain theSameElementsAs Seq(monitor1, monitor2)
 
+    Await.result(gracefulStop(clocks, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor1, timeout.duration), timeout.duration)
     Await.result(gracefulStop(monitor2, timeout.duration), timeout.duration)
   }
@@ -212,8 +233,8 @@ class MonitorSuite extends UnitTest {
     messages.size should equal(targets.size * ((10.seconds / frequency1) * threshold).toInt)
     messages.map(_.muid).toSet should contain theSameElementsAs Seq(muid1)
     messages.map(_.target).toSet should contain theSameElementsAs targets
-
     targets.foreach(target => unsubscribeMonitorTick(muid1, target)(eventBus)(testActor))
+
     filter = EventFilter.custom({
       case Info(_, claz, _) if claz == classOf[ClockChild] || claz == classOf[MonitorChild] => true
     }, occurrences = 2)
