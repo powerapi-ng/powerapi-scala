@@ -62,7 +62,7 @@ object PerformanceCounterChannel extends Channel {
   }
 
   /**
-    * Used to unsubscribe to PCReport on the rigth topic.
+    * Used to unsubscribe to PCReport on the right topic.
     */
   def unsubscribePCReport(muid: UUID, target: Target): MessageBus => ActorRef => Unit = {
     unsubscribe(pcReportToTopic(muid, target))

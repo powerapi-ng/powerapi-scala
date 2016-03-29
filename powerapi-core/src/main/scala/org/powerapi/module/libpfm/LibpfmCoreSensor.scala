@@ -38,7 +38,7 @@ import org.powerapi.module.Sensor
 import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, LibpfmPickerStop, formatLibpfmCoreSensorChildName, publishPCReport}
 
 /**
-  * Libpfm sensor component that collects metrics with libpfm at a core level.
+  * Libpfm sensor component which collects metrics with libpfm at a core level.
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */

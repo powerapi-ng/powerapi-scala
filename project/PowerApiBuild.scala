@@ -67,6 +67,7 @@ object PowerApiBuild extends Build {
   lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaServerAppPackaging)
   lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val powerapiCodeEnergyAnalysis = Project(id = "powerapi-code-energy-analysis", base = file("powerapi-code-energy-analysis")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 
   // example of power meters
   lazy val appMonitorProcsJava =  Project(id = "powerapi-example-app-monitor-procfs-java", base = file("powerapi-powermeter/AppMonitorProcFSJava")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")

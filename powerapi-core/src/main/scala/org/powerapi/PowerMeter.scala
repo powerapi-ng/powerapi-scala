@@ -150,7 +150,7 @@ class PowerMeter(factory: ActorRefFactory, modules: Seq[PowerModule]) extends Po
     * @param duration duration to wait for.
     * @return the instance of the underlying software power meter.
     */
-  def waitFor(duration: FiniteDuration): this.type = {
+  def waitFor(duration: FiniteDuration): PowerMeter = {
     Await.result(underlyingActor.ask(WaitForMessage(duration))(duration + 1L.seconds), duration + 1L.seconds)
     this
   }
@@ -198,6 +198,12 @@ trait PowerModule {
   * @author <a href="mailto:romain.rouvoy@univ-lille1.fr">Romain Rouvoy</a>
   */
 trait PowerMonitoring {
+
+  /**
+    * Internal event bus.
+    */
+  def eventBus: MessageBus
+
   /**
     * Unique ID
     */
@@ -206,35 +212,35 @@ trait PowerMonitoring {
   /**
     * Change the aggregation function to apply on raw power reports.
     */
-  def apply(aggregator: Seq[Power] => Power): this.type
+  def apply(aggregator: Seq[Power] => Power): PowerMonitoring
 
   /**
     * Change frequency when periodic ticks are internally created by a clock.
     */
-  def every(frequency: FiniteDuration): this.type
+  def every(frequency: FiniteDuration): PowerMonitoring
 
   /**
     * Configure the power display to use for rendering power estimation.
     */
-  def to(output: PowerDisplay): this.type
+  def to(output: PowerDisplay): PowerMonitoring
 
-  def to(reference: ActorRef): this.type
+  def to(reference: ActorRef): PowerMonitoring
 
-  def to(reference: ActorRef, subscribeMethod: MessageBus => ActorRef => Unit): this.type
+  def to(reference: ActorRef, subscribeMethod: MessageBus => ActorRef => Unit): PowerMonitoring
 
   /**
     * Remove the power display used for rendering power estimation.
     */
-  def unto(output: PowerDisplay): this.type
+  def unto(output: PowerDisplay): PowerMonitoring
 
-  def unto(reference: ActorRef): this.type
+  def unto(reference: ActorRef): PowerMonitoring
 
-  def unto(reference: ActorRef, unsubscribeMethod: MessageBus => ActorRef => Unit): this.type
+  def unto(reference: ActorRef, unsubscribeMethod: MessageBus => ActorRef => Unit): PowerMonitoring
 
   /**
     * Cancel the subscription and stop the associated monitoring.
     */
-  def cancel()
+  def cancel(): Unit
 }
 
 /**

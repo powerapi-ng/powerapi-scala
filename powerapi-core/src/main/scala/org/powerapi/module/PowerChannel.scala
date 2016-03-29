@@ -122,6 +122,8 @@ object PowerChannel extends Channel {
       reports += powerReport
     }
 
+    def rawPowers: Seq[RawPowerReport] = reports
+
     def size: Int = reports.size
 
     def targets: Set[Target] = reports.map(_.target).toSet

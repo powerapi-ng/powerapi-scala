@@ -23,7 +23,9 @@ libraryDependencies ++= Seq(
   "org.hyperic" % "sigar" % "1.6.5.132",
   "net.java.dev.jna" % "jna" % "4.2.1",
   "io.spray" %% "spray-json" % "1.3.2",
-  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.4.5"
+  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.4.5",
+  "com.github.jnr" % "jnr-unixsocket" % "0.12",
+  "com.google.protobuf" % "protobuf-java" % "2.6.1"
 )
 
 // Tests

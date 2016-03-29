@@ -27,8 +27,9 @@ import java.nio.channels.FileChannel
 import java.nio.{ByteBuffer, ByteOrder}
 
 import scala.sys.process.stringSeqToProcess
-
 import org.apache.logging.log4j.LogManager
+
+import scala.io.Source
 
 /**
   * Collecting energy information contained into RAPL registers (MSR)
@@ -94,7 +95,7 @@ class RAPLHelper(msrPath: String, cpuInfoPath: String, supportedArchis: Map[Int,
   }
 
   private def detectCpu: Boolean = {
-    val source = io.Source.fromFile(cpuInfoPath).getLines
+    val source = Source.fromFile(cpuInfoPath).getLines
     source.find(l => l.startsWith("vendor_id") && l.endsWith("GenuineIntel")) match {
       case Some(_) => source.find(l => l.startsWith("cpu family") && l.endsWith("6")) match {
         case Some(_) => source.find(_.startsWith("model")) match {

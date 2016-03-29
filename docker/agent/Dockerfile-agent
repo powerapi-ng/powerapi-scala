@@ -1,0 +1,34 @@
+FROM ubuntu:14.04
+
+ARG NB_CORES
+ARG SMPL_THRESHOLD
+ARG UNHALTED_CYCLES_EVT
+ARG UNHALTED_REF_CYCLES_EVT
+
+ENV LIBPFM_PACKAGE libpfm-4.6.0
+
+COPY docker/agent/Makefile /root/powerapi-agent/
+COPY docker/agent/payload.proto /root/powerapi-agent/
+COPY docker/agent/perf_util.c /root/powerapi-agent/
+COPY docker/agent/perf_util.h /root/powerapi-agent/
+COPY docker/agent/powerapi-agent.c /root/powerapi-agent/
+COPY docker/agent/run.sh /root
+
+VOLUME /tmp /apps
+
+ENV INSTALL_PACKAGES ca-certificates pkg-config wget make gcc autoconf automake libtool g++
+ENV RUNTIME_PACKAGES libdw-dev libunwind8-dev
+
+RUN apt-get update && apt-get -y upgrade && apt-get -y install $INSTALL_PACKAGES $RUNTIME_PACKAGES && \
+  wget http://downloads.sourceforge.net/project/perfmon2/libpfm4/${LIBPFM_PACKAGE}.tar.gz && tar -C /root -xzvf ${LIBPFM_PACKAGE}.tar.gz && (cd /root/$LIBPFM_PACKAGE; make lib; make install) && rm -rf /root/$LIBPFM_PACKAGE ${LIBPFM_PACKAGE}.tar.gz && \
+  wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz && tar -C /root -xzvf protobuf-2.6.1.tar.gz && (cd /root/protobuf-2.6.1; ./autogen.sh; ./configure; make; make install) && rm -rf /root/protobuf-2.6.1 protobuf-2.6.1.tar.gz && \
+  wget https://github.com/squidfunk/protobluff/archive/0.5.0.tar.gz && tar -C /root -xzvf 0.5.0.tar.gz && (cd /root/protobluff-0.5.0; ./autogen.sh; ./configure; make; make install) && rm -rf /root/protobluff-0.5.0 0.5.0.tar.gz && \
+  ldconfig && \
+  (cd /root/powerapi-agent; make NB_CORES=${NB_CORES} SMPL_THRESHOLD=${SMPL_THRESHOLD} UNHALTED_CYCLES_EVT=${UNHALTED_CYCLES_EVT} UNHALTED_REF_CYCLES_EVT=${UNHALTED_REF_CYCLES_EVT}) && \
+  mv /root/powerapi-agent/powerapi-agent /root/powerapi-agent-app && rm -rf /root/powerapi-agent && mv /root/powerapi-agent-app /root/powerapi-agent && \
+  apt-get -y remove --auto-remove $INSTALL_PACKAGES && \
+  rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root
+
+ENTRYPOINT ["./run.sh"]
