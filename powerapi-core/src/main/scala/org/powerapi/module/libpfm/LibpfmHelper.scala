@@ -40,7 +40,9 @@ import perfmon2.libpfm.{LibpfmLibrary, perf_event_attr, pfm_event_attr_info_t, p
   */
 trait Identifier
 
-case class TID(identifier: Int) extends Identifier
+case class TID(identifier: Int) extends Identifier {
+  override def toString: String = s"$identifier"
+}
 
 case class CID(core: Int) extends Identifier
 

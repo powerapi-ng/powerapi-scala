@@ -27,13 +27,21 @@ import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import org.powerapi.PowerDisplay
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
   * Write power information inside an InfluxDB database.
   */
 class InfluxDisplay(host: String, port: Int, user: String, pwd: String, dbName: String, measurement: String) extends PowerDisplay {
-
+  val timeout = 10.seconds
   val influxdb = InfluxDB.connect(host, port, user, pwd)
   val database = influxdb.selectDatabase(dbName)
+
+  if (!Await.result(database.exists(), timeout)) {
+    Await.result(database.create(), timeout)
+  }
 
   def display(aggregatePowerReport: AggregatePowerReport): Unit = {
     val muid = aggregatePowerReport.muid

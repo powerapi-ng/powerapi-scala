@@ -257,7 +257,7 @@ class Monitors(eventBus: MessageBus) extends MonitorConfiguration with Superviso
 /**
   * This class acts like a mirror for interacting with the event bus.
   */
-class Monitor(eventBus: MessageBus) extends PowerMonitoring {
+class Monitor(val eventBus: MessageBus) extends PowerMonitoring {
   val muid = UUID.randomUUID()
 
   def apply(aggregator: Seq[Power] => Power): this.type = {

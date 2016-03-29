@@ -58,6 +58,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [Sigar](https://support.hyperic.com/display/SIGAR/Home) (version 1.6.5 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a portable interface for gathering system information.
 * [spray-json](http://spray.io/) (version 1.3.2 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for (de)serializing JSON.
 * [scala-influxdb-client](https://github.com/paulgoldbaum/scala-influxdb-client) (version 0.4.5 under [MIT license](https://github.com/paulgoldbaum/scala-influxdb-client/blob/master/LICENSE)), for using an asynchronous scala API for InfluxDB.
+* [protobuf-java](https://developers.google.com/protocol-buffers/) (version 2.6.1 under [new BSD license](http://www.opensource.org/licenses/bsd-license.php)), for using the JAVA protobuf API.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.
