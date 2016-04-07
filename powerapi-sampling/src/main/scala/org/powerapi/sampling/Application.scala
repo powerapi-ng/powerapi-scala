@@ -47,9 +47,9 @@ object Application extends App {
       val frequency = Seq("cat", s"${path.path}/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
 
       if (frequency matches """\d+""") {
-        backup += (path.path ->(governor, Some(frequency.toLong)))
+        backup += (path.path -> ((governor, Some(frequency.toLong))))
       }
-      else backup += (path.path ->(governor, None))
+      else backup += (path.path -> ((governor, None)))
     }
   }
 
@@ -110,13 +110,13 @@ object Application extends App {
     case Nil =>
       options
     case "--all" :: samplingPath :: processingPath :: computingPath :: Nil =>
-      cli(options +('sampling ->(true, samplingPath), 'processing ->(true, processingPath), 'computing ->(true, computingPath)), Nil)
+      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((true, computingPath))), Nil)
     case "--sampling" :: samplingPath :: Nil =>
-      cli(options +('sampling ->(true, samplingPath), 'processing ->(false, ""), 'computing ->(false, "")), Nil)
+      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((false, "")), 'computing -> ((false, ""))), Nil)
     case "--processing" :: samplingPath :: processingPath :: Nil =>
-      cli(options +('sampling ->(false, samplingPath), 'processing ->(true, processingPath), 'computing ->(false, "")), Nil)
+      cli(options +('sampling -> ((false, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((false, ""))), Nil)
     case "--computing" :: processingPath :: computingPath :: Nil =>
-      cli(options +('sampling ->(false, ""), 'processing ->(false, processingPath), 'computing ->(true, computingPath)), Nil)
+      cli(options +('sampling -> ((false, "")), 'processing -> ((false, processingPath)), 'computing -> ((true, computingPath))), Nil)
     case option :: tail =>
       println(s"unknown cli option $option"); sys.exit(1)
   }

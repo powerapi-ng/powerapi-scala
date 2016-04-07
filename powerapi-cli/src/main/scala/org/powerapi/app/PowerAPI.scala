@@ -65,7 +65,7 @@ object PowerAPI extends App {
     powerMeters = Seq()
   }
 
-  def validate(regex: Regex, str: String) = str match {
+  def validate(regex: Regex, str: String): Boolean = str match {
     case regex(_*) => true
     case _ => false
   }
@@ -125,7 +125,8 @@ object PowerAPI extends App {
       sys.exit(1)
   }
 
-  def cliMonitorsSubcommand(options: List[Map[Symbol, Any]], currentMonitor: Map[Symbol, Any], args: List[String]): (List[String], List[Map[Symbol, Any]]) = args match {
+  def cliMonitorsSubcommand(options: List[Map[Symbol, Any]], currentMonitor: Map[Symbol, Any],
+                            args: List[String]): (List[String], List[Map[Symbol, Any]]) = args match {
     case Nil =>
       (List(), options :+ currentMonitor)
     case "modules" :: value :: "--prefix" :: prefix :: "monitor" :: tail if validate(modulesR, value) =>
@@ -139,25 +140,45 @@ object PowerAPI extends App {
     case "--frequency" :: value :: tail if validate(durationR, value) =>
       cliMonitorsSubcommand(options, currentMonitor ++ Map('frequency -> value), tail)
     case "--self" :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] + Process(ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt))), tail)
+      cliMonitorsSubcommand(options,
+        currentMonitor + ('targets ->
+          (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] + Process(ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt))
+      ), tail)
     case "--pids" :: value :: tail if validate(pidsR, value) =>
-      cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(pid => Process(pid.toInt)))), tail)
+      cliMonitorsSubcommand(options,
+        currentMonitor + ('targets ->
+          (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(pid => Process(pid.toInt)))
+      ), tail)
     case "--apps" :: value :: tail if validate(appsR, value) =>
-      cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(app => Application(app)))), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('targets ->
+        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(app => Application(app)))
+      ), tail)
     case "--containers" :: value :: tail if validate(containersR, value) =>
-      cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(container => Container(container)))), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('targets ->
+        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(container => Container(container)))
+      ), tail)
     case "--all" :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('targets -> (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] + All)), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('targets ->
+        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] + All)
+      ), tail)
     case "--agg" :: value :: tail if validate(aggR, value) =>
       cliMonitorsSubcommand(options, currentMonitor ++ Map('agg -> value), tail)
     case "--console" :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new ConsoleDisplay)), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('displays ->
+        (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new ConsoleDisplay)
+      ), tail)
     case "--file" :: value :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new FileDisplay(value))), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('displays ->
+        (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new FileDisplay(value))
+      ), tail)
     case "--chart" :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new JFreeChartDisplay)), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('displays ->
+        (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new JFreeChartDisplay)
+      ), tail)
     case "--influx" :: host :: user :: pwd :: db :: measurement :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('displays -> (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new InfluxDisplay(host, user, pwd, db, measurement))), tail)
+      cliMonitorsSubcommand(options, currentMonitor + ('displays ->
+        (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new InfluxDisplay(host, user, pwd, db, measurement))
+      ), tail)
     case option :: tail =>
       println(s"unknown monitor option $option")
       sys.exit(1)
@@ -169,8 +190,9 @@ object PowerAPI extends App {
   }
 
   else {
-    if (System.getProperty("os.name").toLowerCase.indexOf("nix") >= 0 || System.getProperty("os.name").toLowerCase.indexOf("nux") >= 0) Seq("bash", "scripts/system.bash").!
-
+    if (System.getProperty("os.name").toLowerCase.indexOf("nix") >= 0 || System.getProperty("os.name").toLowerCase.indexOf("nux") >= 0) {
+      Seq("bash", "scripts/system.bash").!
+    }
     val (configuration, duration) = cli(List(), "3600", args.toList)
 
     var libpfmHelper: Option[LibpfmHelper] = None

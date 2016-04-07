@@ -54,8 +54,8 @@ class EmptyFormula(eventBus: MessageBus, muid: UUID, target: Target) extends For
 }
 
 object EmptyModule extends PowerModule {
-  val sensor = Some(classOf[EmptySensor], Seq())
-  val formula = Some(classOf[EmptyFormula], Seq())
+  val sensor = Some((classOf[EmptySensor], Seq[Any]()))
+  val formula = Some((classOf[EmptyFormula], Seq[Any]()))
 }
 
 class PowerMeterSuite extends UnitTest {

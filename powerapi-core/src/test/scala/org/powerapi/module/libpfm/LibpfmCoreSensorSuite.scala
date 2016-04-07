@@ -110,7 +110,7 @@ class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
         wrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).foreach {
           case ((core, event), _wrappers) => Future.sequence(_wrappers.head.values) onSuccess {
             case pcs: List[HWCounter] =>
-              pcs.map(_.value).sum should equal(results(core, event))
+              pcs.map(_.value).sum should equal(results((core, event)))
           }
         }
     }

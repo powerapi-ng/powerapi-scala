@@ -29,50 +29,50 @@ package org.powerapi.core.power
   * @author Maxime Colmant <maxime.colmant@gmail.com>
   * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
   */
-object PowerUnitSystem extends Enumeration {
+object PowerConverter extends Enumeration {
   val MILLIWATTS = new PowerUnitVal("mW", "MilliWatts") {
-    def toMilliWatts(p: Double) = p
+    def toMilliWatts(p: Double): Double = p
 
-    def toWatts(p: Double) = p / (C1 / C0)
+    def toWatts(p: Double): Double = p / (C1 / C0)
 
-    def toKiloWatts(p: Double) = p / (C2 / C0)
+    def toKiloWatts(p: Double): Double = p / (C2 / C0)
 
-    def toMegaWatts(p: Double) = p / (C3 / C0)
+    def toMegaWatts(p: Double): Double = p / (C3 / C0)
 
-    def convert(p: Double, u: PowerUnit) = u.toMilliWatts(p)
+    def convert(p: Double, u: PowerUnit): Double = u.toMilliWatts(p)
   }
   val WATTS = new PowerUnitVal("W", "Watts") {
-    def toMilliWatts(p: Double) = ch(p, C1 / C0, MAX / (C1 / C0))
+    def toMilliWatts(p: Double): Double = ch(p, C1 / C0, MAX / (C1 / C0))
 
-    def toWatts(p: Double) = p
+    def toWatts(p: Double): Double = p
 
-    def toKiloWatts(p: Double) = p / (C2 / C1)
+    def toKiloWatts(p: Double): Double = p / (C2 / C1)
 
-    def toMegaWatts(p: Double) = p / (C3 / C1)
+    def toMegaWatts(p: Double): Double = p / (C3 / C1)
 
-    def convert(p: Double, u: PowerUnit) = u.toWatts(p)
+    def convert(p: Double, u: PowerUnit): Double = u.toWatts(p)
   }
   val KILOWATTS = new PowerUnitVal("kW", "KiloWatts") {
-    def toMilliWatts(p: Double) = ch(p, C2 / C0, MAX / (C2 / C0))
+    def toMilliWatts(p: Double): Double = ch(p, C2 / C0, MAX / (C2 / C0))
 
-    def toWatts(p: Double) = ch(p, C2 / C1, MAX / (C2 / C1))
+    def toWatts(p: Double): Double = ch(p, C2 / C1, MAX / (C2 / C1))
 
-    def toKiloWatts(p: Double) = p
+    def toKiloWatts(p: Double): Double = p
 
-    def toMegaWatts(p: Double) = p / (C3 / C2)
+    def toMegaWatts(p: Double): Double = p / (C3 / C2)
 
-    def convert(p: Double, u: PowerUnit) = u.toKiloWatts(p)
+    def convert(p: Double, u: PowerUnit): Double = u.toKiloWatts(p)
   }
   val MEGAWATTS = new PowerUnitVal("MW", "MegaWatts") {
-    def toMilliWatts(p: Double) = ch(p, C3 / C0, MAX / (C3 / C0))
+    def toMilliWatts(p: Double): Double = ch(p, C3 / C0, MAX / (C3 / C0))
 
-    def toWatts(p: Double) = ch(p, C3 / C1, MAX / (C3 / C1))
+    def toWatts(p: Double): Double = ch(p, C3 / C1, MAX / (C3 / C1))
 
-    def toKiloWatts(p: Double) = ch(p, C3 / C2, MAX / (C3 / C2))
+    def toKiloWatts(p: Double): Double = ch(p, C3 / C2, MAX / (C3 / C2))
 
-    def toMegaWatts(p: Double) = p
+    def toMegaWatts(p: Double): Double = p
 
-    def convert(p: Double, u: PowerUnit) = u.toMegaWatts(p)
+    def convert(p: Double, u: PowerUnit): Double = u.toMegaWatts(p)
   }
   // Constants for conversion methods
   val C0 = 1.0
@@ -90,7 +90,7 @@ object PowerUnitSystem extends Enumeration {
   /**
     * Scale p by m, checking for overflow.
     */
-  def ch(p: Double, m: Double, over: Double) = {
+  def ch(p: Double, m: Double, over: Double): Double = {
     if (p > over) Double.MaxValue
     if (p < 0.0) 0.0
     p * m
@@ -107,8 +107,6 @@ object PowerUnitSystem extends Enumeration {
 
     def convert(p: Double, u: PowerUnit): Double
 
-    override def toString = name
+    override def toString: String = name
   }
-
 }
-

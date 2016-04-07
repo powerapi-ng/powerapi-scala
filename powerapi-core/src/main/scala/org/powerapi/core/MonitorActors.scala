@@ -32,12 +32,14 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import akka.util.Timeout
 
 import org.powerapi.core.ClockChannel.{startClock, stopClock, subscribeClockTick, unsubscribeClockTick}
-import org.powerapi.core.MonitorChannel.{MonitorAggregator, MonitorFrequency, MonitorStart, MonitorStop, MonitorStopAll, formatMonitorChildName, publishMonitorTick, setAggregator, setFrequency, stopMonitor, subscribeMonitorsChannel}
+import org.powerapi.core.MonitorChannel.{MonitorAggregator, MonitorFrequency, MonitorStart, MonitorStop, MonitorStopAll}
+import org.powerapi.core.MonitorChannel.{formatMonitorChildName, publishMonitorTick, setAggregator, setFrequency, stopMonitor, subscribeMonitorsChannel}
 import org.powerapi.core.power._
 import org.powerapi.core.target.Target
 import org.powerapi.core.TickChannel.{subscribeTick, unsubscribeTick}
 import org.powerapi.module.FormulaChannel.stopFormula
-import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport, subscribeRawPowerReport, unsubscribeRawPowerReport, unsubscribeAggPowerReport}
+import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport}
+import org.powerapi.module.PowerChannel.{render, subscribeAggPowerReport, subscribeRawPowerReport, unsubscribeRawPowerReport, unsubscribeAggPowerReport}
 import org.powerapi.module.SensorChannel.stopSensor
 import org.powerapi.reporter.ReporterChannel.{startReporter, stopReporter}
 import org.powerapi.{PowerDisplay, PowerMonitoring}

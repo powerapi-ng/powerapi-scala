@@ -120,7 +120,7 @@ class ReporterActorsSuite extends UnitTest {
     aggPowerReport2 += RawPowerReport("test", muid2, All, 30.W, "cpu", tick2)
 
     val output = new PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor !(muid, timestamp, targets, devices, power)
+      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor ! ((muid, timestamp, targets, devices, power))
     }
 
     val reporter1 = TestActorRef(Props(classOf[Reporter], eventBus, muid1, output), "reporter1")
@@ -195,7 +195,7 @@ class ReporterActorsSuite extends UnitTest {
     aggPowerReport2 += RawPowerReport("test", muid2, All, 30.W, "cpu", tick2)
 
     val output = new PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor !(muid, timestamp, targets, devices, power)
+      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor ! ((muid, timestamp, targets, devices, power))
     }
 
     val reporters = TestActorRef(Props(classOf[Reporters], eventBus), "reporters")

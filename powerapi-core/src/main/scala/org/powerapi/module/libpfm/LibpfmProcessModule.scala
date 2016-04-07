@@ -38,8 +38,8 @@ import org.powerapi.core.{LinuxHelper, OSHelper}
 class LibpfmProcessModule(osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
                           pModel: Map[String, Double], samplingInterval: FiniteDuration) extends PowerModule {
 
-  val sensor = Some((classOf[LibpfmCoreProcessSensor], Seq(osHelper, libpfmHelper, timeout, topology, configuration, events, inDepth)))
-  val formula = Some((classOf[LibpfmFormula], Seq(pModel, samplingInterval)))
+  val sensor = Some((classOf[LibpfmCoreProcessSensor], Seq[Any](osHelper, libpfmHelper, timeout, topology, configuration, events, inDepth)))
+  val formula = Some((classOf[LibpfmFormula], Seq[Any](pModel, samplingInterval)))
 }
 
 object LibpfmProcessModule {

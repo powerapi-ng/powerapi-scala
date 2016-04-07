@@ -23,6 +23,7 @@
 package org.powerapi.reporter
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.DurationInt
 import collection.JavaConversions._
@@ -30,7 +31,6 @@ import collection.JavaConversions._
 import akka.util.Timeout
 
 import org.influxdb.dto.Query
-import org.joda.time.{DateTimeZone, DateTime}
 import org.powerapi.UnitTest
 import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, Process, Target}
@@ -54,8 +54,8 @@ class InfluxDisplaySuite extends UnitTest {
     influxDisplay.influxdb.createDatabase("test")
     influxDisplay.display(muid, timestamp, targets, devices, power)
     val query = new Query("SELECT * FROM \"event.powerapi\"", "test")
-    val result = influxDisplay.influxdb.query(query)
-    result.getResults.head.getSeries.head.getValues.head should contain theSameElementsAs Seq(s"${new DateTime(timestamp, DateTimeZone.UTC)}", s"$muid", devices.mkString(","), targets.mkString(","), s"${power.toMilliWatts}")
+    val result = influxDisplay.influxdb.query(query, TimeUnit.MILLISECONDS)
+    result.getResults.head.getSeries.head.getValues.head should contain theSameElementsAs Seq(timestamp.toDouble, s"$muid", devices.mkString(","), targets.mkString(","), power.toMilliWatts)
     influxDisplay.influxdb.deleteDatabase("test")
   }
 }

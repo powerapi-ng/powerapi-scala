@@ -152,7 +152,7 @@ class PowerMeter(factory: ActorRefFactory, modules: Seq[PowerModule]) extends Po
     * @return the instance of the underlying software power meter.
     */
   def waitFor(duration: FiniteDuration): this.type = {
-    Await.result(underlyingActor.ask(WaitForMessage(duration))(duration + 1l.seconds), duration + 1l.seconds)
+    Await.result(underlyingActor.ask(WaitForMessage(duration))(duration + 1L.seconds), duration + 1L.seconds)
     this
   }
 

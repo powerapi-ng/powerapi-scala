@@ -30,15 +30,15 @@ import org.powerapi.core.power.RawPower._
 object Power {
   def apply(value: Double, unit: PowerUnit): Power = new RawPower(value, unit)
 
-  def apply(value: Double, unit: String): Power = new RawPower(value, PowerUnitSystem(unit))
+  def apply(value: Double, unit: String): Power = new RawPower(value, PowerConverter(unit))
 
-  def fromJoule(joule: Double, duration: FiniteDuration = 1.second) = new RawPower(joule / (duration.toMillis / 1000.0), WATTS)
+  def fromJoule(joule: Double, duration: FiniteDuration = 1.second): Power = new RawPower(joule / (duration.toMillis / 1000.0), WATTS)
 
   /**
     * The natural ordering of powers matches the natural ordering for Double.
     */
   implicit object PowerIsOrdered extends Ordering[Power] {
-    def compare(a: Power, b: Power) = a compare b
+    def compare(a: Power, b: Power): Int = a compare b
   }
 
 }
@@ -71,21 +71,21 @@ trait Power extends Ordered[Power] {
   def max(other: Power): Power = if (this > other) this else other
 
   // Java API
-  def div(divisor: Double) = this / divisor
+  def div(divisor: Double): Power = this / divisor
 
-  def gt(other: Power) = this > other
+  def gt(other: Power): Boolean = this > other
 
-  def gteq(other: Power) = this >= other
+  def gteq(other: Power): Boolean = this >= other
 
-  def lt(other: Power) = this < other
+  def lt(other: Power): Boolean = this < other
 
-  def lteq(other: Power) = this <= other
+  def lteq(other: Power): Boolean = this <= other
 
-  def minus(other: Power) = this - other
+  def minus(other: Power): Power = this - other
 
-  def mul(factor: Double) = this * factor
+  def mul(factor: Double): Power = this * factor
 
-  def plus(other: Power) = this + other
+  def plus(other: Power): Power = this + other
 }
 
 object RawPower {
@@ -96,12 +96,12 @@ object RawPower {
   private final val max_kw = max_w / 1000.0
   private final val max_Mw = max_kw / 1000.0
 
-  def apply(value: Double, unit: PowerUnit) = new RawPower(value, unit)
+  def apply(value: Double, unit: PowerUnit): Power = new RawPower(value, unit)
 
-  def apply(value: Double, unit: String) = new RawPower(value, PowerUnitSystem(unit))
+  def apply(value: Double, unit: String): Power = new RawPower(value, PowerConverter(unit))
 
   implicit object RawPowerIsOrdered extends Ordering[RawPower] {
-    def compare(a: RawPower, b: RawPower) = a compare b
+    def compare(a: RawPower, b: RawPower): Int = a compare b
   }
 
 }
@@ -115,7 +115,7 @@ object RawPower {
 final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
   private val log = LogManager.getLogger
 
-  def toWatts = unit.toWatts(value)
+  def toWatts: Double = unit.toWatts(value)
 
   require(unit match {
     case MILLIWATTS => bounded(max_mw)
@@ -127,19 +127,19 @@ final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
       0.0 <= v && v <= max_Mw
   }, "Power value is limited to 1.79e308 mW and cannot be negative")
 
-  def toKiloWatts = unit.toKiloWatts(value)
+  def toKiloWatts: Double = unit.toKiloWatts(value)
 
-  def toMegaWatts = unit.toMegaWatts(value)
+  def toMegaWatts: Double = unit.toMegaWatts(value)
 
-  def toUnit(u: PowerUnit) = toMilliWatts / MILLIWATTS.convert(1, u)
+  def toUnit(u: PowerUnit): Double = toMilliWatts / MILLIWATTS.convert(1, u)
 
-  override def toString() = s"$value $unit"
+  override def toString(): String = s"$value $unit"
 
-  def compare(other: Power) = toMilliWatts compare other.toMilliWatts
+  def compare(other: Power): Int = toMilliWatts compare other.toMilliWatts
 
-  def toMilliWatts = unit.toMilliWatts(value)
+  def toMilliWatts: Double = unit.toMilliWatts(value)
 
-  def +(other: Power) = add(other.value, other.unit)
+  def +(other: Power): Power = add(other.value, other.unit)
 
   private[this] def add(otherValue: Double, otherUnit: PowerUnit): Power = {
     val commonUnit = if (otherUnit.convert(1, unit) < 1.0) unit else otherUnit
@@ -153,13 +153,16 @@ final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
     a + b
   }
 
-  def -(other: Power) = add(-other.value, other.unit)
+  def -(other: Power): Power = add(-other.value, other.unit)
 
-  def *(factor: Double) = new RawPower({
-    if (factor.isInfinite || factor.isNaN) throw new IllegalArgumentException("factor must be a finite and defined value")
-    else safeMul(value * factor)
-  }, unit
-  )
+  def *(factor: Double): Power = {
+    if (factor.isInfinite || factor.isNaN) {
+      throw new IllegalArgumentException("factor must be a finite and defined value")
+    }
+    else {
+      RawPower(safeMul(value * factor), unit)
+    }
+  }
 
   private[this] def safeMul(a: Double): Double = {
     if (a.isInfinite) throw new IllegalArgumentException("multiplication's result is an infinite value")
@@ -169,17 +172,25 @@ final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
     a
   }
 
-  def /(divisor: Double) = new RawPower({
-    if (divisor.isInfinite || divisor.isNaN) throw new IllegalArgumentException("divisor must be a finite and defined value")
-    else safeMul(value / divisor)
-  }, unit
-  )
+  def /(divisor: Double): Power = {
+    if (divisor.isInfinite || divisor.isNaN) {
+      throw new IllegalArgumentException("divisor must be a finite and defined value")
+    }
+    else {
+      RawPower(safeMul(value / divisor), unit)
+    }
+  }
 
-  override def equals(other: Any) = other match {
+  override def equals(other: Any): Boolean = other match {
     case x: RawPower => toMilliWatts == x.toMilliWatts
     case _ => super.equals(other)
   }
 
-  private[this] def bounded(max: Double) = 0.0 <= value && value <= max
+  override def hashCode(): Int = {
+    val state = Seq[Any](value, unit)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
+
+  private[this] def bounded(max: Double): Boolean = 0.0 <= value && value <= max
 }
 

@@ -44,7 +44,7 @@ class InfluxDisplay(host: String, user: String, pwd: String, dbName: String, mea
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
     val point = Point.measurement(measurement)
       .time(timestamp, TimeUnit.MILLISECONDS)
-      .field("power", s"${power.toMilliWatts}")
+      .field("power", power.toMilliWatts)
       .tag(Map("muid" -> s"$muid", "targets" -> s"${targets.mkString(",")}", "devices" -> s"${devices.mkString(",")}"))
       .build()
 

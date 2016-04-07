@@ -1,3 +1,6 @@
+import collection.JavaConversions._
+import com.typesafe.sbt.SbtPgp._
+
 name := "powerapi-core"
 
 organization := "org.powerapi"
@@ -71,3 +74,21 @@ publishTo := {
   else
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
+
+(System.getenv().getOrElse("SONATYPE_USERNAME", ""), System.getenv().getOrElse("SONATYPE_PASSWORD", "")) match {
+  case (username, password) if username != "" && password != "" =>
+    credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
+  case _ =>
+    credentials ++= Seq()
+}
+
+System.getenv().getOrElse("PGP_PASSPHRASE", "") match {
+  case passphrase if passphrase != "" =>
+    pgpPassphrase := Some(passphrase.toCharArray)
+  case _ =>
+    pgpPassphrase := None
+}
+
+pgpSecretRing := file("local.secring.gpg")
+
+pgpPublicRing := file("local.pubring.gpg")

@@ -25,11 +25,11 @@ package org.powerapi.core
 import org.saddle.Vec
 
 package object power {
-  type PowerUnit = org.powerapi.core.power.PowerUnitSystem.PowerUnitVal
-  final val MILLIWATTS = org.powerapi.core.power.PowerUnitSystem.MILLIWATTS
-  final val WATTS = org.powerapi.core.power.PowerUnitSystem.WATTS
-  final val KILOWATTS = org.powerapi.core.power.PowerUnitSystem.KILOWATTS
-  final val MEGAWATTS = org.powerapi.core.power.PowerUnitSystem.MEGAWATTS
+  type PowerUnit = org.powerapi.core.power.PowerConverter.PowerUnitVal
+  final val MILLIWATTS = org.powerapi.core.power.PowerConverter.MILLIWATTS
+  final val WATTS = org.powerapi.core.power.PowerConverter.WATTS
+  final val KILOWATTS = org.powerapi.core.power.PowerConverter.KILOWATTS
+  final val MEGAWATTS = org.powerapi.core.power.PowerConverter.MEGAWATTS
 
   def MAX(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).max match {
     case Some(max) => max.mW
@@ -56,33 +56,33 @@ package object power {
   def VARIANCE(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).variance.mW
 
   implicit final class DoublePower(private val value: Double) extends AnyVal {
-    def mW = Power(value, MILLIWATTS)
+    def mW: Power = Power(value, MILLIWATTS)
 
-    def W = Power(value, WATTS)
+    def W: Power = Power(value, WATTS)
 
-    def kW = Power(value, KILOWATTS)
+    def kW: Power = Power(value, KILOWATTS)
 
-    def MW = Power(value, MEGAWATTS)
+    def MW: Power = Power(value, MEGAWATTS)
   }
 
   implicit final class LongPower(private val value: Long) extends AnyVal {
-    def mW = Power(value.toDouble, MILLIWATTS)
+    def mW: Power = Power(value.toDouble, MILLIWATTS)
 
-    def W = Power(value.toDouble, WATTS)
+    def W: Power = Power(value.toDouble, WATTS)
 
-    def kW = Power(value.toDouble, KILOWATTS)
+    def kW: Power = Power(value.toDouble, KILOWATTS)
 
-    def MW = Power(value.toDouble, MEGAWATTS)
+    def MW: Power = Power(value.toDouble, MEGAWATTS)
   }
 
   implicit final class IntPower(private val value: Int) extends AnyVal {
-    def mW = Power(value.toDouble, MILLIWATTS)
+    def mW: Power = Power(value.toDouble, MILLIWATTS)
 
-    def W = Power(value.toDouble, WATTS)
+    def W: Power = Power(value.toDouble, WATTS)
 
-    def kW = Power(value.toDouble, KILOWATTS)
+    def kW: Power = Power(value.toDouble, KILOWATTS)
 
-    def MW = Power(value.toDouble, MEGAWATTS)
+    def MW: Power = Power(value.toDouble, MEGAWATTS)
   }
 
 }

@@ -26,8 +26,8 @@ import org.powerapi.PowerModule
 import org.powerapi.core.{LinuxHelper, OSHelper}
 
 class CpuDvfsModule(osHelper: OSHelper, tdp: Double, tdpFactor: Double, frequencies: Map[Int, Double]) extends PowerModule {
-  lazy val sensor = Some((classOf[CpuDvfsSensor], Seq(osHelper)))
-  lazy val formula = Some((classOf[CpuDvfsFormula], Seq(tdp, tdpFactor, frequencies)))
+  val sensor = Some((classOf[CpuDvfsSensor], Seq(osHelper)))
+  val formula = Some((classOf[CpuDvfsFormula], Seq[Any](tdp, tdpFactor, frequencies)))
 }
 
 object CpuDvfsModule extends CpuDvfsFormulaConfiguration {

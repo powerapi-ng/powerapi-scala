@@ -108,7 +108,7 @@ trait OSHelper {
       case process: Process => getProcessCpuTime(process)
       case wrapper: Target if wrapper.isInstanceOf[Application] || wrapper.isInstanceOf[Container] =>
         getProcesses(wrapper).toSeq.map(process => getProcessCpuTime(process)).sum
-      case _ => 0l
+      case _ => 0L
     }
   }
 }
@@ -181,6 +181,9 @@ class LinuxHelper extends Configuration(None) with OSHelper {
   private val PSFormat = """^\s*(\d+)\s*""".r
   private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
   private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
+  private val procUserTimeIndex = 13
+  private val procSysTimeIndex = 14
+  private val procGlobalIdleTime = 3
 
   def getCPUFrequencies: Set[Long] = {
     (for (index <- topology.values.flatten) yield {
@@ -230,13 +233,13 @@ class LinuxHelper extends Configuration(None) with OSHelper {
 
         val statLine = source.getLines.toIndexedSeq(0).split("\\s")
         // User time + System time
-        statLine(13).toLong + statLine(14).toLong
+        statLine(procUserTimeIndex).toLong + statLine(procSysTimeIndex).toLong
       })
     }
     catch {
       case ioe: IOException =>
         log.warn("i/o exception: {}", ioe.getMessage)
-        0l
+        0L
     }
   }
 
@@ -252,7 +255,7 @@ class LinuxHelper extends Configuration(None) with OSHelper {
             * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
             */
           case GlobalStatFormat(times) =>
-            val idleTime = times.split("\\s")(3).toLong
+            val idleTime = times.split("\\s")(procGlobalIdleTime).toLong
             val activeTime = times.split("\\s").slice(0, 8).map(_.toLong).sum - idleTime
 
             GlobalCpuTimes(idleTime, activeTime)
@@ -334,7 +337,7 @@ class SigarHelper(sigar: SigarProxy) extends OSHelper {
     catch {
       case se: SigarException =>
         log.warn("sigar exception: {}", se.getMessage)
-        0l
+        0L
     }
   }
 

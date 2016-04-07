@@ -10,6 +10,10 @@ env:
     - secure: "MLFJWju96LymkPNIsUeJelNN5J3BK55OV/RXVMONC5kDr4N7T4JyhT6KUa4k+FSJ0S1GTPQMWQQEkWDF1MlZXv5yGwW4h5rN3tt//vqyHk968SyqlhTdygqzx6tO6t3OsfQ2F1AqVWAWsHQckL+VmhEo53VqVXpsqLy9DyLYGjs=" # DOCKER_EMAIL
     - secure: "FbLHLKNAtpj7ZVgSobOPgAgdLK3/P4sR6RcaOmpVRsgaqodTPx7VkzGpkf4rOqPwxKU3+96vr0TlIdPRYWAE39Y3gMb1dyZ34+CxsrJ3avJYc2+9NT3kmAuU33Iy1DCo3IEnR7pWVVEyR80ob0c1ASfPAW1JN8DhBRRERpkMyn4=" # DOCKER_USER
     - secure: "VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=" # DOCKER_PWD
+    - secure: "YdYgoOCsfP8etDVdbURY/HCqZhGUrWzOsgQcfBCnkbBueU0ugt48rX/BFTtrq/qIJp/N9YqDpw7Vz3X1mhfT3EMpNJRDkbHaMM1YxWX++PmGdVu71ZCiONd2/Q8h8uZP7MLgeD7nnMhls8LBgiCqqWUK0NXfMQwzALYechV42nw=" # SONATYPE_USER
+    - secure: "a5ZD5zp0Nu1GQUMJeTL9fCNxbtKfRzXOafWsrCipP/qg+uKrbNVS5sbhCBu7WB/Qf1x8cQapyXgRcFX/13bTkB+SWYEcUeRK5FH0hByaWLbjxuQNx5QjoRZEgi7lgvEbgyFPnsqAKLPoKmauRGGAlkhZOwnLRFpdha/+b2lKRs8=" # SONATYPE_PWD
+    - secure: "ixdgd8MbWHpLYPhmUF/+yAh6YGiK3C3xnhuYgam3wKkVhC5UcdW4SPGDuB2fNjgFCzMQ5uonBwYFINLDps3VWHtA0NTvImxOUuRFeo60NkAaygmx5hjEhw69Kgpo7h1MRe6Tkexq5+u+ImrAjoQFCwXZfRG8y7jhMvGUkicGPIg=" # PGP_PASSPHRASE
+    - secure: "A1o93OIGEa6GCRDAesU20gXUDZwWgJbz9hJJoBBVS49Zk4asB09uE5GVVPGKSs+4nDvI55os1lQZWYgvaF2Yy9kvaXcxgx1TeXNsCwlH2ZAd7yiaQJxDil2/wjle3KrT/Nqbb+VssHKHMjacQQHgwzUYCWjok7Q7D9EmFppXvR4=" # GITHUB_TOKEN
 
 cache:
   directories:
@@ -27,24 +31,26 @@ jdk:
 
 # workaround for openjdk buffer overflow
 addons:
-   hostname: localhost
+  hostname: localhost
 
 script:
-- sbt compile test:compile
-- sbt 'set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)' "project powerapi-core" coverage test
-- find $HOME/.sbt -name "*.lock" | xargs rm
+  - sbt compile test:compile
+  - sbt 'set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)' "project powerapi-core" coverage test
+  - find $HOME/.sbt -name "*.lock" | xargs rm
 
 before_install:
-- wget -O influxdb.deb https://s3.amazonaws.com/influxdb/influxdb_0.10.2-1_amd64.deb
-- sudo dpkg -i influxdb.deb
-- sudo service influxdb start
-- sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi'
-  WITH ALL PRIVILEGES"
+  - openssl aes-256-cbc -K $encrypted_48ebb0d1c0b9_key -iv $encrypted_48ebb0d1c0b9_iv -in secrets.tar.enc -out secrets.tar -d
+  - tar xvf secrets.tar
+  - wget -O influxdb.deb https://s3.amazonaws.com/influxdb/influxdb_0.10.2-1_amd64.deb
+  - sudo dpkg -i influxdb.deb
+  - sudo service influxdb start
+  - sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi' WITH ALL PRIVILEGES"
+  - sudo bash -c "source /usr/local/rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"
 
 after_success:
-- sbt "project powerapi-core" coverageReport
-- sbt "project powerapi-core" codacyCoverage
-- sbt "project powerapi-core" coveralls
+  - sbt "project powerapi-core" coverageReport
+  - sbt "project powerapi-core" codacyCoverage
+  - sbt "project powerapi-core" coveralls
 
 before_deploy:
   - sbt "project powerapi-sampling" universal:packageZipTarball
@@ -65,6 +71,12 @@ deploy:
     repo: Spirals-Team/powerapi
 
 after_deploy:
+  - sbt "project powerapi-core" publishSigned sonatypeRelease
+  - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
+  - git config user.name "TRAVIS CI"
+  - git add CHANGELOG.md
+  - git commit -m "core(changelog): update the Changelog"
+  - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1
   - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PWD
   - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling:$TRAVIS_TAG .
   - docker build -f docker/Dockerfile-cli -t spirals/powerapi-cli:$TRAVIS_TAG .

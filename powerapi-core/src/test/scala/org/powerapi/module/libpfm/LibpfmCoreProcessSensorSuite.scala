@@ -127,7 +127,7 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
             val pcs = Await.result(Future.sequence(_wrappers.head.values), timeout.duration).asInstanceOf[List[HWCounter]]
             val values = Map[(Int, String), Long]((0, "event") -> 15, (0, "event1") -> 24, (1, "event") -> 33, (1, "event1") -> 42)
 
-            pcs.map(_.value).sum should equal(values(core, event))
+            pcs.map(_.value).sum should equal(values(((core, event))))
         }
     }
 
@@ -160,7 +160,7 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
             val values = Map[(Int, String), Long]((0, "event") -> 45, (0, "event1") -> 45, (1, "event") -> 0, (1, "event1") -> 0)
             val periods = Map[(Int, String), Double]((0, "event") -> 2, (0, "event1") -> 2, (1, "event") -> Double.NaN, (1, "event1") -> Double.NaN)
 
-            pcs.map(_.value).sum should equal(values(core, event))
+            pcs.map(_.value).sum should equal(values((core, event)))
         }
     }
 

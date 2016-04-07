@@ -59,7 +59,7 @@ class Processing(samplingPath: String, processingPath: String, configuration: Sa
         for (eventPath <- frequencyPath ** "*.dat") {
           val event = eventPath.name.replace(configuration.baseOutput, "").replace(".dat", "")
 
-          if (!data.contains(frequency, event)) {
+          if (!data.contains((frequency, event))) {
             data += (frequency, event) -> List()
           }
 
@@ -69,7 +69,7 @@ class Processing(samplingPath: String, processingPath: String, configuration: Sa
           while (lines.nonEmpty) {
             val dataSubset = lines.takeWhile(_ != configuration.separator)
 
-            data += (frequency, event) -> (data.get(frequency, event) match {
+            data += ((frequency, event)) -> (data.get((frequency, event)) match {
               case Some(list) => list.lift(index) match {
                 case Some(vector) => list.updated(index, vector.concat(Vec[Double](dataSubset.filter(_ != "").map(_.toDouble).toList: _*)))
                 case _ => list :+ Vec(dataSubset.filter(_ != "").map(_.toDouble).toList: _*)

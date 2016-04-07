@@ -33,8 +33,8 @@ import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormula, LibpfmCoreCyc
 class LibpfmCoreModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
                        cyclesThreadName: String, cyclesRefName: String, pModel: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
 
-  val sensor = Some((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
-  val formula = Some((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, pModel, samplingInterval)))
+  val sensor = Some((classOf[LibpfmCoreSensor], Seq[Any](libpfmHelper, timeout, topology, configuration, events)))
+  val formula = Some((classOf[LibpfmCoreCyclesFormula], Seq[Any](cyclesThreadName, cyclesRefName, pModel, samplingInterval)))
 }
 
 object LibpfmCoreModule {
