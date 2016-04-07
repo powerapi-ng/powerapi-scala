@@ -1,9 +1,74 @@
+sudo: required
+
+services:
+  - docker
+
+env:
+  global:
+    - secure: "BfP5e/OPM62e3ktm4RD2nuBJls2u8zdXg/YjNyght5dpD2vCjL6ZHWhgDM2mNFpzgYPiE3DPsSE7g2ZlsBUJCuK8a7lB5r+OiWFcWkilC1E9QX6OMcDTpEKb5A9InFGcpt0xbjY5+8qaIbaN8TJcdxaxeit0TZEvxeirQa5OOEY=" # COVERALLS_REPO_TOKEN
+    - secure: "ldIw526YR2Fe6FlfIPlbbOojEeg7etbO4dqiL4TLm00SBhVkKG+DuckhFixVAvAJx1Q1LuVyUPsXaR77OjqiTxSkaH+GbsmR5VIM4qA/kBheD4IiV4wTamg679d+AldRNWcGtLpefgwqlCJ53FcMzUT9TH/MJcbEaOJ5GKW9v+s=" # CODACY_PROJECT_TOKEN
+    - secure: "MLFJWju96LymkPNIsUeJelNN5J3BK55OV/RXVMONC5kDr4N7T4JyhT6KUa4k+FSJ0S1GTPQMWQQEkWDF1MlZXv5yGwW4h5rN3tt//vqyHk968SyqlhTdygqzx6tO6t3OsfQ2F1AqVWAWsHQckL+VmhEo53VqVXpsqLy9DyLYGjs=" # DOCKER_EMAIL
+    - secure: "FbLHLKNAtpj7ZVgSobOPgAgdLK3/P4sR6RcaOmpVRsgaqodTPx7VkzGpkf4rOqPwxKU3+96vr0TlIdPRYWAE39Y3gMb1dyZ34+CxsrJ3avJYc2+9NT3kmAuU33Iy1DCo3IEnR7pWVVEyR80ob0c1ASfPAW1JN8DhBRRERpkMyn4=" # DOCKER_USER
+    - secure: "VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=" # DOCKER_PWD
+
+cache:
+  directories:
+  - "$HOME/.m2/repository"
+  - "$HOME/.sbt"
+  - "$HOME/.ivy2"
+
 language: scala
+
 scala:
-- 2.11.6
+- 2.11.7
+
+jdk:
+  - openjdk7
+
+# workaround for openjdk buffer overflow
+addons:
+   hostname: localhost
+
 script:
-- sbt clean "project powerapi-core" coverage test
+- sbt compile test:compile
+- sbt 'set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)' "project powerapi-core" coverage test
+- find $HOME/.sbt -name "*.lock" | xargs rm
+
+before_install:
+- wget -O influxdb.deb https://s3.amazonaws.com/influxdb/influxdb_0.10.2-1_amd64.deb
+- sudo dpkg -i influxdb.deb
+- sudo service influxdb start
+- sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi'
+  WITH ALL PRIVILEGES"
+
 after_success:
 - sbt "project powerapi-core" coverageReport
 - sbt "project powerapi-core" codacyCoverage
 - sbt "project powerapi-core" coveralls
+
+before_deploy:
+  - sbt "project powerapi-sampling" universal:packageZipTarball
+  - sbt "project powerapi-cli" universal:packageZipTarball
+  - tar -C powerapi-sampling/target/universal -xvf powerapi-sampling/target/universal/powerapi-sampling.tgz
+  - tar -C powerapi-cli/target/universal -xvf powerapi-cli/target/universal/powerapi-cli.tgz
+
+deploy:
+  provider: releases
+  api_key:
+    secure: IEU1nWNWXW394yjC8/2Ch3naFM18mUmns9q11U0sCWMm9nz7ej4D5crKxCPtIHyHtFlONY1s0udBk6rv3aCVq0UikOysHFiVdPPeJTRCtGptxOb04/pZtq3vITcMzS9+CQc+yV8Y3A2vv15L/30ERMk1fgur+Nb+8vTFfXfzEik=
+  file:
+    - "powerapi-sampling/target/universal/powerapi-sampling.tgz"
+    - "powerapi-cli/target/universal/powerapi-cli.tgz"
+  skip_cleanup: true
+  on:
+    tags: true
+    repo: Spirals-Team/powerapi
+
+after_deploy:
+  - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PWD
+  - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling:$TRAVIS_TAG .
+  - docker build -f docker/Dockerfile-cli -t spirals/powerapi-cli:$TRAVIS_TAG .
+  - docker tag spirals/powerapi-sampling:$TRAVIS_TAG spirals/powerapi-sampling:latest
+  - docker tag spirals/powerapi-cli:$TRAVIS_TAG spirals/powerapi-cli:latest
+  - docker push spirals/powerapi-sampling
+  - docker push spirals/powerapi-cli

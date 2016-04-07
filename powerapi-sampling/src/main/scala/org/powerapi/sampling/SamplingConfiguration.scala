@@ -23,57 +23,73 @@
 package org.powerapi.sampling
 
 import java.util.concurrent.TimeUnit
+
+import scala.collection.JavaConversions._
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
+
 import com.typesafe.config.Config
 import org.joda.time.format.PeriodFormatterBuilder
-import org.powerapi.core.{LinuxHelper, ConfigValue, Configuration}
-import scala.concurrent.duration.{DurationLong, FiniteDuration}
-import scala.collection.JavaConversions._
+import org.powerapi.core.{ConfigValue, Configuration, LinuxHelper}
 
 /**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Main configuration.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class SamplingConfiguration extends Configuration(None) {
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
+  lazy val samplingInterval: FiniteDuration = load {
+    _.getDuration("powerapi.sampling.interval", TimeUnit.NANOSECONDS)
+  } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
   }
 
-  lazy val nbSamples: Int = load { _.getInt("powerapi.sampling.nb-samples") } match {
+  lazy val nbSamples: Int = load {
+    _.getInt("powerapi.sampling.nb-samples")
+  } match {
     case ConfigValue(value) => value
     case _ => 1
   }
 
-  lazy val dvfs: Boolean = load { _.getBoolean("powerapi.sampling.dvfs") } match {
+  lazy val dvfs: Boolean = load {
+    _.getBoolean("powerapi.sampling.dvfs")
+  } match {
     case ConfigValue(value) => value
     case _ => false
   }
 
-  lazy val turbo: Boolean = load { _.getBoolean("powerapi.sampling.turbo") } match {
+  lazy val turbo: Boolean = load {
+    _.getBoolean("powerapi.sampling.turbo")
+  } match {
     case ConfigValue(value) => value
     case _ => false
   }
 
-  lazy val steps: List[Int] = load { _.getIntList("powerapi.sampling.steps") } match {
-    case ConfigValue(values) => values.map(_.toInt).toList.sortWith(_>_)
+  lazy val steps: List[Int] = load {
+    _.getIntList("powerapi.sampling.steps")
+  } match {
+    case ConfigValue(values) => values.map(_.toInt).toList.sortWith(_ > _)
     case _ => List(100, 25)
   }
 
-  lazy val stepDuration: Int = load { _.getInt("powerapi.sampling.step-duration") } match {
+  lazy val stepDuration: Int = load {
+    _.getInt("powerapi.sampling.step-duration")
+  } match {
     case ConfigValue(value) => value
     case _ => 2
   }
 
   lazy val topology: Map[Int, Set[Int]] = load { conf =>
     (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getDoubleList("indexes").map(_.toInt).toSet)).toMap
+      yield (item.getInt("core"), item.getIntList("indexes").map(_.toInt).toSet)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
   }
 
-  lazy val events: Set[String] = load { _.getStringList("powerapi.sampling.events") } match {
+  lazy val events: Set[String] = load {
+    _.getStringList("powerapi.sampling.events")
+  } match {
     case ConfigValue(values) => values.toSet
     case _ => Set()
   }

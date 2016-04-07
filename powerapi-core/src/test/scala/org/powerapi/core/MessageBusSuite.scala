@@ -22,22 +22,22 @@
  */
 package org.powerapi.core
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
 import org.powerapi.UnitTest
 
-class MessageBusSuite(system: ActorSystem) extends UnitTest(system) {
-
-  def this() = this(ActorSystem("MessageSuite"))
+class MessageBusSuite extends UnitTest {
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  "The MessageBus" should "handle messages by topic" in {
+  "A MessageBus" should "handle messages by topic" in {
     val eventBus = new MessageBus
-    val msg1 = new Message { val topic = "topic1" }
-    val msg2 = new Message { val topic = "topic2" }
+    val msg1 = new Message {
+      val topic = "topic1"
+    }
+    val msg2 = new Message {
+      val topic = "topic2"
+    }
 
     eventBus.subscribe(testActor, "topic1")
     eventBus.publish(msg1)

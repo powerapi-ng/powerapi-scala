@@ -25,12 +25,11 @@ package org.powerapi.core
 import scala.io.Source
 
 /**
- * Implement the Loan's pattern for closing automatically a resource.
- *
- * @see https://wiki.scala-lang.org/display/SYGN/Loan
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Implement the Loan's pattern for closing automatically a resource.
+  *
+  * @see https://wiki.scala-lang.org/display/SYGN/Loan
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 object FileHelper {
   def using[A](filepath: String)(f: Source => A): A = {
     lazy val resource = Source.fromFile(filepath)

@@ -22,25 +22,24 @@
  */
 package org.powerapi.sampling
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
-import org.saddle.io.{CsvFile, CsvParams, CsvParser}
 import scala.concurrent.duration.DurationInt
 import scalax.file.Path
 
-class ProcessingSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import akka.util.Timeout
 
-  def this() = this(ActorSystem("ProcessingSuite"))
+import org.powerapi.UnitTest
+import org.saddle.io.{CsvFile, CsvParams, CsvParser}
+
+class ProcessingSuite extends UnitTest {
 
   val timeout = Timeout(1.seconds)
+  val basepath = getClass.getResource("/").getPath
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
-
-  val basepath = getClass.getResource("/").getPath
 
   "The Processing step" should "process the sample files and create the files that will be used during the regression" in {
     val samplingConfiguration = new SamplingConfiguration {
@@ -50,18 +49,18 @@ class ProcessingSuite(system: ActorSystem) extends UnitTest(system) {
 
     new Processing(s"${basepath}samples", "/tmp/processing", samplingConfiguration).run()
 
-    val expectedPaths = Path("/") / (s"${basepath}processing", '/') * "*.csv"
-    val prDataPaths = Path("/") / ("/tmp/processing", '/') * "*.csv"
+    val expectedPaths = Path("/") /(s"${basepath}processing", '/') * "*.csv"
+    val prDataPaths = Path("/") /("/tmp/processing", '/') * "*.csv"
 
     prDataPaths.size should equal(expectedPaths.size)
 
-    for(path <- expectedPaths) {
+    for (path <- expectedPaths) {
       val expectedCSV = CsvFile(path.path)
       val prDataCSV = CsvFile(s"/tmp/processing/${path.name}")
-      val expectedMat = CsvParser.parse(List(1,2), CsvParams(skipLines = 1))(expectedCSV).mapValues(CsvParser.parseDouble).toMat
-      val prDataMat = CsvParser.parse(List(1,2), CsvParams(skipLines = 1))(prDataCSV).mapValues(CsvParser.parseDouble).toMat
+      val expectedMat = CsvParser.parse(List(1, 2), CsvParams(skipLines = 1))(expectedCSV).mapValues(CsvParser.parseDouble).toMat
+      val prDataMat = CsvParser.parse(List(1, 2), CsvParams(skipLines = 1))(prDataCSV).mapValues(CsvParser.parseDouble).toMat
 
-      for(index <- 0 until expectedMat.numCols) {
+      for (index <- 0 until expectedMat.numCols) {
         prDataMat.col(index).contents should contain theSameElementsAs expectedMat.col(index).contents
       }
     }

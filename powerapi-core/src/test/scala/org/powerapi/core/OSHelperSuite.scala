@@ -22,27 +22,56 @@
  */
 package org.powerapi.core
 
-import java.util.UUID
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.hyperic.sigar.{Sigar, SigarProxyCache, SigarException}
-import org.powerapi.UnitTest
-import org.powerapi.core.target.{All, Application, Container, Process, intToProcess, stringToApplication, TargetUsageRatio}
-import org.powerapi.module.CacheKey
 import scala.concurrent.duration.DurationInt
 
-class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.hyperic.sigar.{Sigar, SigarException, SigarProxyCache}
+import org.powerapi.UnitTest
+import org.powerapi.core.target.{All, Application, Container, Process, Target}
 
-  def this() = this(ActorSystem("OSHelperSuite"))
+class OSHelperSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
+  val basepath = getClass.getResource("/").getPath
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  val basepath = getClass.getResource("/").getPath
+  "An OSHelper" should "allow to get the target processes and to get the target cpu time" in {
+    val helper = new OSHelper {
+      def getTimeInStates: TimeInStates = ???
+
+      def getThreads(process: Process): Set[Thread] = ???
+
+      def getCPUFrequencies: Set[Long] = ???
+
+      def getProcessCpuTime(process: Process): Long = process match {
+        case Process(1) => 10
+        case Process(2) => 11
+        case Process(3) => 20
+        case Process(4) => 21
+        case Process(10) => 30
+      }
+
+      def getGlobalCpuTimes: GlobalCpuTimes = ???
+
+      def getProcesses(target: Target): Set[Process] = target match {
+        case Application("firefox") => Set(1, 2)
+        case Container("docker") => Set(3, 4)
+        case Process(10) => Set(10)
+      }
+    }
+
+    helper.getProcesses(Application("firefox")) should equal(Set(Process(1), Process(2)))
+    helper.getProcesses(Container("docker")) should equal(Set(Process(3), Process(4)))
+    helper.getProcesses(Process(10)) should equal(Set(Process(10)))
+    helper.getTargetCpuTime(Process(10)) should equal(30)
+    helper.getTargetCpuTime(Application("firefox")) should equal(10 + 11)
+    helper.getTargetCpuTime(Container("docker")) should equal(20 + 21)
+    helper.getTargetCpuTime(All) should equal(0)
+  }
 
   "The LinuxHelper" should "be able to read configuration parameters" in {
     val linuxHelper = new LinuxHelper
@@ -55,132 +84,33 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
     linuxHelper.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
   }
 
-  "The method getCPUFrequencies in the LinuxHelper" should "return the list of available frequencies" in {
+  it should "return the list of available frequencies" in {
     val helper = new LinuxHelper {
+      override lazy val topology = Map(0 -> Set(0), 1 -> Set(1), 2 -> Set(2), 3 -> Set(3))
       override lazy val frequenciesPath = s"${basepath}sys/devices/system/cpu/cpu%?core/cpufreq/scaling_available_frequencies"
     }
 
     helper.getCPUFrequencies should contain allOf(1596000l, 1729000l, 1862000l, 1995000l, 2128000l, 2261000l, 2394000l, 2527000l, 2660000l)
   }
 
-  "The method getThreads in the LinuxHelper" should "return the threads created by a given process" in {
+  it should "return the threads created by a given process" in {
     val helper = new LinuxHelper {
-      override lazy val taskPath =  s"${basepath}proc/%?pid/task"
+      override lazy val taskPath = s"${basepath}proc/%?pid/task"
     }
 
     helper.getThreads(1) should contain allOf(Thread(1000), Thread(1001))
   }
 
-  "The method getTargetCpuTime in the OSHelper" should "return the cpu usage of the target" in {
-    val helper = new OSHelper {
-      def getCPUFrequencies: Set[Long] = Set()
-
-      def getProcesses(application: Application): Set[Process] = application match {
-        case Application("app") => Set(Process(2), Process(3))
-        case Application("bad-app") => Set(Process(-1), Process(2))
-        case _ => Set()
-      }
-      
-      override def getProcesses(container: Container): Set[Process] = container match {
-        case Container("ship") => Set(Process(4), Process(5))
-        case Container("bad-ship") => Set(Process(-1), Process(4))
-        case _ => Set()
-      }
-
-      def getProcessCpuTime(process: Process): Option[Long] = process match {
-        case Process(1) => Some(33 + 2)
-        case Process(2) => Some(10 + 5)
-        case Process(3) => Some(3 + 5)
-        case Process(4) => Some(6 + 8)
-        case Process(5) => Some(20 + 7)
-        case _ => None
-      }
-
-      def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
-
-      def getThreads(process: Process): Set[Thread] = Set()
-      
-      def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = TargetUsageRatio(0.0)
-
-      def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
-
-      def getTimeInStates: TimeInStates = TimeInStates(Map())
-    }
-
-    val p1Time = 33 + 2
-    val goodAppTime = 10 + 5 + 3 + 5
-    val badAppTime = 10 + 5
-    val goodShipTime = 6 + 8 + 20 + 7
-    val badShipTime = 6 + 8
-
-    helper.getTargetCpuTime(1) should equal(Some(p1Time))
-    helper.getTargetCpuTime("app") should equal(Some(goodAppTime))
-    helper.getTargetCpuTime("bad-app") should equal(Some(badAppTime))
-    helper.getTargetCpuTime(Container("ship")) should equal(Some(goodShipTime))
-    helper.getTargetCpuTime(Container("bad-ship")) should equal(Some(badShipTime))
-    helper.getTargetCpuTime(All) should equal(None)
-  }
-  
-  "The method getTargetCpuPercent in the OSHelper" should "return the cpu usage of the target" in {
-    val helper = new OSHelper {
-      def getCPUFrequencies: Set[Long] = Set()
-
-      def getProcesses(application: Application): Set[Process] = application match {
-        case Application("app") => Set(Process(2), Process(3))
-        case Application("bad-app") => Set(Process(-1), Process(2))
-        case _ => Set()
-      }
-      
-      override def getProcesses(container: Container): Set[Process] = container match {
-        case Container("ship") => Set(Process(4), Process(5))
-        case Container("bad-ship") => Set(Process(-1), Process(4))
-        case _ => Set()
-      }
-
-      def getProcessCpuTime(process: Process): Option[Long] = None
-
-      def getGlobalCpuTime: GlobalCpuTime = GlobalCpuTime(0, 0)
-
-      def getThreads(process: Process): Set[Thread] = Set()
-      
-      def getProcessCpuPercent(muid: UUID, process: Process): TargetUsageRatio = process match {
-        case Process(1) => TargetUsageRatio(0.73)
-        case Process(2) => TargetUsageRatio(0.49)
-        case Process(3) => TargetUsageRatio(0.14)
-        case Process(4) => TargetUsageRatio(0.67)
-        case Process(5) => TargetUsageRatio(0.05)
-        case _ => TargetUsageRatio(0.0)
-      }
-
-      def getGlobalCpuPercent(muid: UUID): TargetUsageRatio = TargetUsageRatio(0.0)
-
-      def getTimeInStates: TimeInStates = TimeInStates(Map())
-    }
-
-    val p1Usage = 0.73
-    val goodAppUsage = 0.49 + 0.14
-    val badAppUsage = 0.49
-    val goodShipUsage = 0.67 + 0.05
-    val badShipUsage = 0.67
-
-    helper.getTargetCpuPercent(UUID.randomUUID(), 1) should equal(TargetUsageRatio(p1Usage))
-    helper.getTargetCpuPercent(UUID.randomUUID(), "app") should equal(TargetUsageRatio(goodAppUsage))
-    helper.getTargetCpuPercent(UUID.randomUUID(), "bad-app") should equal(TargetUsageRatio(badAppUsage))
-    helper.getTargetCpuPercent(UUID.randomUUID(), Container("ship")) should equal(TargetUsageRatio(goodShipUsage))
-    helper.getTargetCpuPercent(UUID.randomUUID(), Container("bad-ship")) should equal(TargetUsageRatio(badShipUsage))
-    helper.getTargetCpuPercent(UUID.randomUUID(), All) should equal(TargetUsageRatio(0.0))
-  }
-
-  "The method getProcessCpuTime in the LinuxHelper" should "return the process cpu time of a given process" in {
+  it should "return the process cpu time of a given process" in {
     val helper = new LinuxHelper {
       override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
     }
 
-    helper.getProcessCpuTime(1) should equal(Some(35))
-    helper.getProcessCpuTime(10) should equal(None)
+    helper.getProcessCpuTime(1) should equal(35)
+    helper.getProcessCpuTime(10) should equal(0)
   }
 
-  "The method getGlobalCpuTime in the LinuxHelper" should "return the global cpu time" in {
+  it should "return the global cpu time" in {
     val helper = new LinuxHelper {
       override lazy val globalStatPath = s"${basepath}proc/stat"
     }
@@ -189,43 +119,15 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
       override lazy val globalStatPath = s"${basepath}proc/stats"
     }
 
+    val idleTime = 25883594
     val globalTime = 43171 + 1 + 24917 + 25883594 + 1160 + 19 + 1477 + 0
-    val activeTime = globalTime - 25883594
+    val activeTime = globalTime - idleTime
 
-    helper.getGlobalCpuTime should equal(GlobalCpuTime(globalTime, activeTime))
-    badHelper.getGlobalCpuTime should equal(GlobalCpuTime(0, 0))
-  }
-  
-  "The method getProcessCpuPercent in the LinuxHelper" should "return the process cpu usage in percentage of a given process" in {
-    val muid = UUID.randomUUID()
-    val helper = new LinuxHelper {
-      override lazy val processStatPath = s"${basepath}proc/%?pid/stat"
-      override lazy val globalStatPath  = s"${basepath}proc/stat"
-      
-      cpuTimesCache.update(new CacheKey(muid, 1), (30, 25954239))
-    }
-
-    helper.getProcessCpuPercent(muid, 1) should equal(TargetUsageRatio(0.05))
-    helper.getProcessCpuPercent(muid, 10) should equal(TargetUsageRatio(0.0))
+    helper.getGlobalCpuTimes should equal(GlobalCpuTimes(idleTime, activeTime))
+    badHelper.getGlobalCpuTimes should equal(GlobalCpuTimes(0, 0))
   }
 
-  "The method getGlobalCpuPercent in the LinuxHelper" should "return the global cpu usage in percentage" in {
-    val muid = UUID.randomUUID()
-    val helper = new LinuxHelper {
-      override lazy val globalStatPath = s"${basepath}proc/stat"
-      
-      cpuTimesCache.update(new CacheKey(muid, All), (70700, 25954239))
-    }
-
-    val badHelper = new LinuxHelper {
-      override lazy val globalStatPath = s"${basepath}proc/stats"
-    }
-
-    helper.getGlobalCpuPercent(muid) should equal(TargetUsageRatio(0.45))
-    badHelper.getGlobalCpuPercent(muid) should equal(TargetUsageRatio(0.0))
-  }
-
-  "The method getTimeInStates in the LinuxHelper" should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
+  it should "return the time spent by the CPU in each frequency if the dvfs is enabled" in {
     val helper = new LinuxHelper {
       override lazy val timeInStatePath = s"${basepath}sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
       override lazy val topology = Map(0 -> Set(0), 1 -> Set(1), 2 -> Set(2), 3 -> Set(3))
@@ -253,30 +155,34 @@ class OSHelperSuite(system: ActorSystem) extends UnitTest(system) {
   "The SigarHelperConfiguration" should "be able to read configuration parameters" in {
     val sigarHelper = new SigarHelperConfiguration {}
 
-    sigarHelper.libNativePath should equal("p2")
+    sigarHelper.libNativePath should equal("./../external-libs/sigar-bin")
   }
 
-  "The SigarHelper methods" should "return correct values" ignore {
+  "The SigarHelper" should "work on most systems" in {
     val sigar = {
-      System.setProperty("java.library.path", s"./../external-libs/sigar-bin")
+      System.setProperty("java.library.path", s"${basepath}sigar-bin")
       SigarProxyCache.newInstance(new Sigar(), 100)
     }
 
     val helper = new SigarHelper(sigar)
     val pid = Process(java.lang.management.ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt)
-    
-    intercept[SigarException] { helper.getCPUFrequencies }
+
+    intercept[SigarException] {
+      helper.getCPUFrequencies
+    }
     helper.getProcesses(Application("java")).size should be > 0
-    intercept[SigarException] { helper.getThreads(Process(1)) }
-    helper.getProcessCpuTime(pid).get should be > 0L
-    helper.getGlobalCpuTime match {
-      case GlobalCpuTime(globalTime, activeTime) => {
-        globalTime should be > 0L
+    intercept[SigarException] {
+      helper.getThreads(Process(1))
+    }
+    helper.getProcessCpuTime(pid) should be > 0L
+    helper.getGlobalCpuTimes match {
+      case GlobalCpuTimes(idleTime, activeTime) => {
+        idleTime should be > 0L
         activeTime should be > 0L
       }
     }
-    helper.getProcessCpuPercent(UUID.randomUUID(), pid).ratio should be > -1.0
-    helper.getGlobalCpuPercent(UUID.randomUUID()).ratio should be > -1.0
-    intercept[SigarException] { helper.getTimeInStates }
+    intercept[SigarException] {
+      helper.getTimeInStates
+    }
   }
 }

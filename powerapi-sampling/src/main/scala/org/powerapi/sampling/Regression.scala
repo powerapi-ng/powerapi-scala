@@ -23,12 +23,12 @@
 package org.powerapi.sampling
 
 /**
- * Base trait for the regression algorithm.
- * The processing phase generates several folders that can be processed by the regression (see one of the implementation).
- * The purpose of this trait is to switch easily with different type of regression.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Base trait for the regression algorithm.
+  * The processing phase generates several folders that can be processed by the regression (see one of the implementation).
+  * The purpose of this trait is to switch easily with different type of regression.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 trait Regression {
   def run(): Unit
 }

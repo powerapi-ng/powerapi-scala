@@ -24,26 +24,30 @@ package org.powerapi.module.libpfm
 
 import java.util.UUID
 
-import akka.actor.{Props, ActorSystem}
-import akka.testkit.{TestActorRef, TestKit}
-import org.powerapi.UnitTest
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.target.Process
-import org.powerapi.core.power._
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCWrapper, publishPCReport}
-import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
 
-class LibpfmFormulaSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.actor.Props
+import akka.pattern.gracefulStop
+import akka.testkit.{EventFilter, TestActorRef}
+import akka.util.Timeout
 
-  import org.powerapi.core.MessageBus
+import org.powerapi.UnitTest
+import org.powerapi.core.power._
+import org.powerapi.core.target.Target
+import org.powerapi.core.{MessageBus, Tick}
+import org.powerapi.module.FormulaChannel.{startFormula, stopFormula}
+import org.powerapi.module.Formulas
+import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCWrapper, publishPCReport}
 
-  def this() = this(ActorSystem("LibpfmFormulaSuite"))
+class LibpfmFormulaSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   trait Bus {
@@ -54,66 +58,53 @@ class LibpfmFormulaSuite(system: ActorSystem) extends UnitTest(system) {
     val formula = Map[String, Double](
       "REQUESTS_TO_L2:CANCELLED" -> 8.002e-09,
       "REQUESTS_TO_L2:ALL" -> 1.251e-08,
-      "LS_DISPATCH:STORES" -> 3.520e-09,
-      "LS_DISPATCH:ALL" -> 6.695e-09,
-      "LS_DISPATCH:LOADS" -> 9.504e-09
+      "LS_DISPATCH:ALL" -> 6.695e-09
     )
   }
 
-  "A LibpfmFormula" should "compute the power" in new Bus with Formulae {
-    val actor = TestActorRef(Props(classOf[LibpfmFormula], eventBus, formula, 1.seconds), "libpfm-formula1")(system)
+  "A LibpfmFormula" should "process a SensorReport and then publish a RawPowerReport" in new Bus with Formulae {
     val muid = UUID.randomUUID()
-    val tick1 = ClockTick("clock", 1.seconds)
-    val tick2 = ClockTick("clock", 250.milliseconds)
+    val target: Target = 1
+
+    val tick1 = new Tick {
+      val topic = "test"
+      val timestamp = System.currentTimeMillis()
+    }
+
+    val tick2 = new Tick {
+      val topic = "test"
+      val timestamp = System.currentTimeMillis()
+    }
+
+    val formulas = TestActorRef(Props(classOf[Formulas], eventBus), "formulas")
+    EventFilter.info(occurrences = 1, start = s"formula is started, class: ${classOf[LibpfmFormula].getName}").intercept({
+      startFormula(muid, target, classOf[LibpfmFormula], Seq(eventBus, muid, target, formula, 250.millis))(eventBus)
+    })
     subscribeRawPowerReport(muid)(eventBus)(testActor)
 
-    val wrappers1 = List[PCWrapper](
-      PCWrapper(0, "REQUESTS_TO_L2:CANCELLED", List(Future[Long] {1000000000l}, Future[Long] {5000000l})),
-      PCWrapper(1, "REQUESTS_TO_L2:CANCELLED", List(Future[Long] {0l}, Future[Long] {100000l})),
-      PCWrapper(0, "REQUESTS_TO_L2:ALL", List(Future[Long] {33000l}, Future[Long] {11000l})),
-      PCWrapper(1, "REQUESTS_TO_L2:ALL", List(Future[Long] {2000000000l}, Future[Long] {0l})),
-      PCWrapper(0, "LS_DISPATCH:ALL", List(Future[Long] {500000000l}, Future[Long] {1000000000l})),
-      PCWrapper(1, "LS_DISPATCH:ALL", List(Future[Long] {500000000l}, Future[Long] {1000000000l})),
-      PCWrapper(0, "LS_DISPATCH:LOADS", List(Future[Long] {20000l}, Future[Long] {30000l})),
-      PCWrapper(1, "LS_DISPATCH:LOADS", List(Future[Long] {25000l}, Future[Long] {0l}))
-    )
+    var wrappers = Seq[PCWrapper]()
+    wrappers +:= PCWrapper(0, "REQUESTS_TO_L2:CANCELLED", List[Future[HWCounter]](Future(HWCounter(250000000)), Future(HWCounter(0))))
+    wrappers +:= PCWrapper(0, "REQUESTS_TO_L2:ALL", List[Future[HWCounter]](Future(HWCounter(330000)), Future(HWCounter(0))))
+    wrappers +:= PCWrapper(0, "LS_DISPATCH:ALL", List[Future[HWCounter]](Future(HWCounter(1000000)), Future(HWCounter(0))))
+    wrappers +:= PCWrapper(1, "REQUESTS_TO_L2:CANCELLED", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(500000000))))
+    wrappers +:= PCWrapper(1, "REQUESTS_TO_L2:ALL", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(220000000))))
+    wrappers +:= PCWrapper(1, "LS_DISPATCH:ALL", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(50000))))
 
-    val wrappers2 = List[PCWrapper](
-      PCWrapper(0, "REQUESTS_TO_L2:CANCELLED", List(Future[Long] {math.round(1000000000l / 4.0)}, Future[Long] {math.round(5000000l / 4.0)})),
-      PCWrapper(1, "REQUESTS_TO_L2:CANCELLED", List(Future[Long] {0l}, Future[Long] {math.round(100000l / 4.0)})),
-      PCWrapper(0, "REQUESTS_TO_L2:ALL", List(Future[Long] {math.round(33000l / 4.0)}, Future[Long] {math.round(11000l / 4.0)})),
-      PCWrapper(1, "REQUESTS_TO_L2:ALL", List(Future[Long] {math.round(2000000000l / 4.0)}, Future[Long] {0l})),
-      PCWrapper(0, "LS_DISPATCH:ALL", List(Future[Long] {math.round(500000000l / 4.0)}, Future[Long] {math.round(1000000000l / 4.0)})),
-      PCWrapper(1, "LS_DISPATCH:ALL", List(Future[Long] {math.round(500000000l / 4.0)}, Future[Long] {math.round(1000000000l / 4.0)})),
-      PCWrapper(0, "LS_DISPATCH:LOADS", List(Future[Long] {math.round(20000l / 4.0)}, Future[Long] {math.round(30000l / 4.0)})),
-      PCWrapper(1, "LS_DISPATCH:LOADS", List(Future[Long] {math.round(25000l / 4.0)}, Future[Long] {0l}))
-    )
+    publishPCReport(muid, target, wrappers, tick1)(eventBus)
+    var rawPowerReport = expectMsgClass(classOf[RawPowerReport])
+    rawPowerReport.muid should equal(muid)
+    rawPowerReport.target should equal(target)
+    rawPowerReport.power should be > 0.W
+    rawPowerReport.device should equal("cpu")
+    rawPowerReport.tick should equal(tick1)
 
-    var power = 0d
+    EventFilter.info(occurrences = 1, start = s"formula is stopped, class: ${classOf[LibpfmFormula].getName}").intercept({
+      stopFormula(muid)(eventBus)
+    })
 
-    // REQUESTS_TO_L2:CANCELLED
-    power += formula("REQUESTS_TO_L2:CANCELLED") * (1000000000l + 5000000l + 0l + 100000l)
-    // REQUESTS_TO_L2:ALL
-    power += formula("REQUESTS_TO_L2:ALL") * (33000l + 11000l + 2000000000l + 0l)
-    // LS_DISPATCH:ALL
-    power += formula("LS_DISPATCH:ALL") * (500000000l + 1000000000l + 500000000l + 1000000000l)
-    // LS_DISPATCH:LOADS
-    power += formula("LS_DISPATCH:LOADS") * (20000l + 30000l + 25000l + 0l)
+    publishPCReport(muid, target, wrappers, tick2)(eventBus)
+    expectNoMsg()
 
-    publishPCReport(muid, 1, wrappers1, tick1)(eventBus)
-    val ret1 = expectMsgClass(classOf[RawPowerReport])
-    ret1.muid should equal(muid)
-    ret1.target should equal(Process(1))
-    ret1.power.toWatts shouldBe power +- 0.001
-    ret1.device should equal("cpu")
-    ret1.tick should equal(tick1)
-
-    publishPCReport(muid, 1, wrappers2, tick2)(eventBus)
-    val ret2 = expectMsgClass(classOf[RawPowerReport])
-    ret2.muid should equal(muid)
-    ret2.target should equal(Process(1))
-    ret2.power.toWatts shouldBe power +- 0.001
-    ret2.device should equal("cpu")
-    ret2.tick should equal(tick2)
+    Await.result(gracefulStop(formulas, timeout.duration), timeout.duration)
   }
 }

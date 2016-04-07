@@ -22,45 +22,36 @@
  */
 package org.powerapi.reporter
 
-import akka.actor.{ ActorSystem, Props }
-import akka.testkit.{ TestActorRef, TestKit }
-import akka.util.Timeout
 import java.util.UUID
-import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
-import org.powerapi.core.target.intToProcess
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{ AggregatePowerReport, RawPowerReport, render, subscribeAggPowerReport }
+
 import scala.concurrent.duration.DurationInt
 
-class JFreeChartDisplaySuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.powerapi.UnitTest
+import org.powerapi.core.power._
+import org.powerapi.core.target.{Application, Process, Target}
 
-  def this() = this(ActorSystem("JFreeChartDisplaySuite"))
+class JFreeChartDisplaySuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  val eventBus = new MessageBus
-
-  "A JFreeChart reporter" should "process a power report and then report energy information in a chart" ignore {
-    val reporterMock = TestActorRef(Props(classOf[ReporterComponent], new JFreeChartDisplay), "jfreechartReporter")(system)
-    
+  "A JFreeChartDisplay" should "display an AggPowerReport message in a JFreeChart" ignore {
     val muid = UUID.randomUUID()
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
-  
-    subscribeAggPowerReport(muid)(eventBus)(reporterMock)
+    val timestamp = System.currentTimeMillis()
+    val targets = Set[Target](Application("firefox"), Process(1), Process(2))
+    val devices = Set[String]("cpu", "gpu", "ssd")
+    val power = 10.W
 
-    val begin = System.currentTimeMillis
-    var current = begin
+    val out = new JFreeChartDisplay
 
-    while(current <= (begin + 5.seconds.toMillis)) {
-      render(AggregatePowerReport(muid, aggFunction) += RawPowerReport("topictest", muid, 1, Math.random.W, "mock", ClockTick("ticktest", 25.milliseconds, current)))(eventBus)
-      current += 1.seconds.toMillis
-      Thread.sleep(1.seconds.toMillis)
+    for (i <- 0 to 5) {
+      out.display(muid, timestamp + i * 1000, targets, devices, 10.W + (10 * i).W)
+      Thread.sleep(1000)
     }
   }
 }

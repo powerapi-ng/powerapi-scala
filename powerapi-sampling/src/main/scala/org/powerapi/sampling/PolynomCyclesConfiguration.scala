@@ -25,27 +25,35 @@ package org.powerapi.sampling
 import org.powerapi.core.ConfigValue
 
 /**
- * Configuration for the cycle formulae.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Configuration for the cycle formulae.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class PolynomCyclesConfiguration extends SamplingConfiguration {
-  lazy val baseFrequency: Double = load { _.getDouble("powerapi.cycles-polynom-regression.cpu-base-frequency") } match {
+  lazy val baseFrequency: Double = load {
+    _.getDouble("powerapi.cycles-polynom-regression.cpu-base-frequency")
+  } match {
     case ConfigValue(value) => value
     case _ => 0d
   }
 
-  lazy val maxFrequency: Double = load { _.getDouble("powerapi.cycles-polynom-regression.cpu-max-frequency") } match {
+  lazy val maxFrequency: Double = load {
+    _.getDouble("powerapi.cycles-polynom-regression.cpu-max-frequency")
+  } match {
     case ConfigValue(value) => value
     case _ => 0d
   }
 
-  lazy val unhaltedCycles = load { _.getString("powerapi.cycles-polynom-regression.unhalted-cycles-event") } match {
+  lazy val unhaltedCycles = load {
+    _.getString("powerapi.cycles-polynom-regression.unhalted-cycles-event")
+  } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:THREAD_P"
   }
 
-  lazy val refCycles = load { _.getString("powerapi.cycles-polynom-regression.ref-cycles-event") } match {
+  lazy val refCycles = load {
+    _.getString("powerapi.cycles-polynom-regression.ref-cycles-event")
+  } match {
     case ConfigValue(value) => value
     case _ => "CPU_CLK_UNHALTED:REF_P"
   }

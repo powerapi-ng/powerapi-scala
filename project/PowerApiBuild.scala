@@ -20,34 +20,61 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
+
 import com.typesafe.sbt.packager.archetypes.{JavaServerAppPackaging, JavaAppPackaging}
 import sbt.Keys._
 import sbt._
 
 object PowerApiBuild extends Build {
 
-  lazy val rootSettings = Seq(
-    version := "3.5",
+  lazy val downloadBluecove = taskKey[File]("download-bluecove-app")
+
+  lazy val downloadBluecoveGpl = taskKey[File]("download-bluecove-gpl-app")
+
+  lazy val buildSettings = Seq(
+    version := "4.0",
     scalaVersion := "2.11.7",
     scalacOptions := Seq(
+      "-language:existentials",
       "-language:reflectiveCalls",
       "-language:implicitConversions",
       "-feature",
-      "-deprecation"
+      "-deprecation",
+      "-unchecked",
+      "-Xfatal-warnings"
     ),
     fork := true,
     parallelExecution := false,
-    unmanagedBase := baseDirectory.value / "external-libs"
+    unmanagedBase := powerapi.base.getAbsoluteFile / "external-libs",
+    unmanagedClasspath in Test += powerapi.base.getAbsoluteFile  / "external-libs" / "sigar-bin",
+    unmanagedClasspath in (Compile, runMain) += powerapi.base.getAbsoluteFile  / "external-libs" / "sigar-bin",
+    downloadBluecove := {
+      val locationBluecove = baseDirectory.value.getParentFile / "external-libs" / "bluecove-2.1.0.jar"
+      if (!locationBluecove.exists()) IO.download(url("https://bluecove.googlecode.com/files/bluecove-2.1.0.jar"), locationBluecove)
+      locationBluecove
+    },
+    downloadBluecoveGpl := {
+      val locationBluecoveGpl = baseDirectory.value.getParentFile / "external-libs" / "bluecove-gpl-2.1.0.jar"
+      if (!locationBluecoveGpl.exists()) IO.download(url("https://bluecove.googlecode.com/files/bluecove-gpl-2.1.0.jar"), locationBluecoveGpl)
+      locationBluecoveGpl
+    },
+    compile in Compile <<= (compile in Compile).dependsOn(downloadBluecove, downloadBluecoveGpl)
   )
 
-  lazy val subSettings = rootSettings ++ Seq(
-    unmanagedBase :=  baseDirectory.value / ".." / "external-libs"
-  )
+  lazy val powerapi: sbt.Project = Project(id = "powerapi", base = file(".")).settings(buildSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
 
-  lazy val powerapi = Project(id = "powerapi", base = file(".")).settings(rootSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
+  lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core")).settings(buildSettings: _*)
+  lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaServerAppPackaging)
+  lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 
-  lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core")).settings(subSettings: _*)
-  lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(subSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(BluecovePackaging, JavaAppPackaging)
-  lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).settings(subSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(BluecovePackaging, JavaServerAppPackaging)
-  lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).settings(subSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(BluecovePackaging, JavaAppPackaging)
+  // example of power meters
+  lazy val appMonitorProcsJava =  Project(id = "powerapi-example-app-monitor-procfs-java", base = file("powerapi-powermeter/AppMonitorProcFSJava")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val appMonitorProcsScala =  Project(id = "powerapi-example-app-monitor-procfs-scala", base = file("powerapi-powermeter/AppMonitorProcFSScala")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val appMonitorSigarJava =  Project(id = "powerapi-example-app-monitor-sigar-java", base = file("powerapi-powermeter/AppMonitorSigarJava")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val appMonitorSigarScala =  Project(id = "powerapi-example-app-monitor-sigar-scala", base = file("powerapi-powermeter/AppMonitorSigarScala")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val cpuMonitorOmegaWatt =  Project(id = "powerapi-example-cpu-monitor-omegawatt", base = file("powerapi-powermeter/CPUMonitorOmegaWatt")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val cpuMonitorProcsFS =  Project(id = "powerapi-example-cpu-monitor-procfs", base = file("powerapi-powermeter/CPUMonitorProcFS")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val cpuMonitorRAPL =  Project(id = "powerapi-example-cpu-monitor-rapl", base = file("powerapi-powermeter/CPUMonitorRAPL")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
+  lazy val cpuMonitorSigar =  Project(id = "powerapi-example-cpu-monitor-sigar", base = file("powerapi-powermeter/CPUMonitorSigar")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")
 }
