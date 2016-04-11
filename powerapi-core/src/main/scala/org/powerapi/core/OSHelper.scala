@@ -25,9 +25,9 @@ package org.powerapi.core
 import java.io.{File, IOException}
 
 import scala.collection.JavaConversions._
+import scala.io.Source
 import scala.sys.process.stringSeqToProcess
 
-import com.github.dockerjava.core.DockerClientBuilder
 import com.typesafe.config.Config
 import org.apache.logging.log4j.LogManager
 import org.hyperic.sigar.ptql.ProcessFinder
@@ -91,6 +91,13 @@ trait OSHelper {
   def getProcessCpuTime(process: Process): Long
 
   /**
+    * Get the docker container execution time on the cpu.
+    *
+    * @param container targeted docker container
+    */
+  def getDockerContainerCpuTime(container: Container): Long
+
+  /**
     * Get the global execution times for the cpu.
     */
   def getGlobalCpuTimes: GlobalCpuTimes
@@ -106,8 +113,9 @@ trait OSHelper {
   def getTargetCpuTime(target: Target): Long = {
     target match {
       case process: Process => getProcessCpuTime(process)
-      case wrapper: Target if wrapper.isInstanceOf[Application] || wrapper.isInstanceOf[Container] =>
-        getProcesses(wrapper).toSeq.map(process => getProcessCpuTime(process)).sum
+      case container: Container => getDockerContainerCpuTime(container)
+      case application: Application =>
+        getProcesses(application).toSeq.map(process => getProcessCpuTime(process)).sum
       case _ => 0L
     }
   }
@@ -176,14 +184,31 @@ class LinuxHelper extends Configuration(None) with OSHelper {
     case ConfigValue(values) => values
     case _ => Map()
   }
-  lazy val docker = DockerClientBuilder.getInstance("unix:///var/run/docker.sock").build()
+  /**
+    * Mount path.
+    */
+  lazy val mountsPath = load {
+    _.getString("powerapi.procfs.mounts-path")
+  } match {
+    case ConfigValue(p) => p
+    case _ => "/proc/mounts"
+  }
+
   private val log = LogManager.getLogger
   private val PSFormat = """^\s*(\d+)\s*""".r
   private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
   private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
-  private val procUserTimeIndex = 13
-  private val procSysTimeIndex = 14
-  private val procGlobalIdleTime = 3
+  private val MountFormat = """^.+\s+(.+)\s+(.+)\s+(.+)\s+.+\s+.+$""".r
+
+  /**
+    * Returns the mount path of a given cgroup if it exists.
+    */
+  def cgroupMntPoint(name: String): Option[String] = {
+    Source.fromFile(mountsPath).getLines().collectFirst {
+      case MountFormat(mnt, typ, tokens) if typ == "cgroup" && tokens.contains(name) =>
+        mnt
+    }
+  }
 
   def getCPUFrequencies: Set[Long] = {
     (for (index <- topology.values.flatten) yield {
@@ -204,10 +229,6 @@ class LinuxHelper extends Configuration(None) with OSHelper {
       Seq("ps", "-C", app.name, "-o", "pid", "--no-headers").lineStream_!.map {
         case PSFormat(pid) => Process(pid.toInt)
       }.toSet
-    case cont: Container =>
-      docker.topContainerCmd(cont.id).withPsArgs("-Aopid").exec.getProcesses.flatten.map(
-        process => Process(process.toInt)
-      ).toSet
     case process: Process =>
       Set(process)
     case _ =>
@@ -233,13 +254,27 @@ class LinuxHelper extends Configuration(None) with OSHelper {
 
         val statLine = source.getLines.toIndexedSeq(0).split("\\s")
         // User time + System time
-        statLine(procUserTimeIndex).toLong + statLine(procSysTimeIndex).toLong
+        statLine(13).toLong + statLine(14).toLong
       })
     }
     catch {
       case ioe: IOException =>
         log.warn("i/o exception: {}", ioe.getMessage)
         0L
+    }
+  }
+
+  /**
+    * Use the cpuacct cgroup to retrieve the overall cpu statistics for a docker container.
+    */
+  def getDockerContainerCpuTime(container: Container): Long = {
+    // TODO: Could be also replaced by a direct call to the Docker API with stream = 0. The main benefit would be to handle a distant docker server.
+    cgroupMntPoint("cpuacct") match {
+      case Some(path) if new File(s"$path/docker/${container.id}").isDirectory =>
+        Source.fromFile(s"$path/docker/${container.id}/cpuacct.stat").getLines().map(_.split("\\s")(1).toLong).sum
+      case _ =>
+        log.warn("i/o exception, cpuacct cgroup not mounted for the container {}", s"${container.id}")
+        0l
     }
   }
 
@@ -255,7 +290,7 @@ class LinuxHelper extends Configuration(None) with OSHelper {
             * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
             */
           case GlobalStatFormat(times) =>
-            val idleTime = times.split("\\s")(procGlobalIdleTime).toLong
+            val idleTime = times.split("\\s")(3).toLong
             val activeTime = times.split("\\s").slice(0, 8).map(_.toLong).sum - idleTime
 
             GlobalCpuTimes(idleTime, activeTime)
@@ -340,6 +375,8 @@ class SigarHelper(sigar: SigarProxy) extends OSHelper {
         0L
     }
   }
+
+  def getDockerContainerCpuTime(container: Container): Long = throw new SigarException("not yet implemented with sigar")
 
   def getGlobalCpuTimes: GlobalCpuTimes = {
     try {
