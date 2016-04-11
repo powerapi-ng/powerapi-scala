@@ -23,7 +23,6 @@ libraryDependencies ++= Seq(
   "org.hyperic" % "sigar" % "1.6.5.132",
   "net.java.dev.jna" % "jna" % "4.2.1",
   "io.spray" %% "spray-json" % "1.3.2",
-  "com.github.docker-java" % "docker-java" % "2.1.4",
   "com.paulgoldbaum" %% "scala-influxdb-client" % "0.4.5"
 )
 

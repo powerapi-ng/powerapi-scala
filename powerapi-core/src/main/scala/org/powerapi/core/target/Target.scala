@@ -56,9 +56,10 @@ case class Application(name: String) extends Target {
   * Monitoring targets for a specific container.
   *
   * @param id id of the container.
+  * @param name name of the container.
   * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
   */
-case class Container(id: String) extends Target {
+case class Container(id: String, name: String = "unknown") extends Target {
   override def toString: String = id
 }
 
