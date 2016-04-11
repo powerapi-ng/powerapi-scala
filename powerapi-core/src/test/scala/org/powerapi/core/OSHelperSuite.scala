@@ -62,16 +62,17 @@ class OSHelperSuite extends UnitTest {
       def getProcessCpuTime(process: Process): Long = process match {
         case Process(1) => 10
         case Process(2) => 11
-        case Process(3) => 20
-        case Process(4) => 21
         case Process(10) => 30
+      }
+
+      def getDockerContainerCpuTime(container: Container): Long = container match {
+        case Container("abcd", "n") => 20 + 21
       }
 
       def getGlobalCpuTimes: GlobalCpuTimes = ???
 
       def getProcesses(target: Target): Set[Process] = target match {
         case Application("firefox") => Set(1, 2)
-        case Container("docker") => Set(3, 4)
         case Process(10) => Set(10)
       }
 
@@ -81,11 +82,10 @@ class OSHelperSuite extends UnitTest {
     }
 
     helper.getProcesses(Application("firefox")) should equal(Set(Process(1), Process(2)))
-    helper.getProcesses(Container("docker")) should equal(Set(Process(3), Process(4)))
     helper.getProcesses(Process(10)) should equal(Set(Process(10)))
     helper.getTargetCpuTime(Process(10)) should equal(30)
     helper.getTargetCpuTime(Application("firefox")) should equal(10 + 11)
-    helper.getTargetCpuTime(Container("docker")) should equal(20 + 21)
+    helper.getTargetCpuTime(Container("abcd", "n")) should equal(20 + 21)
     helper.getTargetCpuTime(All) should equal(0)
     helper.getAllDirectories(new File(s"${basepath}/sys/fs/cgroup/blkio")) should contain theSameElementsAs Seq(
       new File(s"${basepath}/sys/fs/cgroup/blkio/powerapi"),
@@ -106,6 +106,7 @@ class OSHelperSuite extends UnitTest {
     linuxHelper.cgroupSysFSPath should equal("p6")
     linuxHelper.diskStatPath should equal("p7")
     linuxHelper.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    linuxHelper.mountsPath should equal("p1/mounts")
   }
 
   it should "return the list of available frequencies" in {
@@ -132,6 +133,24 @@ class OSHelperSuite extends UnitTest {
 
     helper.getProcessCpuTime(1) should equal(35)
     helper.getProcessCpuTime(10) should equal(0)
+  }
+
+  it should "return the cgroup mount point if it exists" in {
+    val helper = new LinuxHelper {
+      override lazy val mountsPath = s"${basepath}proc/mounts"
+    }
+
+    helper.cgroupMntPoint("cpuacct") should equal (Some("/sys/fs/cgroup/cpuacct"))
+    helper.cgroupMntPoint("test") should equal (None)
+  }
+
+  it should "return the cpu time of a given docker container" in {
+    val helper = new LinuxHelper {
+      override def cgroupMntPoint(name: String): Option[String] = Some(s"${basepath}sys/fs/cgroup/cpuacct")
+    }
+
+    helper.getDockerContainerCpuTime(Container("abcd", "n")) should equal(2502902 + 277405)
+    helper.getDockerContainerCpuTime(Container("test", "n2")) should equal(0)
   }
 
   it should "return the global cpu time" in {
