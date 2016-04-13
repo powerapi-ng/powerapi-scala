@@ -22,224 +22,114 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.{Terminated, ActorSystem, Props}
-import akka.testkit.TestKit
-import akka.util.Timeout
-import akka.pattern.gracefulStop
-import akka.testkit.{TestActorRef, TestProbe}
 import java.util.UUID
-import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
-import org.powerapi.core.target.All
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.MonitorChannel.MonitorTick
-import org.powerapi.module.SensorChannel.{MonitorStop, MonitorStopAll}
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
-import org.scalamock.scalatest.MockFactory
+
 import scala.collection.BitSet
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 
-class LibpfmCoreSensorSuite(system: ActorSystem) extends UnitTest(system) with MockFactory {
+import akka.actor.Props
+import akka.pattern.gracefulStop
+import akka.testkit.{EventFilter, TestActorRef}
+import akka.util.Timeout
 
-  def this() = this(ActorSystem("LibpfmCoreSensorSuite"))
+import org.powerapi.UnitTest
+import org.powerapi.core.MonitorChannel.publishMonitorTick
+import org.powerapi.core.target.{All, Process}
+import org.powerapi.core.{MessageBus, Tick}
+import org.powerapi.module.SensorChannel.{startSensor, stopSensor}
+import org.powerapi.module.Sensors
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport}
+import org.scalamock.scalatest.MockFactory
 
-  val timeout = Timeout(1.seconds)
+class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
+
+  val timeout = Timeout(20.seconds)
+  val topology = Map(0 -> Set(0, 1), 1 -> Set(2, 3))
+  val events = Set("event", "event1")
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   trait Bus {
     val eventBus = new MessageBus
   }
 
-  val topology = Map(0 -> Set(0, 1), 1 -> Set(2, 3))
-  val events = Set("event", "event1")
-
-  "A LibpfmCoreSensor" should "aggregate the performance counters per core/event" in new Bus {
+  "A LibpfmCoreSensor" should "handle MonitorTick messages and sense HW counter values for the All target" in new Bus {
     val configuration = BitSet()
     val helper = mock[LibpfmHelper]
-    val muid1 = UUID.randomUUID()
+    val muid = UUID.randomUUID()
+    val target = All
+    val tick1 = new Tick {
+      val topic = "test"
+      val timestamp = System.currentTimeMillis()
+    }
+    val tick2 = new Tick {
+      val topic = "test"
+      val timestamp = System.currentTimeMillis() + 1000
+    }
+    val fds = (0 until topology.values.flatten.size * events.size).iterator
 
-    val sensor = TestActorRef(Props(classOf[LibpfmCoreSensor], eventBus, helper, Timeout(1.seconds), topology, configuration, events), "core-sensor")(system)
-    subscribePCReport(eventBus)(testActor)
+    val sensors = TestActorRef(Props(classOf[Sensors], eventBus), "sensors")
 
-    helper.resetPC _ expects * anyNumberOfTimes() returning true
-    helper.enablePC _ expects * anyNumberOfTimes() returning true
     helper.disablePC _ expects * anyNumberOfTimes() returning true
     helper.closePC _ expects * anyNumberOfTimes() returning true
 
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
-    helper.configurePC _ expects(CID(0), configuration, "event1") returning Some(1)
-    helper.configurePC _ expects(CID(1), configuration, "event") returning Some(2)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(3)
-    helper.configurePC _ expects(CID(2), configuration, "event") returning Some(4)
-    helper.configurePC _ expects(CID(2), configuration, "event1") returning Some(5)
-    helper.configurePC _ expects(CID(3), configuration, "event") returning Some(6)
-    helper.configurePC _ expects(CID(3), configuration, "event1") returning Some(7)
-    helper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
-    sensor ! MonitorTick("monitor", muid1, 1, ClockTick("clock", 1.second))
+    helper.resetPC _ expects * repeat topology.values.flatten.size * events.size returning true
+    helper.enablePC _ expects * repeat topology.values.flatten.size * events.size returning true
+
+    for {
+      core: Int <- topology.keys
+      index: Int <- topology(core)
+      event: String <- events
+    } helper.configurePC _ expects(CID(index), configuration, event) returning Some(fds.next)
+    helper.readPC _ expects * repeat topology.values.flatten.size * events.size returning Array(1l, 1l, 1l)
+
+    EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[LibpfmCoreSensor].getName}").intercept({
+      startSensor(muid, target, classOf[LibpfmCoreSensor], Seq(eventBus, muid, target, helper, timeout, topology, configuration, events))(eventBus)
+    })
+    subscribePCReport(muid, target)(eventBus)(testActor)
+
+    for (i <- 0 until topology.values.flatten.size * events.size) {
+      helper.readPC _ expects i returning Array[Long](i + 5, 2, 2)
+      helper.scale _ expects where {
+        (now: Array[Long], old: Array[Long]) => now.deep == Array[Long](i + 5, 2, 2).deep && old.deep == Array[Long](1, 1, 1).deep
+      } returning Some(i + 5 - 1)
+    }
+
+    val results = Map[(Int, String), Long]((0, "event") -> 10, (0, "event1") -> 12, (1, "event") -> 18, (1, "event1") -> 20)
+    publishMonitorTick(muid, All, tick1)(eventBus)
+    expectMsgClass(classOf[PCReport]) match {
+      case PCReport(_, _, All, wrappers, _) =>
+        wrappers.size should equal(topology.size * events.size)
+        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
+        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
+
+        wrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).foreach {
+          case ((core, event), _wrappers) => Future.sequence(_wrappers.head.values) onSuccess {
+            case pcs: List[HWCounter] =>
+              pcs.map(_.value).sum should equal(results((core, event)))
+          }
+        }
+    }
+
+    EventFilter.info(occurrences = 1, start = s"sensor is stopped, class: ${classOf[LibpfmCoreSensor].getName}").intercept({
+      stopSensor(muid)(eventBus)
+    })
+
+    publishMonitorTick(muid, All, tick2)(eventBus)
     expectNoMsg()
-    sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
-    expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, target, wrappers, _) => {
-        target should equal(All)
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
 
-        for(wrapper <- wrappers) {
-          Future.sequence(wrapper.values) onSuccess {
-            case coreValues: List[Long] => {
-              val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
-            }
-          }
-        }
-      }
-    }
+    EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[LibpfmCoreSensor].getName}").intercept({
+      startSensor(muid, Process(1), classOf[LibpfmCoreSensor], Seq(eventBus, muid, Process(1), helper, timeout, topology, configuration, events))(eventBus)
+    })
+    subscribePCReport(muid, Process(1))(eventBus)(testActor)
 
-    helper.readPC _ expects 0 returning Array(5, 2, 2)
-    helper.readPC _ expects 1 returning Array(6, 2, 2)
-    helper.readPC _ expects 2 returning Array(7, 2, 2)
-    helper.readPC _ expects 3 returning Array(8, 2, 2)
-    helper.readPC _ expects 4 returning Array(10, 2, 2)
-    helper.readPC _ expects 5 returning Array(11, 2, 2)
-    helper.readPC _ expects 6 returning Array(12, 2, 2)
-    helper.readPC _ expects 7 returning Array(13, 2, 2)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(5l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(4)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(6l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(5)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(7l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(6)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(8l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(7)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(10l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(9)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(11l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(10)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(12l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(11)
-    helper.scale _ expects where {
-      (now: Array[Long], old: Array[Long]) => now.deep == Array(13l, 2l, 2l).deep && old.deep == Array(1l, 1l, 1l).deep
-    } returning Some(12)
-    val results = Map[(Int, String), Long]((0, "event") -> 10, (0, "event1") -> 12, (1, "event") -> 20, (1, "event1") -> 22)
-    sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
-    expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, target, wrappers, _) => {
-        target should equal(All)
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
+    publishMonitorTick(muid, Process(1), tick1)(eventBus)
+    expectNoMsg()
 
-        for((core, _) <- topology) {
-          for(event <- events) {
-            Future.sequence(wrappers.filter(wrapper => wrapper.core == core && wrapper.event == event).head.values) onSuccess {
-              case values: List[Long] => values.foldLeft(0l)((acc, value) => acc + value) should equal(results(core, event))
-            }
-          }
-        }
-      }
-    }
-
-    Await.result(gracefulStop(sensor, timeout.duration), timeout.duration)
-  }
-
-  it should "close correctly the resources" in new Bus {
-    val configuration = BitSet()
-    val helper = mock[LibpfmHelper]
-    val reaper = TestProbe()(system)
-    val muid1 = UUID.randomUUID()
-    val muid2 = UUID.randomUUID()
-
-    val sensor = TestActorRef(Props(classOf[LibpfmCoreSensor], eventBus, helper, Timeout(1.seconds), topology, configuration, events), "core-sensor1")(system)
-    subscribePCReport(eventBus)(testActor)
-
-    helper.resetPC _ expects * anyNumberOfTimes() returning true
-    helper.enablePC _ expects * anyNumberOfTimes() returning true
-    helper.disablePC _ expects * anyNumberOfTimes() returning true
-    helper.closePC _ expects * anyNumberOfTimes() returning true
-
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(0)
-    helper.configurePC _ expects(CID(0), configuration, "event1") returning Some(1)
-    helper.configurePC _ expects(CID(1), configuration, "event") returning Some(2)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(3)
-    helper.configurePC _ expects(CID(2), configuration, "event") returning Some(4)
-    helper.configurePC _ expects(CID(2), configuration, "event1") returning Some(5)
-    helper.configurePC _ expects(CID(3), configuration, "event") returning Some(6)
-    helper.configurePC _ expects(CID(3), configuration, "event1") returning Some(7)
-    helper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
-    sensor ! MonitorTick("monitor", muid1, All, ClockTick("clock", 1.second))
-    expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, target, wrappers, _) => {
-        target should equal(All)
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
-
-        for (wrapper <- wrappers) {
-          Future.sequence(wrapper.values) onSuccess {
-            case coreValues: List[Long] => {
-              val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
-            }
-          }
-        }
-      }
-    }
-    helper.configurePC _ expects(CID(0), configuration, "event") returning Some(8)
-    helper.configurePC _ expects(CID(0), configuration, "event1") returning Some(9)
-    helper.configurePC _ expects(CID(1), configuration, "event") returning Some(10)
-    helper.configurePC _ expects(CID(1), configuration, "event1") returning Some(11)
-    helper.configurePC _ expects(CID(2), configuration, "event") returning Some(12)
-    helper.configurePC _ expects(CID(2), configuration, "event1") returning Some(13)
-    helper.configurePC _ expects(CID(3), configuration, "event") returning Some(14)
-    helper.configurePC _ expects(CID(3), configuration, "event1") returning Some(15)
-    helper.readPC _ expects * repeat 8 returning Array(1, 1, 1)
-    sensor ! MonitorTick("monitor", muid2, All, ClockTick("clock", 1.second))
-    expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, target, wrappers, _) => {
-        target should equal(All)
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
-
-        for (wrapper <- wrappers) {
-          Future.sequence(wrapper.values) onSuccess {
-            case coreValues: List[Long] => {
-              val aggValue = coreValues.foldLeft(0l)((acc, value) => acc + value)
-              aggValue should equal(0l)
-            }
-          }
-        }
-      }
-    }
-    var children = sensor.children.toArray.clone().filter(_.path.name.contains(muid1.toString))
-    children.foreach(child => reaper watch child)
-    children.size should equal(8)
-    sensor ! MonitorStop("sensor", muid1)
-    for(_ <- 0 until children.size) {
-      reaper.expectMsgClass(classOf[Terminated])
-    }
-
-    children = sensor.children.toArray.clone()
-    children.foreach(child => reaper watch child)
-    children.size should equal(8)
-    sensor ! MonitorStopAll("sensor")
-    for(_ <- 0 until children.size) {
-      reaper.expectMsgClass(classOf[Terminated])
-    }
-
-    Await.result(gracefulStop(sensor, timeout.duration), timeout.duration)
+    Await.result(gracefulStop(sensors, timeout.duration), timeout.duration)
   }
 }

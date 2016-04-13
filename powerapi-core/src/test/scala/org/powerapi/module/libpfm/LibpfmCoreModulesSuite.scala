@@ -22,47 +22,45 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
-import org.powerapi.module.libpfm.cycles.LibpfmCoreCyclesFormula
 import scala.collection.BitSet
 import scala.concurrent.duration.DurationInt
 
-class LibpfmCoreModulesSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.powerapi.UnitTest
+import org.powerapi.module.libpfm.cycles.LibpfmCoreCyclesFormula
+import org.scalamock.scalatest.MockFactory
 
-  def this() = this(ActorSystem("LibpfmCoreModulesSuite"))
+class LibpfmCoreModulesSuite extends UnitTest with MockFactory {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  "The LibpfmCoreModule class" should "create the underlying classes (sensors/formulae)" in {
-    val libpfmHelper = new LibpfmHelper
+  "The LibpfmCoreModule class" should "create the underlying classes (sensor/formula)" in {
+    val libpfmHelper = mock[LibpfmHelper]
     val module = new LibpfmCoreModule(libpfmHelper, 4.seconds, Map(10 -> Set(10)), BitSet(22), Set("e1"), "Threads", "Refs", Map(1d -> List(1d, 2d)), 10.milliseconds)
-    module.underlyingSensorsClasses.size should equal(1)
-    module.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreSensor])
-    module.underlyingSensorsClasses(0)._2.size should equal(5)
-    module.underlyingSensorsClasses(0)._2(0) should equal(libpfmHelper)
-    module.underlyingSensorsClasses(0)._2(1) should equal(Timeout(4.seconds))
-    module.underlyingSensorsClasses(0)._2(2) should equal(Map(10 -> Set(10)))
-    module.underlyingSensorsClasses(0)._2(3) should equal(BitSet(22))
-    module.underlyingSensorsClasses(0)._2(4) should equal(Set("e1"))
 
-    module.underlyingFormulaeClasses.size should equal(1)
-    module.underlyingFormulaeClasses(0)._1 should equal(classOf[LibpfmCoreCyclesFormula])
-    module.underlyingFormulaeClasses(0)._2.size should equal(4)
-    module.underlyingFormulaeClasses(0)._2(0) should equal("Threads")
-    module.underlyingFormulaeClasses(0)._2(1) should equal("Refs")
-    module.underlyingFormulaeClasses(0)._2(2) should equal(Map(1d -> List(1d, 2d)))
-    module.underlyingFormulaeClasses(0)._2(3) should equal(10.milliseconds)
+    module.sensor.get._1 should equal(classOf[LibpfmCoreSensor])
+    module.sensor.get._2.size should equal(5)
+    module.sensor.get._2(0) should equal(libpfmHelper)
+    module.sensor.get._2(1) should equal(Timeout(4.seconds))
+    module.sensor.get._2(2) should equal(Map(10 -> Set(10)))
+    module.sensor.get._2(3) should equal(BitSet(22))
+    module.sensor.get._2(4) should equal(Set("e1"))
+
+    module.formula.get._1 should equal(classOf[LibpfmCoreCyclesFormula])
+    module.formula.get._2.size should equal(4)
+    module.formula.get._2(0) should equal("Threads")
+    module.formula.get._2(1) should equal("Refs")
+    module.formula.get._2(2) should equal(Map(1d -> List(1d, 2d)))
+    module.formula.get._2(3) should equal(10.milliseconds)
   }
 
   "The LibpfmCoreModule object" should "build correctly the companion class" in {
-    val libpfmHelper = new LibpfmHelper
+    val libpfmHelper = mock[LibpfmHelper]
     val module1 = LibpfmCoreModule(libpfmHelper = libpfmHelper)
     val module2 = LibpfmCoreModule(Some("libpfm"), libpfmHelper)
 
@@ -80,78 +78,74 @@ class LibpfmCoreModulesSuite(system: ActorSystem) extends UnitTest(system) {
       22d -> List(104.356371072, 3.75414807806e-09, 6.73289818651e-20)
     )
 
-    module1.underlyingSensorsClasses.size should equal(1)
-    module1.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreSensor])
-    module1.underlyingSensorsClasses(0)._2.size should equal(5)
-    module1.underlyingSensorsClasses(0)._2(0) should equal(libpfmHelper)
-    module1.underlyingSensorsClasses(0)._2(1) should equal(Timeout(10.seconds))
-    module1.underlyingSensorsClasses(0)._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    module1.underlyingSensorsClasses(0)._2(3) should equal(BitSet(0, 1, 2, 10))
-    module1.underlyingSensorsClasses(0)._2(4) should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
 
-    module1.underlyingFormulaeClasses.size should equal(1)
-    module1.underlyingFormulaeClasses(0)._1 should equal(classOf[LibpfmCoreCyclesFormula])
-    module1.underlyingFormulaeClasses(0)._2.size should equal(4)
-    module1.underlyingFormulaeClasses(0)._2(0) should equal("Test:cyclesThreadName")
-    module1.underlyingFormulaeClasses(0)._2(1) should equal("Test:cyclesRefName")
-    module1.underlyingFormulaeClasses(0)._2(2) should equal(formulae)
-    module1.underlyingFormulaeClasses(0)._2(3) should equal(125.milliseconds)
+    module1.sensor.get._1 should equal(classOf[LibpfmCoreSensor])
+    module1.sensor.get._2.size should equal(5)
+    module1.sensor.get._2(0) should equal(libpfmHelper)
+    module1.sensor.get._2(1) should equal(Timeout(10.seconds))
+    module1.sensor.get._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    module1.sensor.get._2(3) should equal(BitSet(0, 1, 2, 10))
+    module1.sensor.get._2(4) should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
 
-    module2.underlyingSensorsClasses.size should equal(1)
-    module2.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreSensor])
-    module2.underlyingSensorsClasses(0)._2.size should equal(5)
-    module2.underlyingSensorsClasses(0)._2(0) should equal(libpfmHelper)
-    module2.underlyingSensorsClasses(0)._2(1) should equal(Timeout(10.seconds))
-    module2.underlyingSensorsClasses(0)._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    module2.underlyingSensorsClasses(0)._2(3) should equal(BitSet(11))
-    module2.underlyingSensorsClasses(0)._2(4) should equal(Set("event"))
+    module1.formula.get._1 should equal(classOf[LibpfmCoreCyclesFormula])
+    module1.formula.get._2.size should equal(4)
+    module1.formula.get._2(0) should equal("Test:cyclesThreadName")
+    module1.formula.get._2(1) should equal("Test:cyclesRefName")
+    module1.formula.get._2(2) should equal(formulae)
+    module1.formula.get._2(3) should equal(125.milliseconds)
 
-    module2.underlyingFormulaeClasses.size should equal(1)
-    module2.underlyingFormulaeClasses(0)._1 should equal(classOf[LibpfmCoreCyclesFormula])
-    module2.underlyingFormulaeClasses(0)._2.size should equal(4)
-    module2.underlyingFormulaeClasses(0)._2(0) should equal("Test:cyclesThreadName")
-    module2.underlyingFormulaeClasses(0)._2(1) should equal("Test:cyclesRefName")
-    module2.underlyingFormulaeClasses(0)._2(2) should equal(Map[Double, List[Double]](1d -> List(10.0, 1.0e-08, -4.0e-18)))
-    module2.underlyingFormulaeClasses(0)._2(3) should equal(10.milliseconds)
+
+    module2.sensor.get._1 should equal(classOf[LibpfmCoreSensor])
+    module2.sensor.get._2.size should equal(5)
+    module2.sensor.get._2(0) should equal(libpfmHelper)
+    module2.sensor.get._2(1) should equal(Timeout(10.seconds))
+    module2.sensor.get._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    module2.sensor.get._2(3) should equal(BitSet(11))
+    module2.sensor.get._2(4) should equal(Set("event"))
+
+
+    module2.formula.get._1 should equal(classOf[LibpfmCoreCyclesFormula])
+    module2.formula.get._2.size should equal(4)
+    module2.formula.get._2(0) should equal("Test:cyclesThreadName")
+    module2.formula.get._2(1) should equal("Test:cyclesRefName")
+    module2.formula.get._2(2) should equal(Map[Double, List[Double]](1d -> List(10.0, 1.0e-08, -4.0e-18)))
+    module2.formula.get._2(3) should equal(10.milliseconds)
   }
 
   "The LibpfmCoreSensorModule object" should "build correctly the companion class" in {
-    val libpfmHelper = new LibpfmHelper
+    val libpfmHelper = mock[LibpfmHelper]
     val module1 = LibpfmCoreSensorModule(libpfmHelper = libpfmHelper)
     val module2 = LibpfmCoreSensorModule(Some("libpfm"), libpfmHelper, Set("e1"))
     val module3 = LibpfmCoreSensorModule(Some("libpfm"), libpfmHelper)
 
-    module1.underlyingSensorsClasses.size should equal(1)
-    module1.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreSensor])
-    module1.underlyingSensorsClasses(0)._2.size should equal(5)
-    module1.underlyingSensorsClasses(0)._2(0) should equal(libpfmHelper)
-    module1.underlyingSensorsClasses(0)._2(1) should equal(Timeout(10.seconds))
-    module1.underlyingSensorsClasses(0)._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    module1.underlyingSensorsClasses(0)._2(3) should equal(BitSet(0, 1, 2, 10))
-    module1.underlyingSensorsClasses(0)._2(4) should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
+    module1.sensor.get._1 should equal(classOf[LibpfmCoreSensor])
+    module1.sensor.get._2.size should equal(5)
+    module1.sensor.get._2(0) should equal(libpfmHelper)
+    module1.sensor.get._2(1) should equal(Timeout(10.seconds))
+    module1.sensor.get._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    module1.sensor.get._2(3) should equal(BitSet(0, 1, 2, 10))
+    module1.sensor.get._2(4) should equal(Set("CPU_CLK_UNHALTED:THREAD_P", "CPU_CLK_UNHALTED:REF_P"))
 
-    module1.underlyingFormulaeClasses.size should equal(0)
+    module1.formula should equal(None)
 
-    module2.underlyingSensorsClasses.size should equal(1)
-    module2.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreSensor])
-    module2.underlyingSensorsClasses(0)._2.size should equal(5)
-    module3.underlyingSensorsClasses(0)._2(0) should equal(libpfmHelper)
-    module2.underlyingSensorsClasses(0)._2(1) should equal(Timeout(10.seconds))
-    module2.underlyingSensorsClasses(0)._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    module2.underlyingSensorsClasses(0)._2(3) should equal(BitSet(11))
-    module2.underlyingSensorsClasses(0)._2(4) should equal(Set("e1"))
+    module2.sensor.get._1 should equal(classOf[LibpfmCoreSensor])
+    module2.sensor.get._2.size should equal(5)
+    module2.sensor.get._2(0) should equal(libpfmHelper)
+    module2.sensor.get._2(1) should equal(Timeout(10.seconds))
+    module2.sensor.get._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    module2.sensor.get._2(3) should equal(BitSet(11))
+    module2.sensor.get._2(4) should equal(Set("e1"))
 
-    module2.underlyingFormulaeClasses.size should equal(0)
+    module2.formula should equal(None)
 
-    module3.underlyingSensorsClasses.size should equal(1)
-    module3.underlyingSensorsClasses(0)._1 should equal(classOf[LibpfmCoreSensor])
-    module3.underlyingSensorsClasses(0)._2.size should equal(5)
-    module3.underlyingSensorsClasses(0)._2(0) should equal(libpfmHelper)
-    module3.underlyingSensorsClasses(0)._2(1) should equal(Timeout(10.seconds))
-    module3.underlyingSensorsClasses(0)._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
-    module3.underlyingSensorsClasses(0)._2(3) should equal(BitSet(11))
-    module3.underlyingSensorsClasses(0)._2(4) should equal(Set("event"))
+    module3.sensor.get._1 should equal(classOf[LibpfmCoreSensor])
+    module3.sensor.get._2.size should equal(5)
+    module3.sensor.get._2(0) should equal(libpfmHelper)
+    module3.sensor.get._2(1) should equal(Timeout(10.seconds))
+    module3.sensor.get._2(2) should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    module3.sensor.get._2(3) should equal(BitSet(11))
+    module3.sensor.get._2(4) should equal(Set("event"))
 
-    module3.underlyingFormulaeClasses.size should equal(0)
+    module3.formula should equal(None)
   }
 }

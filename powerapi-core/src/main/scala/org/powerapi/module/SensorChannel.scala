@@ -22,56 +22,59 @@
  */
 package org.powerapi.module
 
-import akka.actor.ActorRef
 import java.util.UUID
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.{Channel, Message, MessageBus}
+
+import akka.actor.ActorRef
+
 import org.powerapi.core.target.Target
+import org.powerapi.core.{Channel, Message, MessageBus}
+
 
 /**
- * Base channel for the Sensor components.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Base channel for the Sensor components.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 object SensorChannel extends Channel {
 
   type M = SensorMessage
-
-  /**
-   * Main sensor messages.
-   *
-   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
-   */
-  trait SensorMessage extends Message
-
-  trait SensorReport extends SensorMessage {
-    def topic: String
-    def muid: UUID
-    def target: Target
-    def tick: ClockTick
-  }
-
-  case class MonitorStop(topic: String, muid: UUID) extends SensorMessage
-  case class MonitorStopAll(topic: String) extends SensorMessage
-
   private val topic = "sensor:handling"
 
   /**
-   * Internal method used by the Sensors for reacting when a Monitor is stopped.
-   */
-  def subscribeSensorsChannel: MessageBus => ActorRef => Unit = {
+    * Used to subscribe to SensorMessage on the right topic.
+    */
+  def subscribeSensorChannel: MessageBus => ActorRef => Unit = {
     subscribe(topic)
   }
 
   /**
-   * External methods used by the Monitors when a Monitor is stopped.
-   * Act like callbacks.
-   */
-  def monitorStopped(muid: UUID): MessageBus => Unit = {
-    publish(MonitorStop(topic, muid))
+    * Used to interact with the Supervisor.
+    */
+  def startSensor(muid: UUID, target: Target, claz: Class[_ <: Sensor], args: Seq[Any]): MessageBus => Unit = {
+    publish(SensorStart(topic, muid, target, claz, args))
   }
 
-  def monitorAllStopped(): MessageBus => Unit = {
-    publish(MonitorStopAll(topic))
+  def stopSensor(muid: UUID): MessageBus => Unit = {
+    publish(SensorStop(topic, muid))
   }
+
+  def stopAllSensor: MessageBus => Unit = {
+    publish(SensorStopAll(topic))
+  }
+
+  /**
+    * Used to format the Sensor actor name.
+    */
+  def formatSensorName(claz: Class[_ <: Sensor], muid: UUID, target: Target): String = {
+    s"_${claz.getSimpleName.toLowerCase}_${muid}_${target}_"
+  }
+
+  trait SensorMessage extends Message
+
+  case class SensorStart(topic: String, muid: UUID, target: Target, claz: Class[_ <: Sensor], args: Seq[Any]) extends SensorMessage
+
+  case class SensorStop(topic: String, muid: UUID) extends SensorMessage
+
+  case class SensorStopAll(topic: String) extends SensorMessage
+
 }

@@ -22,12 +22,12 @@
  */
 package org.powerapi.module.libpfm;
 
-import org.bridj.ann.Library;
-import org.bridj.ann.Runtime;
-import org.bridj.ann.CLong;
 import org.bridj.BridJ;
 import org.bridj.CRuntime;
 import org.bridj.Pointer;
+import org.bridj.ann.CLong;
+import org.bridj.ann.Library;
+import org.bridj.ann.Runtime;
 import perfmon2.libpfm.perf_event_attr;
 
 /**

@@ -22,62 +22,41 @@
  */
 package org.powerapi.reporter
 
-import akka.actor.{ActorSystem, Props }
-import akka.testkit.{ TestActorRef, TestKit}
-import akka.util.Timeout
+import java.io.File
 import java.util.UUID
-import org.powerapi.UnitTest
-import org.powerapi.core.MessageBus
-import org.powerapi.core.target.intToProcess
-import org.powerapi.core.ClockChannel.ClockTick
-import org.powerapi.core.power._
-import org.powerapi.module.PowerChannel.{RawPowerReport, AggregatePowerReport, subscribeAggPowerReport, render}
+
 import scala.concurrent.duration.DurationInt
-import scalax.file.Path
 
-class FileDisplaySuite(system: ActorSystem) extends UnitTest(system) {
-  implicit val timeout = Timeout(1.seconds)
+import akka.util.Timeout
 
-  def this() = this(ActorSystem("FileDisplaySuite"))
+import org.powerapi.UnitTest
+import org.powerapi.core.power._
+import org.powerapi.core.target.{Application, Process, Target}
+
+class FileDisplaySuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
-  val eventBus = new MessageBus
-  val reporter = TestActorRef(Props(classOf[ReporterComponent], new FileDisplay("powerapi-reporter-file-test")), "fileReporter")(system)
-
-  "A file reporter" should "process a power report and then report energy information in a file" in {
+  "A FileDisplay" should "display an AggPowerReport message in a File" in {
     val muid = UUID.randomUUID()
-    val device = "mock"
-    val tickMock = ClockTick("ticktest", 25.milliseconds)
-    val aggFunction = (s: Seq[Power]) => s.foldLeft(0.0.W){ (acc, p) => acc + p }
-  
-    subscribeAggPowerReport(muid)(eventBus)(reporter)
-    
-    val aggR1 = AggregatePowerReport(muid, aggFunction)
-    aggR1 += RawPowerReport("topictest", muid, 1, 3.W, device, tickMock)
-    
-    val aggR2 = AggregatePowerReport(muid, aggFunction)
-    aggR2 += RawPowerReport("topictest", muid, 2, 1.W, device, tickMock)
-    
-    val aggR3 = AggregatePowerReport(muid, aggFunction)
-    aggR3 += RawPowerReport("topictest", muid, 3, 2.W, device, tickMock)
-    aggR3 += RawPowerReport("topictest", muid, 4, 4.W, device, tickMock)
-    
-    render(aggR1)(eventBus)
-    render(aggR2)(eventBus)
-    render(aggR3)(eventBus)
+    val timestamp = System.currentTimeMillis()
+    val targets = Set[Target](Application("firefox"), Process(1), Process(2))
+    val devices = Set[String]("cpu", "gpu", "ssd")
+    val power = 10.W
+    val file = new File("output-file.dat")
+    file.delete()
 
-    val testFile = Path.fromString("powerapi-reporter-file-test")
-    testFile.isFile should be (true)
-    testFile.size.get should be > 0L
-    testFile.lines() should (
-      have size 3 and
-      contain(s"muid=$muid;timestamp=${tickMock.timestamp};targets=1;devices=$device;power=${3.W.toWatts}") and
-      contain(s"muid=$muid;timestamp=${tickMock.timestamp};targets=2;devices=$device;power=${1.W.toWatts}") and
-      contain(s"muid=$muid;timestamp=${tickMock.timestamp};targets=3,4;devices=$device;power=${6.W.toWatts}")
+    val out = new FileDisplay("output-file.dat")
+    out.display(muid, timestamp, targets, devices, 10.W)
+    out.output.lines().toSeq should contain theSameElementsAs Seq(
+      s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW"
     )
-    testFile.delete(true)
+
+    file.delete()
   }
 }
+

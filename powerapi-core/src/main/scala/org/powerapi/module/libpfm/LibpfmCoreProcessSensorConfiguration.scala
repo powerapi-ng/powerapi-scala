@@ -25,15 +25,17 @@ package org.powerapi.module.libpfm
 import org.powerapi.core.ConfigValue
 
 /**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Main configuration.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class LibpfmCoreProcessSensorConfiguration(prefix: Option[String]) extends LibpfmCoreSensorConfiguration(prefix) {
   /**
-   * Allows to know if the threads associated to a Target have to be included.
-   */
-  lazy val inDepth = load { _.getBoolean(s"${configurationPath}powerapi.libpfm.in-depth") } match {
+    * Allows to know if the threads associated to a Target have to be included.
+    */
+  lazy val inDepth = load {
+    _.getBoolean(s"${configurationPath}powerapi.libpfm.in-depth")
+  } match {
     case ConfigValue(value) => value
     case _ => false
   }

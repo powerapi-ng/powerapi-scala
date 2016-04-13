@@ -28,15 +28,13 @@ import akka.util.Timeout
 import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
-class DaemonConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
-
-  implicit val timeout = Timeout(1.seconds)
-
-  def this() = this(ActorSystem("DaemonConfigurationSuite"))
+class DaemonConfigurationSuite extends UnitTest {
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
+
+  val timeout = Timeout(1.seconds)
 
   "The DaemonConfiguration" should "read correctly the values from a resource file" in {
     val configuration = new DaemonConfiguration {}
@@ -52,7 +50,7 @@ class DaemonConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
         (
           Set("rapl"),
           List(
-            (true,Set(),Set(),Set(),3000.milliseconds,"SUM","file:out.papi")
+            (true,Set(),Set(),Set(),3000.milliseconds,"SUM","file=>out.papi")
           )
         )
       )

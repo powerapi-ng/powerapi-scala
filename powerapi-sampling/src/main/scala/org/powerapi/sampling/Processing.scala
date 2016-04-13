@@ -22,19 +22,20 @@
  */
 package org.powerapi.sampling
 
-import org.apache.logging.log4j.LogManager
-import org.joda.time.Period
-import org.saddle.{Vec, Frame}
-import org.saddle.io.CsvImplicits.frame2CsvWriter
 import scalax.file.Path
 import scalax.file.PathMatcher.IsDirectory
 import scalax.io.LongTraversable
 
+import org.apache.logging.log4j.LogManager
+import org.joda.time.Period
+import org.saddle.io.CsvImplicits.frame2CsvWriter
+import org.saddle.{Frame, Vec}
+
 /**
- * Process the data from the sampling directory and write the resulting csv files inside a directory.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Process the data from the sampling directory and write the resulting csv files inside a directory.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class Processing(samplingPath: String, processingPath: String, configuration: SamplingConfiguration) {
   private val log = LogManager.getLogger
 
@@ -48,27 +49,27 @@ class Processing(samplingPath: String, processingPath: String, configuration: Sa
     val data = scala.collection.mutable.Map[(Long, String), List[Vec[Double]]]()
 
     /**
-     * Process sample files, keep the data in memory.
-     */
-    for(samplePath <- Path(samplingPath, '/') ** IsDirectory) {
+      * Process sample files, keep the data in memory.
+      */
+    for (samplePath <- Path(samplingPath, '/') ** IsDirectory) {
       for (frequencyPath <- samplePath ** IsDirectory) {
         val frequency = frequencyPath.name.toLong
         frequencies += frequency
 
-        for(eventPath <- frequencyPath ** "*.dat") {
+        for (eventPath <- frequencyPath ** "*.dat") {
           val event = eventPath.name.replace(configuration.baseOutput, "").replace(".dat", "")
 
-          if (!data.contains(frequency, event)) {
+          if (!data.contains((frequency, event))) {
             data += (frequency, event) -> List()
           }
 
           var lines = eventPath.lines()
           var index = 0
 
-          while(lines.nonEmpty) {
+          while (lines.nonEmpty) {
             val dataSubset = lines.takeWhile(_ != configuration.separator)
 
-            data += (frequency, event) -> (data.get(frequency, event) match {
+            data += ((frequency, event)) -> (data.get((frequency, event)) match {
               case Some(list) => list.lift(index) match {
                 case Some(vector) => list.updated(index, vector.concat(Vec[Double](dataSubset.filter(_ != "").map(_.toDouble).toList: _*)))
                 case _ => list :+ Vec(dataSubset.filter(_ != "").map(_.toDouble).toList: _*)
@@ -87,13 +88,13 @@ class Processing(samplingPath: String, processingPath: String, configuration: Sa
       }
     }
 
-    for(frequency <- frequencies) {
+    for (frequency <- frequencies) {
       Path(s"$processingPath/$frequency", '/').createDirectory()
 
       val dataPerFreq = data.filter(_._1._1 == frequency)
       val size = dataPerFreq.values.head.size
 
-      if(dataPerFreq.values.count(list => list.size != size) == 0) {
+      if (dataPerFreq.values.count(list => list.size != size) == 0) {
         for (index <- 0 until size) {
           val dataStep = scala.collection.mutable.ListBuffer[(String, Vec[Double])]()
           val min = (for (elt <- dataPerFreq) yield elt._2(index).length).min

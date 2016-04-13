@@ -22,43 +22,62 @@
  */
 package org.powerapi.module.libpfm
 
-import org.powerapi.core.MessageBus
-import org.powerapi.core.power._
-import org.powerapi.module.FormulaComponent
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
-import org.powerapi.module.PowerChannel.publishRawPowerReport
-import scala.concurrent.Future
+import java.util.UUID
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
+import akka.actor.Actor
+
+import org.powerapi.core.MessageBus
+import org.powerapi.core.power._
+import org.powerapi.core.target.Target
+import org.powerapi.module.Formula
+import org.powerapi.module.PowerChannel.publishRawPowerReport
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport, unsubscribePCReport}
+
 /**
- * This formula is designed to fit a multivariate formula.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-class LibpfmFormula(eventBus: MessageBus, formulae: Map[String, Double], samplingInterval: FiniteDuration)
-  extends FormulaComponent[PCReport](eventBus) {
+  * This formula is designed to fit a multivariate power model.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
+class LibpfmFormula(eventBus: MessageBus, muid: UUID, target: Target, formula: Map[String, Double], samplingInterval: FiniteDuration)
+  extends Formula(eventBus, muid, target) {
 
-  def subscribeSensorReport(): Unit = {
-    subscribePCReport(eventBus)(self)
-  }
+  def init(): Unit = subscribePCReport(muid, target)(eventBus)(self)
 
-  def compute(sensorReport: PCReport): Unit = {
-    val values: Iterable[Future[(String, Long)]] = for((event, wrappers) <- sensorReport.wrappers.groupBy(_.event)) yield {
-      for(values <- Future.sequence((for(wrapper <- wrappers) yield wrapper.values).flatten)) yield event -> math.round(values.sum / (sensorReport.tick.frequency / samplingInterval))
-    }
+  def terminate(): Unit = unsubscribePCReport(muid, target)(eventBus)(self)
 
-    Future.sequence(values) onComplete {
-      case Success(iterator: Iterable[(String, Long)]) => {
-        lazy val power = (for(tuple <- iterator) yield formulae.getOrElse(tuple._1, 0d) * tuple._2).sum.W
-        publishRawPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
+  def handler: Actor.Receive = compute(System.nanoTime())
+
+  def compute(old: Long): Actor.Receive = {
+    case msg: PCReport =>
+      val now = System.nanoTime()
+
+      val scaledCounters: Future[Iterable[(String, Long)]] = Future.sequence {
+        for ((event, wrappers) <- msg.wrappers.groupBy(_.event)) yield {
+          Future.sequence(wrappers.flatMap(_.values)).map {
+            case counters: Seq[HWCounter] =>
+
+              event -> {
+                if (now - old <= 0) 0l else math.round(counters.map(_.value).sum * (samplingInterval.toNanos / (now - old).toDouble))
+              }
+          }
+        }
       }
 
-      case Failure(ex) => {
-        log.warning("An error occurred: {}", ex.getMessage)
-        publishRawPowerReport(sensorReport.muid, sensorReport.target, 0.W, "cpu", sensorReport.tick)(eventBus)
+      scaledCounters onComplete {
+        case Success(counters: Iterable[(String, Long)]) =>
+          val power = (for (tuple <- counters) yield formula.getOrElse(tuple._1, 0d) * tuple._2).sum
+          publishRawPowerReport(muid, target, if (power > 0) power.W else 0.W, "cpu", msg.tick)(eventBus)
+
+        case Failure(ex) =>
+          log.warning("An error occurred: {}", ex.getMessage)
+          publishRawPowerReport(muid, target, 0.W, "cpu", msg.tick)(eventBus)
       }
-    }
+
+      context.become(compute(now) orElse formulaDefault)
   }
 }

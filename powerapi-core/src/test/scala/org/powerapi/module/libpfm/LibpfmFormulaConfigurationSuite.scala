@@ -22,20 +22,18 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
-class LibpfmFormulaConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.powerapi.UnitTest
 
-  def this() = this(ActorSystem("LibpfmFormulaConfigurationSuite"))
+class LibpfmFormulaConfigurationSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   trait Formulae {

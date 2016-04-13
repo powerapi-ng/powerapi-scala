@@ -1,7 +1,5 @@
 name := "powerapi-sampling"
 
-NativePackagerKeys.executableScriptName := "sampling"
-
 // App
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.14",
@@ -15,10 +13,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
   "org.scalatest" %% "scalatest" % "2.2.2" % "test"
 )
-
-mappings in Universal += downloadBluecove.value -> s"lib/${downloadBluecove.value.name}"
-
-mappings in Universal += downloadBluecoveGpl.value -> s"lib/${downloadBluecoveGpl.value.name}"
 
 mappings in Universal ++= {
   val dir = baseDirectory.value.getParentFile
@@ -40,3 +34,9 @@ mappings in Universal ++= {
 }
 
 scriptClasspath ++= Seq("../scripts", "../conf")
+
+packageName in Universal := name.value
+
+topLevelDirectory := Some(name.value)
+
+NativePackagerKeys.executableScriptName := "sampling"

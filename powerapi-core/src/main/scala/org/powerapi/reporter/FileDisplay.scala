@@ -23,22 +23,24 @@
 package org.powerapi.reporter
 
 import java.util.UUID
+
+import scalax.io.Resource
+
 import org.powerapi.PowerDisplay
 import org.powerapi.core.power.Power
 import org.powerapi.core.target.Target
-import scalax.io.Resource
 
 /**
- * Display power information into a given file.
- *
- * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
- */
-class FileDisplay(filepath: String) extends PowerDisplay  {
+  * Display power information into a given file.
+  *
+  * @author Aurélien Bourdon <aurelien.bourdon@gmail.com>
+  * @author Loïc Huertas <l.huertas.pro@gmail.com>
+  */
+class FileDisplay(filepath: String) extends PowerDisplay {
 
-  lazy val output = Resource.fromFile(filepath)
+  val output = Resource.fromFile(filepath)
 
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    output.append(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toWatts}\n")
+    output.append(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW\n")
   }
 }

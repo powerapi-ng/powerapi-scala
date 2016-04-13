@@ -22,21 +22,19 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
 import scala.collection.BitSet
 import scala.concurrent.duration.DurationInt
 
-class LibpfmCoreSensorConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.powerapi.UnitTest
 
-  def this() = this(ActorSystem("LibpfmCoreSensorConfigurationSuite"))
+class LibpfmCoreSensorConfigurationSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   "The LibpfmCoreSensorConfiguration" should "read correctly the values from a resource file" in {

@@ -22,17 +22,19 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.util.Timeout
-import org.powerapi.PowerModule
-import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, LibpfmCoreCyclesFormula}
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
-                       cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+import akka.util.Timeout
 
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
-  lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
+import org.powerapi.PowerModule
+import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormula, LibpfmCoreCyclesFormulaConfiguration}
+
+class LibpfmCoreModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String],
+                       cyclesThreadName: String, cyclesRefName: String, pModel: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+
+  val sensor = Some((classOf[LibpfmCoreSensor], Seq[Any](libpfmHelper, timeout, topology, configuration, events)))
+  val formula = Some((classOf[LibpfmCoreCyclesFormula], Seq[Any](cyclesThreadName, cyclesRefName, pModel, samplingInterval)))
 }
 
 object LibpfmCoreModule {
@@ -47,8 +49,8 @@ object LibpfmCoreModule {
 }
 
 class LibpfmCoreSensorModule(libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String]) extends PowerModule {
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
-  lazy val underlyingFormulaeClasses = Seq()
+  val sensor = Some((classOf[LibpfmCoreSensor], Seq(libpfmHelper, timeout, topology, configuration, events)))
+  val formula = None
 }
 
 object LibpfmCoreSensorModule {

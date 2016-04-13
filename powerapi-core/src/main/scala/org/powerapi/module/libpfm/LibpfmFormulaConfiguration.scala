@@ -23,17 +23,18 @@
 package org.powerapi.module.libpfm
 
 import java.util.concurrent.TimeUnit
+
+import scala.collection.JavaConversions._
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
+
 import com.typesafe.config.Config
 import org.powerapi.core.{ConfigValue, Configuration}
-import scala.concurrent.duration.FiniteDuration
-import scala.collection.JavaConversions._
-import scala.concurrent.duration.DurationLong
 
 /**
- * Main configuration.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Main configuration.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class LibpfmFormulaConfiguration(prefix: Option[String]) extends Configuration(prefix) {
   lazy val formula: Map[String, Double] = load { conf =>
     (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.libpfm.formula"))
@@ -43,7 +44,9 @@ class LibpfmFormulaConfiguration(prefix: Option[String]) extends Configuration(p
     case _ => Map()
   }
 
-  lazy val samplingInterval: FiniteDuration = load { _.getDuration(s"${configurationPath}powerapi.sampling.interval", TimeUnit.NANOSECONDS) } match {
+  lazy val samplingInterval: FiniteDuration = load {
+    _.getDuration(s"${configurationPath}powerapi.sampling.interval", TimeUnit.NANOSECONDS)
+  } match {
     case ConfigValue(value) => value.nanoseconds
     case _ => 1l.seconds
   }

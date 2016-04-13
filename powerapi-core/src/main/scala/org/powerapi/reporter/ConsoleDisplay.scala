@@ -23,20 +23,21 @@
 package org.powerapi.reporter
 
 import java.util.UUID
+
 import org.powerapi.PowerDisplay
 import org.powerapi.core.power.Power
 import org.powerapi.core.target.Target
 
 /**
- * Display power information into the console.
- *
- * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
- * @author Loïc Huertas <l.huertas.pro@gmail.com>
- */
+  * Display power information into the console.
+  *
+  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
+  * @author Loïc Huertas <l.huertas.pro@gmail.com>
+  */
 class ConsoleDisplay extends PowerDisplay {
 
   def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    println(s"muid=$muid;timestamp=$timestamp;target=${targets.mkString(";")};devices=${devices.mkString(",")};power=${power.toWatts}")
+    println(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW")
   }
 }
 

@@ -22,79 +22,93 @@
  */
 package org.powerapi.module.libpfm.cycles
 
-import org.powerapi.core.MessageBus
-import org.powerapi.core.power._
-import org.powerapi.module.FormulaComponent
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
-import org.powerapi.module.PowerChannel.publishRawPowerReport
-import scala.concurrent.Future
+import java.util.UUID
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
+import akka.actor.Actor
+
+import org.powerapi.core.MessageBus
+import org.powerapi.core.power._
+import org.powerapi.core.target.Target
+import org.powerapi.module.Formula
+import org.powerapi.module.PowerChannel.publishRawPowerReport
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport, unsubscribePCReport}
+
 /**
- * Special implementation of Libpfm Formula.
- * Here, the formula used two events: CPU_CLK_UNHALTED:THREAD_P and CPU_CLK_UNHALTED:REF_P.
- * The formula file contains an equation of degree two.
- * The first counter is injected for computing the power.
- * The second one is used for computing the frequency coefficient.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
-class LibpfmCoreCyclesFormula(eventBus: MessageBus, cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration)
-  extends FormulaComponent[PCReport](eventBus) {
+  * Special implementation of Libpfm Formula.
+  * This formula used two events: CPU_CLK_UNHALTED:THREAD_P and CPU_CLK_UNHALTED:REF_P.
+  * The first counter is injected for computing the power and the second one for the frequency's coefficient.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
+class LibpfmCoreCyclesFormula(eventBus: MessageBus, muid: UUID, target: Target, cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration)
+  extends Formula(eventBus, muid, target) {
 
-  def subscribeSensorReport(): Unit = {
-    subscribePCReport(eventBus)(self)
-  }
+  def init(): Unit = subscribePCReport(muid, target)(eventBus)(self)
 
-  def compute(sensorReport: PCReport): Unit = {
-    val powers: Iterable[Future[Double]] = for((_, wrappers) <- sensorReport.wrappers.groupBy(_.core)) yield {
-      if(wrappers.count(_.event == cyclesThreadName) != 1 || wrappers.count(_.event == cyclesRefName) != 1) {
-        Future { 0d }
-      }
+  def terminate(): Unit = unsubscribePCReport(muid, target)(eventBus)(self)
 
-      else {
-        val cyclesThread = Future.sequence(wrappers.filter(_.event == cyclesThreadName).head.values)
-        val cyclesRef = Future.sequence(wrappers.filter(_.event == cyclesRefName).head.values)
+  def handler: Actor.Receive = compute(System.nanoTime())
 
-        for {
-          cycles <- cyclesThread
-          ref <- cyclesRef
-        } yield {
-          val cyclesVal = math.round(cycles.foldLeft(0l)((acc, value) => acc + value) / (sensorReport.tick.frequency / samplingInterval))
-          val refVal = math.round(ref.foldLeft(0l)((acc, value) => acc + value) / (sensorReport.tick.frequency / samplingInterval))
+  def compute(old: Long): Actor.Receive = {
+    case msg: PCReport =>
+      val now = System.nanoTime()
 
-          var coefficient = math.round(cyclesVal / refVal.toDouble).toDouble
-
-          if (coefficient.isNaN || coefficient < formulae.keys.min) coefficient = formulae.keys.min
-
-          if (coefficient > formulae.keys.max) coefficient = formulae.keys.max
-
-          if (!formulae.contains(coefficient)) {
-            val coefficientsBefore = formulae.keys.filter(_ < coefficient)
-            coefficient = coefficientsBefore.max
+      val powers: Iterable[Future[Double]] = for ((_, wrappers) <- msg.wrappers.groupBy(_.core)) yield {
+        if (wrappers.count(_.event == cyclesThreadName) != 1 || wrappers.count(_.event == cyclesRefName) != 1) {
+          Future {
+            0d
           }
+        }
 
-          val formula = formulae(coefficient).updated(0, 0d)
-          formula.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(cyclesVal, tuple._2)))
+        else {
+          val cyclesThread = Future.sequence(wrappers.filter(_.event == cyclesThreadName).head.values)
+          val cyclesRef = Future.sequence(wrappers.filter(_.event == cyclesRefName).head.values)
+
+          for {
+            cycles <- cyclesThread
+            refs <- cyclesRef
+          } yield {
+            val cyclesVal = cycles.map(_.value).sum
+            val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
+
+            val refsVal = refs.map(_.value).sum
+            val scaledRefs = if (now - old <= 0) 0l else math.round(refsVal * (samplingInterval.toNanos / (now - old).toDouble))
+
+            var coefficient: Double = math.round(scaledCycles / scaledRefs.toDouble)
+
+            if (coefficient.isNaN || coefficient < formulae.keys.min) coefficient = formulae.keys.min
+
+            if (coefficient > formulae.keys.max) coefficient = formulae.keys.max
+
+            if (!formulae.contains(coefficient)) {
+              val coefficientsBefore = formulae.keys.filter(_ < coefficient)
+              coefficient = coefficientsBefore.max
+            }
+
+            val formula = formulae(coefficient).updated(0, 0d)
+            formula.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(scaledCycles, tuple._2)))
+          }
         }
       }
-    }
 
-    val future = Future.sequence(powers)
+      val future = Future.sequence(powers)
 
-    future onSuccess {
-      case powers: List[Double] => {
-        lazy val power = powers.foldLeft(0d)((acc, power) => acc + power).W
-        publishRawPowerReport(sensorReport.muid, sensorReport.target, power, "cpu", sensorReport.tick)(eventBus)
+      future onSuccess {
+        case powers: List[Double] =>
+          val power = powers.foldLeft(0d)((acc, power) => acc + power)
+          publishRawPowerReport(muid, target, if (power > 0) power.W else 0.W, "cpu", msg.tick)(eventBus)
       }
-    }
 
-    future onFailure {
-      case ex: Throwable => {
-        log.warning("An error occurred: {}", ex.getMessage)
-        publishRawPowerReport(sensorReport.muid, sensorReport.target, 0.W, "cpu", sensorReport.tick)(eventBus)
+      future onFailure {
+        case ex: Throwable =>
+          log.warning("An error occurred: {}", ex.getMessage)
+          publishRawPowerReport(muid, target, 0.W, "cpu", msg.tick)(eventBus)
       }
-    }
+
+      context.become(compute(now) orElse formulaDefault)
   }
 }

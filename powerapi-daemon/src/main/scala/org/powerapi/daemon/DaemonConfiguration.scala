@@ -25,45 +25,44 @@ package org.powerapi.daemon
 import java.util.concurrent.TimeUnit
 
 import scala.collection.JavaConversions._
-import scala.concurrent.duration.{FiniteDuration, DurationLong}
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 import com.typesafe.config.Config
-
-import org.powerapi.core.{Configuration, ConfigValue}
+import org.powerapi.core.{ConfigValue, Configuration}
 
 /**
- * Main configuration.
- *
- * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
- */
+  * Main configuration.
+  *
+  * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
+  */
 trait DaemonConfiguration extends Configuration {
   /**
-   * List of power-meter which the PowerAPI daemon has to load at his startup.
-   * A power-meter is described by:
-   * - a list of power modules
-   * - a list of monitors described by:
-   *   _ a list of pid
-   *   _ a list of application
-   *   _ a list of container
-   *   _ a frequency
-   *   _ an aggregator
-   *   _ an output 
-   */
+    * List of power-meter which the PowerAPI daemon has to load at his startup.
+    * A power-meter is described by:
+    * - a list of power modules
+    * - a list of monitors described by:
+    * _ a list of pid
+    * _ a list of application
+    * _ a list of container
+    * _ a frequency
+    * _ an aggregator
+    * _ an output
+    */
   lazy val powerMeters: List[(Set[String], List[(Boolean, Set[String], Set[String], Set[String], FiniteDuration, String, String)])] = load { conf =>
     (for (powerMeter: Config <- conf.getConfigList("powerapi.daemon.load"))
-    yield (
-      powerMeter.getStringList("power-modules").toSet,
-      (for (monitor: Config <- powerMeter.getConfigList("monitors"))
       yield (
-        monitor.getBoolean("all"),
-        monitor.getStringList("pids").toSet,
-        monitor.getStringList("apps").toSet,
-        monitor.getStringList("containers").toSet,
-        monitor.getDuration("frequency", TimeUnit.MILLISECONDS).milliseconds,
-        monitor.getString("agg"),
-        monitor.getString("output")
-      )).toList
-    )).toList
+        powerMeter.getStringList("power-modules").toSet,
+        (for (monitor: Config <- powerMeter.getConfigList("monitors"))
+          yield (
+            monitor.getBoolean("all"),
+            monitor.getStringList("pids").toSet,
+            monitor.getStringList("apps").toSet,
+            monitor.getStringList("containers").toSet,
+            monitor.getDuration("frequency", TimeUnit.MILLISECONDS).milliseconds,
+            monitor.getString("agg"),
+            monitor.getString("output")
+            )).toList
+        )).toList
   } match {
     case ConfigValue(values) => values
     case _ => List()

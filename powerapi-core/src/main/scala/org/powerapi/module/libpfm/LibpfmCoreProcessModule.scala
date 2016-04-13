@@ -22,18 +22,20 @@
  */
 package org.powerapi.module.libpfm
 
-import akka.util.Timeout
-import org.powerapi.PowerModule
-import org.powerapi.core.{OSHelper, LinuxHelper}
-import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormulaConfiguration, LibpfmCoreCyclesFormula}
 import scala.collection.BitSet
 import scala.concurrent.duration.FiniteDuration
 
-class LibpfmCoreProcessModule(osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
-                              cyclesThreadName: String, cyclesRefName: String, formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+import akka.util.Timeout
 
-  lazy val underlyingSensorsClasses  = Seq((classOf[LibpfmCoreProcessSensor], Seq(osHelper, libpfmHelper, timeout, topology, configuration, events, inDepth)))
-  lazy val underlyingFormulaeClasses = Seq((classOf[LibpfmCoreCyclesFormula], Seq(cyclesThreadName, cyclesRefName, formulae, samplingInterval)))
+import org.powerapi.PowerModule
+import org.powerapi.core.{LinuxHelper, OSHelper}
+import org.powerapi.module.libpfm.cycles.{LibpfmCoreCyclesFormula, LibpfmCoreCyclesFormulaConfiguration}
+
+class LibpfmCoreProcessModule(osHelper: OSHelper, libpfmHelper: LibpfmHelper, timeout: Timeout, topology: Map[Int, Set[Int]], configuration: BitSet, events: Set[String], inDepth: Boolean,
+                              cyclesThreadName: String, cyclesRefName: String, pModel: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+
+  val sensor = Some((classOf[LibpfmCoreProcessSensor], Seq[Any](osHelper, libpfmHelper, timeout, topology, configuration, events, inDepth)))
+  val formula = Some((classOf[LibpfmCoreCyclesFormula], Seq[Any](cyclesThreadName, cyclesRefName, pModel, samplingInterval)))
 }
 
 object LibpfmCoreProcessModule {

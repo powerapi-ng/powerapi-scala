@@ -21,7 +21,7 @@
   ~
   ~ If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
   -->
-<Configuration status="INFO">
+<Configuration shutdownHook="disable" status="INFO">
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="[%level] [%d{MM/dd/yyyy HH:mm:ss.SSS}] [%t] [%logger{36}] - %msg%n" />

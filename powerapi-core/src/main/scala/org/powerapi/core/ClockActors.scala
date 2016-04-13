@@ -22,62 +22,64 @@
  */
 package org.powerapi.core
 
-import akka.actor.SupervisorStrategy.{Directive, Resume}
-import akka.actor.{Actor, Cancellable, PoisonPill, Props}
-import akka.event.LoggingReceive
-import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, subscribeClockChannel, publishClockTick}
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
+import akka.actor.SupervisorStrategy.{Directive, Resume}
+import akka.actor.{Actor, Cancellable, PoisonPill, Props}
+
+import org.powerapi.core.ClockChannel.{ClockStart, ClockStop, ClockStopAll, formatClockChildName, publishClockTick, subscribeClockChannel}
+
 /**
- * One child clock is created per frequency.
- * Allows to publish a message in the right topics for a given frequency.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * One child clock is created per frequency.
+  * Allows to publish a message in the right topics for a given frequency.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorComponent {
 
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
-    case ClockStart(_, freq) if frequency == freq => start()
-  } orElse default
+  def receive: Actor.Receive = starting orElse default
 
-  /**
-   * Running state, only one timer per ClockChild.
-   * An accumulator is used to know how many monitors are using this frequency.
-   *
-   * @param acc: Accumulator used to know the number of monitors which run at this frequency.
-   * @param timer: Timer created for producing ticks.
-   */
-  def running(acc: Int, timer: Cancellable): Actor.Receive = LoggingReceive {
-    case ClockStart(_, freq) if frequency == freq => {
-      log.info("clock is already started, reference: {}", frequency.toNanos)
-      context.become(running(acc + 1, timer))
-    }
-    case ClockStop(_, freq) if frequency == freq => stop(acc, timer)
-    case _: ClockStopAll => stop(1, timer)
-  } orElse default
-
-  /**
-   * Start the clock and the associated scheduler for publishing a Tick on the required topic at a given frequency.
-   */
-  def start(): Unit = {
-    val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
-      publishClockTick(frequency)(eventBus)
-    } (context.system.dispatcher)
-
-    log.info("clock started, reference: {}", frequency.toNanos)
-    context.become(running(1, timer))
+  def starting: Actor.Receive = {
+    case msg: ClockStart if msg.frequency == frequency => start()
   }
 
   /**
-   * Stop the clock and the scheduler.
-   *
-   * @param acc: Accumulator used to know the number of monitors which run at this frequency.
-   * @param timer: Timer created for producing ticks.
-   */
+    * Running state, only one timer per ClockChild.
+    * An accumulator is used to know how many monitors are using this frequency.
+    *
+    * @param acc   Accumulator used to know the number of monitors which run at this frequency.
+    * @param timer Timer created for producing ticks.
+    */
+  def running(acc: Int, timer: Cancellable): Actor.Receive = {
+    case msg: ClockStart if msg.frequency == frequency =>
+      log.info("clock is started already, reference: {}", frequency.toNanos)
+      context.become(running(acc + 1, timer) orElse default)
+    case msg: ClockStop if msg.frequency == frequency => stop(acc, timer)
+    case _: ClockStopAll => stop(1, timer)
+  }
+
+  /**
+    * Start the clock and the associated scheduler for publishing a Tick on the required topic at a given frequency.
+    */
+  def start(): Unit = {
+    val timer = context.system.scheduler.schedule(Duration.Zero, frequency) {
+      publishClockTick(frequency)(eventBus)
+    }(context.system.dispatcher)
+
+    log.info("clock started, reference: {}", frequency.toNanos)
+    context.become(running(1, timer) orElse default)
+  }
+
+  /**
+    * Stop the clock and the scheduler.
+    *
+    * @param acc   Accumulator used to know the number of monitors which run at this frequency.
+    * @param timer Timer created for producing ticks.
+    */
   def stop(acc: Int, timer: Cancellable): Unit = {
-    if(acc > 1) {
+    if (acc > 1) {
       log.info("this frequency is still used, clock is still running, reference: {}", frequency.toNanos)
-      context.become(running(acc - 1, timer))
+      context.become(running(acc - 1, timer) orElse default)
     }
     else {
       timer.cancel()
@@ -88,11 +90,11 @@ class ClockChild(eventBus: MessageBus, frequency: FiniteDuration) extends ActorC
 }
 
 /**
- * This clock listens the bus on a given topic and reacts on the received message.
- * It is responsible to handle a pool of clocks for the monitored frequencies.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * This clock listens to the bus on a given topic and reacts on the received message.
+  * It is responsible to handle a pool of clocks for the monitored frequencies.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 class Clocks(eventBus: MessageBus) extends Supervisor {
 
   override def preStart(): Unit = {
@@ -101,23 +103,25 @@ class Clocks(eventBus: MessageBus) extends Supervisor {
   }
 
   /**
-   * ClockChild actors can only launch exception if the message received is not handled.
-   */
+    * ClockChild actors can only launch exception if the message received is not handled.
+    */
   def handleFailure: PartialFunction[Throwable, Directive] = {
-    case _: UnsupportedOperationException => Resume 
+    case _: UnsupportedOperationException => Resume
   }
 
-  def receive: PartialFunction[Any, Unit] = LoggingReceive {
+  def receive: Actor.Receive = running orElse default
+
+  def running: Actor.Receive = {
     case msg: ClockStart => start(msg)
     case msg: ClockStop => stop(msg)
     case msg: ClockStopAll => stopAll(msg)
-  } orElse default
+  }
 
   /**
-   * Start a new clock at a given frequency whether is needed.
-   * 
-   * @param msg: Message received for starting a clock at a given frequency.
-   */
+    * Start a new clock at a given frequency whether is needed.
+    *
+    * @param msg Message received for starting a clock at a given frequency.
+    */
   def start(msg: ClockStart): Unit = {
     val name = formatClockChildName(msg.frequency)
 
@@ -130,22 +134,21 @@ class Clocks(eventBus: MessageBus) extends Supervisor {
   }
 
   /**
-   * Stop a clock for a given frequency if it exists.
-   * 
-   * @param msg: Message received for stopping a clock at a given frequency.
-   */
+    * Stop a clock for a given frequency if it exists.
+    *
+    * @param msg Message received for stopping a clock at a given frequency.
+    */
   def stop(msg: ClockStop): Unit = {
     val name = formatClockChildName(msg.frequency)
     context.actorSelection(name) ! msg
   }
 
   /**
-   * Stop all clocks for all frequencies.
-   *
-   * @param msg: Message received for stopping all clocks.
-   */
+    * Stop all clocks for all frequencies.
+    *
+    * @param msg Message received for stopping all clocks.
+    */
   def stopAll(msg: ClockStopAll): Unit = {
     context.actorSelection("*") ! msg
-    context.become(receive)
   }
 }

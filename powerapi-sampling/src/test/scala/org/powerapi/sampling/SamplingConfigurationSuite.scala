@@ -22,20 +22,18 @@
  */
 package org.powerapi.sampling
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
 
-class SamplingConfigurationSuite(system: ActorSystem) extends UnitTest(system) {
+import akka.util.Timeout
 
-  implicit val timeout = Timeout(1.seconds)
+import org.powerapi.UnitTest
 
-  def this() = this(ActorSystem("SamplingConfigurationSuite"))
+class SamplingConfigurationSuite extends UnitTest {
+
+  val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    TestKit.shutdownActorSystem(system)
+    system.shutdown()
   }
 
   "The SamplingConfiguration" should "read correctly the values from a resource file" in {

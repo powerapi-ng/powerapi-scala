@@ -25,10 +25,10 @@ package org.powerapi.module
 import scala.collection.BitSet
 
 /**
- * Implicit conversions.
- *
- * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
- */
+  * Implicit conversions.
+  *
+  * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
+  */
 package object libpfm {
   implicit def BitSet2Long(value: BitSet): Long = {
     // We limit the size of the bitset (see the documentation on perf_event.h, only 23 bits for the config.)
