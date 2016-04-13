@@ -41,7 +41,6 @@ object PowerApiBuild extends Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xlint",
       "-Xfatal-warnings"
     ),
     fork := true,
