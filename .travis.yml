@@ -55,6 +55,7 @@ after_success:
 before_deploy:
   - sbt "project powerapi-sampling" universal:packageZipTarball
   - sbt "project powerapi-cli" universal:packageZipTarball
+  - sbt "project powerapi-daemon" universal:packageZipTarball
   - tar -C powerapi-sampling/target/universal -xvf powerapi-sampling/target/universal/powerapi-sampling.tgz
   - tar -C powerapi-cli/target/universal -xvf powerapi-cli/target/universal/powerapi-cli.tgz
 
@@ -65,6 +66,7 @@ deploy:
   file:
     - "powerapi-sampling/target/universal/powerapi-sampling.tgz"
     - "powerapi-cli/target/universal/powerapi-cli.tgz"
+    - "powerapi-daemon/target/universal/powerapi-daemon.tgz"
   skip_cleanup: true
   on:
     tags: true
