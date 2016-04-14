@@ -89,6 +89,6 @@ System.getenv().getOrElse("PGP_PASSPHRASE", "") match {
     pgpPassphrase := None
 }
 
-pgpSecretRing := file("local.secring.gpg")
+pgpSecretRing := file("secring.gpg")
 
-pgpPublicRing := file("local.pubring.gpg")
+pgpPublicRing := file("pubring.gpg")

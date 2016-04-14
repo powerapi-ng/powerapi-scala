@@ -12,7 +12,7 @@ env:
     - secure: "VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=" # DOCKER_PWD
     - secure: "YdYgoOCsfP8etDVdbURY/HCqZhGUrWzOsgQcfBCnkbBueU0ugt48rX/BFTtrq/qIJp/N9YqDpw7Vz3X1mhfT3EMpNJRDkbHaMM1YxWX++PmGdVu71ZCiONd2/Q8h8uZP7MLgeD7nnMhls8LBgiCqqWUK0NXfMQwzALYechV42nw=" # SONATYPE_USER
     - secure: "a5ZD5zp0Nu1GQUMJeTL9fCNxbtKfRzXOafWsrCipP/qg+uKrbNVS5sbhCBu7WB/Qf1x8cQapyXgRcFX/13bTkB+SWYEcUeRK5FH0hByaWLbjxuQNx5QjoRZEgi7lgvEbgyFPnsqAKLPoKmauRGGAlkhZOwnLRFpdha/+b2lKRs8=" # SONATYPE_PWD
-    - secure: "ixdgd8MbWHpLYPhmUF/+yAh6YGiK3C3xnhuYgam3wKkVhC5UcdW4SPGDuB2fNjgFCzMQ5uonBwYFINLDps3VWHtA0NTvImxOUuRFeo60NkAaygmx5hjEhw69Kgpo7h1MRe6Tkexq5+u+ImrAjoQFCwXZfRG8y7jhMvGUkicGPIg=" # PGP_PASSPHRASE
+    - secure: "D/lV1ExPr9QJci0sVGbXhyaESFC1fxwxFQ6u/CG0o8MuFMi+LHgp64Ga6BkKBy5xVhhMLOtW+wlYps7SBHUY/taWArhNBmuaIx567+2i0fAccM7QB3YcwPLeZLtu9aE+VF0QF5+4QolREqT7CWScW0Xwg4QsYkP+FXHxoTSnAyk=" # PGP_PASSPHRASE
     - secure: "A1o93OIGEa6GCRDAesU20gXUDZwWgJbz9hJJoBBVS49Zk4asB09uE5GVVPGKSs+4nDvI55os1lQZWYgvaF2Yy9kvaXcxgx1TeXNsCwlH2ZAd7yiaQJxDil2/wjle3KrT/Nqbb+VssHKHMjacQQHgwzUYCWjok7Q7D9EmFppXvR4=" # GITHUB_TOKEN
 
 cache:
@@ -24,7 +24,7 @@ cache:
 language: scala
 
 scala:
-- 2.11.7
+  - 2.11.7
 
 jdk:
   - openjdk7
@@ -75,7 +75,7 @@ after_deploy:
   - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
   - git config user.name "TRAVIS CI"
   - git add CHANGELOG.md
-  - git commit -m "core(changelog): update the Changelog"
+  - git commit -m 'core(changelog) update the Changelog'
   - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1
   - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PWD
   - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling:$TRAVIS_TAG .

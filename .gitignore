@@ -36,4 +36,5 @@ target/
 #bluecove
 *bluecove*
 
+*.gpg
 secrets.tar
