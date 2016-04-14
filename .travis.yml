@@ -13,7 +13,7 @@ env:
     - secure: "YdYgoOCsfP8etDVdbURY/HCqZhGUrWzOsgQcfBCnkbBueU0ugt48rX/BFTtrq/qIJp/N9YqDpw7Vz3X1mhfT3EMpNJRDkbHaMM1YxWX++PmGdVu71ZCiONd2/Q8h8uZP7MLgeD7nnMhls8LBgiCqqWUK0NXfMQwzALYechV42nw=" # SONATYPE_USER
     - secure: "a5ZD5zp0Nu1GQUMJeTL9fCNxbtKfRzXOafWsrCipP/qg+uKrbNVS5sbhCBu7WB/Qf1x8cQapyXgRcFX/13bTkB+SWYEcUeRK5FH0hByaWLbjxuQNx5QjoRZEgi7lgvEbgyFPnsqAKLPoKmauRGGAlkhZOwnLRFpdha/+b2lKRs8=" # SONATYPE_PWD
     - secure: "D/lV1ExPr9QJci0sVGbXhyaESFC1fxwxFQ6u/CG0o8MuFMi+LHgp64Ga6BkKBy5xVhhMLOtW+wlYps7SBHUY/taWArhNBmuaIx567+2i0fAccM7QB3YcwPLeZLtu9aE+VF0QF5+4QolREqT7CWScW0Xwg4QsYkP+FXHxoTSnAyk=" # PGP_PASSPHRASE
-    - secure: "A1o93OIGEa6GCRDAesU20gXUDZwWgJbz9hJJoBBVS49Zk4asB09uE5GVVPGKSs+4nDvI55os1lQZWYgvaF2Yy9kvaXcxgx1TeXNsCwlH2ZAd7yiaQJxDil2/wjle3KrT/Nqbb+VssHKHMjacQQHgwzUYCWjok7Q7D9EmFppXvR4=" # GITHUB_TOKEN
+    - secure: "mgJrLXgbKE3nBR3CdjD1jL3ygxEtRiOATOqbzzOwAMjcfNffwrs1G/pWrDNn+Ogn5rX+9cK1tkCi98gcLWaCgyUNPs2VB6BYGY4ADXpxQDmM2ihyw2/bLqbyFxGJ/sIQ7H/lmi+bB7CCFwT5Ej/fBPn9Cj7qu2Z4KW9nTPK9LK0=" # GITHUB_TOKEN
 
 cache:
   directories:
@@ -75,7 +75,8 @@ deploy:
 after_deploy:
   - sbt "project powerapi-core" publishSigned sonatypeRelease
   - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
-  - git config user.name "TRAVIS CI"
+  - git config user.name "Travis CI"
+  - git config user.email "builds@travis-ci.org"
   - git add CHANGELOG.md
   - git commit -m 'core(changelog) update the Changelog'
   - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1

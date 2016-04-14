@@ -1,13 +1,25 @@
 # Change Log
 
-## [3.4](https://github.com/Spirals-Team/powerapi/tree/3.4) (2016-02-02)
+## [4.0](https://github.com/Spirals-Team/powerapi/tree/4.0) (2016-04-14)
+[Full Changelog](https://github.com/Spirals-Team/powerapi/compare/3.4...4.0)
 
-[Full Changelog](https://github.com/Spirals-Team/powerapi/compare/3.4...3.3)
+**Implemented enhancements:**
+
+- Use a settings file to declare the architectures compatible with RAPL [\#78](https://github.com/Spirals-Team/powerapi/issues/78)
+- Packaging PowerAPI as docker images [\#77](https://github.com/Spirals-Team/powerapi/issues/77)
+- feature\(v4.0\): refactoring [\#81](https://github.com/Spirals-Team/powerapi/pull/81) ([mcolmant](https://github.com/mcolmant))
+- feature\(v4.0\): refactoring [\#80](https://github.com/Spirals-Team/powerapi/pull/80) ([mcolmant](https://github.com/mcolmant))
 
 **Fixed bugs:**
 
-- Link error while using Sigar module [\#75](https://github.com/Spirals-Team/powerapi/issues/75)
+- Cannot compile CLI: “error: not found: value Universal” [\#79](https://github.com/Spirals-Team/powerapi/issues/79)
 
+## [3.4](https://github.com/Spirals-Team/powerapi/tree/3.4) (2016-02-02)
+[Full Changelog](https://github.com/Spirals-Team/powerapi/compare/3.3...3.4)
+
+**Closed issues:**
+
+- Link error while using Sigar module [\#75](https://github.com/Spirals-Team/powerapi/issues/75)
 
 ## [3.3](https://github.com/Spirals-Team/powerapi/tree/3.3) (2015-11-03)
 [Full Changelog](https://github.com/Spirals-Team/powerapi/compare/3.2...3.3)
@@ -15,6 +27,7 @@
 **Implemented enhancements:**
 
 - Refactors the PowerSpy module [\#53](https://github.com/Spirals-Team/powerapi/issues/53)
+- Create the wiki with the documentation [\#46](https://github.com/Spirals-Team/powerapi/issues/46)
 - Implement the filesystem interface [\#16](https://github.com/Spirals-Team/powerapi/issues/16)
 - Implement the daemon mode [\#15](https://github.com/Spirals-Team/powerapi/issues/15)
 - Implement the Web interface [\#14](https://github.com/Spirals-Team/powerapi/issues/14)
