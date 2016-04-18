@@ -22,6 +22,8 @@
  */
 package org.powerapi.daemon
 
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 import scala.sys.process.stringSeqToProcess
 
 import org.apache.commons.daemon.{Daemon, DaemonContext}
@@ -131,9 +133,10 @@ class PowerAPId extends Daemon {
             val fileDisplay = new FileDisplay(file.split("=>")(1))
             monitor.to(fileDisplay)
           case influx: String if output.startsWith("influx") =>
-            // influx=>http://locahost:8086,powerapi,powerapi,test,event.powerapi
+            // influx=>locahost,8086,powerapi,powerapi,test,event.powerapi
             val parameters = influx.split("=>")(1).split(",")
-            val influxDisplay = new InfluxDisplay(parameters(0), parameters(1), parameters(2), parameters(3), parameters(4))
+            val influxDisplay = new InfluxDisplay(parameters(0), parameters(1).toInt, parameters(2), parameters(3), parameters(4), parameters(5))
+            Await.result(influxDisplay.database.create(), 30.seconds)
             monitor.to(influxDisplay)
           case "chart" =>
             val chartDisplay = new JFreeChartDisplay()

@@ -24,6 +24,7 @@ package org.powerapi.app
 
 import java.lang.management.ManagementFactory
 
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.sys
 import scala.sys.process.stringSeqToProcess
@@ -98,7 +99,7 @@ object PowerAPI extends App {
         |                            --frequency $MILLISECONDS
         |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
         |                            --agg max|min|geomean|logsum|mean|median|stdev|sum|variance
-        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $USER $PWD $DB $MEASUREMENT (0, *)
+        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $PORT $USER $PWD $DB $MEASUREMENT (0, *)
         |                  duration [s]
         |
         |example: ./powerapi modules procfs-cpu-simple monitor --frequency 1000 --apps firefox,chrome --agg max --console \
@@ -175,10 +176,12 @@ object PowerAPI extends App {
       cliMonitorsSubcommand(options, currentMonitor + ('displays ->
         (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new JFreeChartDisplay)
       ), tail)
-    case "--influx" :: host :: user :: pwd :: db :: measurement :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('displays ->
-        (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new InfluxDisplay(host, user, pwd, db, measurement))
-      ), tail)
+    case "--influx" :: host :: port :: user :: pwd :: db :: measurement :: tail =>
+      cliMonitorsSubcommand(options, currentMonitor + ('displays -> {
+        val influxDisplay = new InfluxDisplay(host, port.toInt, user, pwd, db, measurement)
+        Await.result(influxDisplay.database.create(), 30.seconds)
+        currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + influxDisplay
+      }), tail)
     case option :: tail =>
       println(s"unknown monitor option $option")
       sys.exit(1)

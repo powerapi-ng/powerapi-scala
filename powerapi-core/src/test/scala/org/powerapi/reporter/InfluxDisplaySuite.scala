@@ -23,17 +23,16 @@
 package org.powerapi.reporter
 
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.DurationInt
-import collection.JavaConversions._
 
 import akka.util.Timeout
 
-import org.influxdb.dto.Query
+import org.joda.time.format.ISODateTimeFormat
 import org.powerapi.UnitTest
 import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, Process, Target}
+import org.scalatest.time.{Seconds, Span}
 
 class InfluxDisplaySuite extends UnitTest {
 
@@ -50,13 +49,30 @@ class InfluxDisplaySuite extends UnitTest {
     val devices = Set[String]("cpu", "gpu", "ssd")
     val power = 10.W
 
-    val influxDisplay = new InfluxDisplay("http://localhost:8086", "powerapi", "powerapi", "test", "event.powerapi")
-    influxDisplay.influxdb.createDatabase("test")
-    influxDisplay.display(muid, timestamp, targets, devices, power)
-    val query = new Query("SELECT * FROM \"event.powerapi\"", "test")
-    val result = influxDisplay.influxdb.query(query, TimeUnit.MILLISECONDS)
-    result.getResults.head.getSeries.head.getValues.head should contain theSameElementsAs Seq(timestamp.toDouble, s"$muid", devices.mkString(","), targets.mkString(","), power.toMilliWatts)
-    influxDisplay.influxdb.deleteDatabase("test")
+    val influxDisplay = new InfluxDisplay("localhost", 8086, "powerapi", "powerapi", "test", "event.powerapi")
+
+    whenReady(influxDisplay.database.create(), timeout(Span(30, Seconds))) {
+      _ =>
+        influxDisplay.display(muid, timestamp, targets, devices, power)
+
+        awaitCond({
+          whenReady(influxDisplay.database.query("SELECT * FROM \"event.powerapi\"")) {
+            result =>
+              result.series.size == 1 &&
+              result.series.head.records.size == 1 &&
+              ISODateTimeFormat.dateTimeParser().parseDateTime(result.series.head.records.head("time").toString).getMillis == timestamp &&
+              result.series.head.records.head("devices") == devices.mkString(",") &&
+              result.series.head.records.head("muid") == s"$muid" &&
+              result.series.head.records.head("power") == power.toMilliWatts &&
+              result.series.head.records.head("targets") == targets.mkString(",")
+          }
+        }, 30.seconds, 1.seconds)
+
+        whenReady(influxDisplay.database.drop(), timeout(Span(30, Seconds))) {
+          _ =>
+            assert(true)
+        }
+    }
   }
 }
 

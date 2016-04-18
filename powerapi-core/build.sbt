@@ -24,7 +24,7 @@ libraryDependencies ++= Seq(
   "net.java.dev.jna" % "jna" % "4.2.1",
   "io.spray" %% "spray-json" % "1.3.2",
   "com.github.docker-java" % "docker-java" % "2.1.4",
-  "org.influxdb" % "influxdb-java" % "2.1"
+  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.4.5"
 )
 
 // Tests
