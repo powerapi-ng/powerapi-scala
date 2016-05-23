@@ -24,8 +24,6 @@ package org.powerapi.sampling
 
 import java.io.{File, FileOutputStream, PrintWriter}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.sys.process.{ProcessLogger, stringSeqToProcess}
 import scalax.file.Path
@@ -39,7 +37,7 @@ import org.powerapi.core.power._
 import org.powerapi.core.target.All
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport, unsubscribePCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport, unsubscribePCReport}
 import org.powerapi.module.libpfm.{LibpfmCoreSensorModule, LibpfmHelper}
 
 /**
@@ -87,20 +85,14 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
   }
 
   def report(msg: PCReport): Unit = {
-    for ((event, wrappers) <- msg.wrappers.groupBy(_.event)) {
-      val future = Future.sequence(wrappers.foldLeft(List[Future[HWCounter]]())((acc, elt) => acc ++ elt.values))
 
-      future onSuccess {
-        case values: List[HWCounter] =>
-          val counter = values.foldLeft(0l)((acc, counter) => acc + counter.value)
-          outputs(event).append(s"$counter\n")
-          outputs(event).flush()
-        }
+    for (event <- events) {
+      val counter = msg.values.values.flatten.collect {
+        case (ev, counters) if ev == event => counters.map(_.value)
+      }.foldLeft(Seq[Long]())((acc, value) => acc ++ value).sum
 
-      future onFailure {
-        case ex: Throwable =>
-          log.warning("An error occurred: {}", ex.getMessage)
-      }
+      outputs(event).append(s"$counter\n")
+      outputs(event).flush()
     }
   }
 

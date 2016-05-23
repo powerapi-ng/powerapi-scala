@@ -25,12 +25,12 @@ package org.powerapi.reporter
 import java.util.UUID
 
 import scala.concurrent.duration.DurationInt
-
 import akka.util.Timeout
-
 import org.powerapi.UnitTest
+import org.powerapi.core.Tick
 import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 
 class JFreeChartDisplaySuite extends UnitTest {
 
@@ -42,15 +42,25 @@ class JFreeChartDisplaySuite extends UnitTest {
 
   "A JFreeChartDisplay" should "display an AggPowerReport message in a JFreeChart" ignore {
     val muid = UUID.randomUUID()
-    val timestamp = System.currentTimeMillis()
-    val targets = Set[Target](Application("firefox"), Process(1), Process(2))
-    val devices = Set[String]("cpu", "gpu", "ssd")
-    val power = 10.W
+    val baseTimestamp = System.currentTimeMillis()
+    val baseTargets = Set[Target](Application("firefox"), Process(1), Process(2))
+    val baseDevices = Set[String]("cpu", "gpu", "ssd")
+    val basePower = 10.W
 
     val out = new JFreeChartDisplay
 
     for (i <- 0 to 5) {
-      out.display(muid, timestamp + i * 1000, targets, devices, 10.W + (10 * i).W)
+      val baseTick = new Tick {
+        val topic = ""
+        val timestamp = baseTimestamp + i * 1000
+      }
+      val aggregatePowerReport = new AggregatePowerReport(muid) {
+        override def ticks = Set(baseTick)
+        override def targets = baseTargets
+        override def devices = baseDevices
+        override def power = basePower + (10 * i).W
+      }
+      out.display(aggregatePowerReport)
       Thread.sleep(1000)
     }
   }

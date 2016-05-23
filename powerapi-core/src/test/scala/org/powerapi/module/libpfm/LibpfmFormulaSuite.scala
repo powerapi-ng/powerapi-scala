@@ -24,9 +24,8 @@ package org.powerapi.module.libpfm
 
 import java.util.UUID
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 
 import akka.actor.Props
 import akka.pattern.gracefulStop
@@ -40,7 +39,7 @@ import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.module.FormulaChannel.{startFormula, stopFormula}
 import org.powerapi.module.Formulas
 import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCWrapper, publishPCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, publishPCReport}
 
 class LibpfmFormulaSuite extends UnitTest {
 
@@ -82,15 +81,20 @@ class LibpfmFormulaSuite extends UnitTest {
     })
     subscribeRawPowerReport(muid)(eventBus)(testActor)
 
-    var wrappers = Seq[PCWrapper]()
-    wrappers +:= PCWrapper(0, "REQUESTS_TO_L2:CANCELLED", List[Future[HWCounter]](Future(HWCounter(250000000)), Future(HWCounter(0))))
-    wrappers +:= PCWrapper(0, "REQUESTS_TO_L2:ALL", List[Future[HWCounter]](Future(HWCounter(330000)), Future(HWCounter(0))))
-    wrappers +:= PCWrapper(0, "LS_DISPATCH:ALL", List[Future[HWCounter]](Future(HWCounter(1000000)), Future(HWCounter(0))))
-    wrappers +:= PCWrapper(1, "REQUESTS_TO_L2:CANCELLED", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(500000000))))
-    wrappers +:= PCWrapper(1, "REQUESTS_TO_L2:ALL", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(220000000))))
-    wrappers +:= PCWrapper(1, "LS_DISPATCH:ALL", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(50000))))
+    val values = Map[Int, Map[String, Seq[HWCounter]]](
+      0 -> Map(
+        "REQUESTS_TO_L2:CANCELLED" -> Seq(HWCounter(250000000), HWCounter(0)),
+        "REQUESTS_TO_L2:ALL" -> Seq(HWCounter(330000), HWCounter(0)),
+        "LS_DISPATCH:ALL" -> Seq(HWCounter(1000000), HWCounter(0))
+      ),
+      1 -> Map(
+        "REQUESTS_TO_L2:CANCELLED" -> Seq(HWCounter(0), HWCounter(500000000)),
+        "REQUESTS_TO_L2:ALL" -> Seq(HWCounter(0), HWCounter(220000000)),
+        "LS_DISPATCH:ALL" -> Seq(HWCounter(0), HWCounter(50000))
+      )
+    )
 
-    publishPCReport(muid, target, wrappers, tick1)(eventBus)
+    publishPCReport(muid, target, values, tick1)(eventBus)
     var rawPowerReport = expectMsgClass(classOf[RawPowerReport])
     rawPowerReport.muid should equal(muid)
     rawPowerReport.target should equal(target)
@@ -102,7 +106,7 @@ class LibpfmFormulaSuite extends UnitTest {
       stopFormula(muid)(eventBus)
     })
 
-    publishPCReport(muid, target, wrappers, tick2)(eventBus)
+    publishPCReport(muid, target, values, tick2)(eventBus)
     expectNoMsg()
 
     Await.result(gracefulStop(formulas, timeout.duration), timeout.duration)

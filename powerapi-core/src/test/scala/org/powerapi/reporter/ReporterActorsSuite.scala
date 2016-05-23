@@ -56,7 +56,7 @@ class ReporterActorsSuite extends UnitTest {
     val muid2 = UUID.randomUUID()
 
     val output = new PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {}
+      def display(aggregatePowerReport: AggregatePowerReport): Unit = {}
     }
 
     val reporter1 = TestActorRef(Props(classOf[Reporter], eventBus, muid1, output), "reporter1")
@@ -67,7 +67,7 @@ class ReporterActorsSuite extends UnitTest {
       reporter1 ! ReporterStopAll("test")
       reporter1 ! ReporterStart("test", UUID.randomUUID(), output)
       reporter1 ! ReporterStart("test", muid1, new PowerDisplay {
-        def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {}
+        def display(aggregatePowerReport: AggregatePowerReport): Unit = {}
       })
     })
 
@@ -120,7 +120,7 @@ class ReporterActorsSuite extends UnitTest {
     aggPowerReport2 += RawPowerReport("test", muid2, All, 30.W, "cpu", tick2)
 
     val output = new PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor ! ((muid, timestamp, targets, devices, power))
+      def display(aggregatePowerReport: AggregatePowerReport): Unit = testActor ! ((aggregatePowerReport.muid, aggregatePowerReport.ticks.head.timestamp, aggregatePowerReport.targets, aggregatePowerReport.devices, aggregatePowerReport.power))
     }
 
     val reporter1 = TestActorRef(Props(classOf[Reporter], eventBus, muid1, output), "reporter1")
@@ -195,7 +195,7 @@ class ReporterActorsSuite extends UnitTest {
     aggPowerReport2 += RawPowerReport("test", muid2, All, 30.W, "cpu", tick2)
 
     val output = new PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor ! ((muid, timestamp, targets, devices, power))
+      def display(aggregatePowerReport: AggregatePowerReport): Unit = testActor ! ((aggregatePowerReport.muid, aggregatePowerReport.ticks.head.timestamp, aggregatePowerReport.targets, aggregatePowerReport.devices, aggregatePowerReport.power))
     }
 
     val reporters = TestActorRef(Props(classOf[Reporters], eventBus), "reporters")

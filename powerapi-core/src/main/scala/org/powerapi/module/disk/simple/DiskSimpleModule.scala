@@ -20,27 +20,25 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.reporter
+package org.powerapi.module.disk.simple
 
-import org.powerapi.PowerDisplay
-import org.powerapi.module.PowerChannel.AggregatePowerReport
+import org.powerapi.PowerModule
+import org.powerapi.core.{Disk, LinuxHelper, OSHelper}
 
-/**
-  * Display power information into the console.
-  *
-  * @author Aurélien Bourdon <aurelien@bourdon@gmail.com>
-  * @author Loïc Huertas <l.huertas.pro@gmail.com>
-  */
-class ConsoleDisplay extends PowerDisplay {
+import scala.concurrent.duration.FiniteDuration
 
-  def display(aggregatePowerReport: AggregatePowerReport) {
-    val muid = aggregatePowerReport.muid
-    val timestamp = aggregatePowerReport.ticks.map(_.timestamp).head
-    val targets = aggregatePowerReport.targets
-    val devices = aggregatePowerReport.devices
-    val power = aggregatePowerReport.power
-
-    println(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW")
-  }
+class DiskSimpleModule(osHelper: OSHelper, disks: Seq[Disk], interval: FiniteDuration, formulae: Map[String, Map[String, Seq[PieceWiseFunction]]]) extends PowerModule {
+  val sensor = Some((classOf[DiskSimpleSensor], Seq(osHelper, disks)))
+  val formula = Some((classOf[DiskSimpleFormula], Seq(interval, formulae)))
 }
 
+object DiskSimpleModule {
+  def apply(prefix: Option[String]): DiskSimpleModule = {
+    val config = new DiskSimpleFormulaConfiguration(prefix)
+    val linuxHelper = new LinuxHelper
+    val disks = linuxHelper.getDiskInfo(config.formulae.keys.toSeq)
+    linuxHelper.createCGroup("blkio", "powerapi")
+
+    new DiskSimpleModule(linuxHelper, disks, config.interval, config.formulae)
+  }
+}

@@ -34,6 +34,7 @@ import org.powerapi.core.power._
 import org.powerapi.core.target._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{ProcFSCpuSimpleModule, SigarCpuSimpleModule}
+import org.powerapi.module.disk.simple.DiskSimpleModule
 import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.extpowermeter.rapl.RAPLModule
@@ -48,7 +49,7 @@ import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
   * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
   */
 object PowerAPI extends App {
-  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl))*""".r
+  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple))*""".r
   val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
   val durationR = """\d+""".r
   val pidsR = """(\d+)(,(\d+))*""".r
@@ -94,7 +95,7 @@ object PowerAPI extends App {
         |Different settings can be used per software-defined power meter by using the prefix option.
         |Please, refer to the documentation inside the GitHub wiki for further details.
         |
-        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl (1, *) *--prefix [name]*
+        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple (1, *) *--prefix [name]*
         |                          monitor (1, *)
         |                            --frequency $MILLISECONDS
         |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
@@ -228,6 +229,8 @@ object PowerAPI extends App {
             G5kOmegaWattModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
           case "rapl" =>
             RAPLModule()
+          case "disk-simple" =>
+            DiskSimpleModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
         }
       }).toSeq
 

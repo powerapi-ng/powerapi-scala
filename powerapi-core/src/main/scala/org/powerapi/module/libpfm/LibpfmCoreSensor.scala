@@ -25,7 +25,7 @@ package org.powerapi.module.libpfm
 import java.util.UUID
 
 import scala.collection.BitSet
-import scala.concurrent.Future
+import scala.concurrent.Await
 
 import akka.actor.{Actor, PoisonPill, Props}
 import akka.pattern.ask
@@ -35,7 +35,7 @@ import org.powerapi.core.MessageBus
 import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick, unsubscribeMonitorTick}
 import org.powerapi.core.target.{All, Target}
 import org.powerapi.module.Sensor
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, LibpfmPickerStop, PCWrapper, formatLibpfmCoreSensorChildName, publishPCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, LibpfmPickerStop, formatLibpfmCoreSensorChildName, publishPCReport}
 
 /**
   * Libpfm sensor component that collects metrics with libpfm at a core level.
@@ -51,7 +51,7 @@ class LibpfmCoreSensor(eventBus: MessageBus, muid: UUID, target: Target, libpfmH
       index: Int <- topology(core)
       event: String <- events
     } yield (core, index, event)
-  }.toParArray
+  }
 
   def init(): Unit = subscribeMonitorTick(muid, target)(eventBus)(self)
 
@@ -80,15 +80,15 @@ class LibpfmCoreSensor(eventBus: MessageBus, muid: UUID, target: Target, libpfmH
 
   def sense: Actor.Receive = {
     case msg: MonitorTick =>
-      val allWrappers = combinations.map {
+      val allValues = combinations.map {
         case (core, index, event) =>
           val name = formatLibpfmCoreSensorChildName(index, event, muid)
           val actor = context.child(name).get
-          PCWrapper(core, event, List(actor.?(msg.tick)(timeout).asInstanceOf[Future[HWCounter]]))
+          (core, event, Await.result(actor.?(msg.tick)(timeout), timeout.duration).asInstanceOf[HWCounter])
       }
 
-      publishPCReport(muid, target, allWrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).map {
-        case ((core, event), wrappers) => PCWrapper(core, event, wrappers.flatMap(_.values).toList)
-      }.toList, msg.tick)(eventBus)
+      publishPCReport(muid, target, allValues.groupBy(tuple3 => (tuple3._1, tuple3._2)).map {
+        case ((core, event), values) => Map[Int, Map[String, Seq[HWCounter]]](core -> Map(event -> values.map(_._3).toSeq))
+      }.foldLeft(Map[Int, Map[String, Seq[HWCounter]]]())((acc, elt) => acc ++ elt), msg.tick)(eventBus)
   }
 }

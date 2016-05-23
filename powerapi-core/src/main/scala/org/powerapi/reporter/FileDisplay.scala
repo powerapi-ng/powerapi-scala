@@ -22,13 +22,9 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-
 import scalax.io.Resource
-
 import org.powerapi.PowerDisplay
-import org.powerapi.core.power.Power
-import org.powerapi.core.target.Target
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 
 /**
   * Display power information into a given file.
@@ -40,7 +36,13 @@ class FileDisplay(filepath: String) extends PowerDisplay {
 
   val output = Resource.fromFile(filepath)
 
-  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+  def display(aggregatePowerReport: AggregatePowerReport) {
+    val muid = aggregatePowerReport.muid
+    val timestamp = aggregatePowerReport.ticks.map(_.timestamp).head
+    val targets = aggregatePowerReport.targets
+    val devices = aggregatePowerReport.devices
+    val power = aggregatePowerReport.power
+
     output.append(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW\n")
   }
 }
