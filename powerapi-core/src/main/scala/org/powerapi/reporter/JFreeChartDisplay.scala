@@ -23,15 +23,13 @@
 package org.powerapi.reporter
 
 import java.awt.{BasicStroke, Dimension}
-import java.util.UUID
 import javax.swing.SwingUtilities
 
 import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.time.{FixedMillisecond, TimeSeries, TimeSeriesCollection, TimeSeriesDataItem}
 import org.jfree.ui.ApplicationFrame
 import org.powerapi.PowerDisplay
-import org.powerapi.core.power.Power
-import org.powerapi.core.target.Target
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 
 /**
   * Display result received from the CpuDiskListener Component to a wrapped JFreeChart chart.
@@ -116,7 +114,11 @@ class JFreeChartDisplay extends PowerDisplay {
     }
   })
 
-  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+  def display(aggregatePowerReport: AggregatePowerReport) {
+    val timestamp = aggregatePowerReport.ticks.map(_.timestamp).head
+    val targets = aggregatePowerReport.targets
+    val power = aggregatePowerReport.power
+
     Chart.process(Map(s"${targets.mkString(",")}" -> power.toMilliWatts), timestamp)
   }
 }

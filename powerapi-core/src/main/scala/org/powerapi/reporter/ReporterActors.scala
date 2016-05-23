@@ -55,7 +55,7 @@ class Reporter(eventBus: MessageBus, muid: UUID, output: PowerDisplay) extends A
   }
 
   def running: Actor.Receive = {
-    case msg: AggregatePowerReport => output.display(msg.muid, msg.tick.timestamp, msg.targets, msg.devices, msg.power)
+    case msg: AggregatePowerReport => output.display(msg)
     case msg: ReporterStop if msg.muid == muid => stop()
     case _: ReporterStopAll => stop()
   }

@@ -91,11 +91,7 @@ object PowerChannel extends Channel {
   /**
     * Base trait for each power report
     */
-  trait PowerReport extends Message {
-    def muid: UUID
-
-    def tick: Tick
-  }
+  trait PowerReport extends Message
 
   /**
     * RawPowerReport is represented as a dedicated type of message.
@@ -132,7 +128,19 @@ object PowerChannel extends Channel {
 
     def devices: Set[String] = reports.map(_.device).toSet
 
-    def power = aggregator.getOrElse(SUM _)(reports.map(_.power))
+    def power: Power = aggregator.getOrElse(SUM _)(reports.map(_.power))
+
+    def powerPerDevice: Map[String, Power] = {
+      for ((device, deviceReports) <- reports.groupBy(_.device)) yield {
+        device -> aggregator.getOrElse(SUM _)(deviceReports.map(_.power))
+      }
+    }
+
+    def powerPerTarget: Map[Target, Power] = {
+      for ((target, targetReports) <- reports.groupBy(_.target)) yield {
+        target -> aggregator.getOrElse(SUM _)(targetReports.map(_.power))
+      }
+    }
 
     def aggregator: Option[Seq[Power] => Power] = _aggregator
 
@@ -140,13 +148,7 @@ object PowerChannel extends Channel {
       _aggregator = agg
     }
 
-    def tick: Tick = {
-      if (reports.map(_.tick).toSet.size == 1) reports.head.tick
-      else new Tick {
-        val topic = ""
-        val timestamp = System.currentTimeMillis()
-      }
-    }
+    def ticks: Set[Tick] = reports.map(_.tick).toSet
   }
 
 }

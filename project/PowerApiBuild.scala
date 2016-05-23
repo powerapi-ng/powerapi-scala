@@ -32,7 +32,7 @@ object PowerApiBuild extends Build {
   lazy val downloadBluecoveGpl = taskKey[File]("download-bluecove-gpl-app")
 
   lazy val buildSettings = Seq(
-    version := "4.0",
+    version := "4.1",
     scalaVersion := "2.11.7",
     scalacOptions := Seq(
       "-language:existentials",

@@ -63,6 +63,22 @@ case class TimeInStates(times: Map[Long, Long]) {
 case class GlobalCpuTimes(idleTime: Long, activeTime: Long)
 
 /**
+  * Wrapper class for disk info.
+  */
+case class Disk(name: String, major: Int, minor: Int, bytesRead: Long = 0, bytesWritten: Long = 0) {
+  def -(other: Disk): Disk = {
+    if (name == other.name && major == other.major && minor == other.minor) {
+      val diffBytesRead = bytesRead - other.bytesRead
+      val diffBytesWrite = bytesWritten - other.bytesWritten
+
+      Disk(name, major, minor, if (diffBytesRead > 0) diffBytesRead else 0, if (diffBytesWrite > 0) diffBytesWrite else 0)
+    }
+
+    else this
+  }
+}
+
+/**
   * Base trait use for implementing os specific methods.
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
@@ -110,6 +126,49 @@ trait OSHelper {
         getProcesses(wrapper).toSeq.map(process => getProcessCpuTime(process)).sum
       case _ => 0L
     }
+  }
+
+  /**
+    * Create a cgroup attached to a given subsystem.
+    */
+  def createCGroup(subsystem: String, name: String): Unit
+
+  /**
+    * Test if a cgroup exists.
+    */
+  def existsCGroup(subsystem: String, name: String): Boolean
+
+  /**
+    * Attach pids (`toAttach` string) to an existing cgroup.
+    */
+  def attachToCGroup(subsystem: String, name: String, toAttach: String): Unit
+
+  /**
+    * Delete a cgroup attached to each given subsystem.
+    */
+  def deleteCGroup(subsystem: String, name: String): Unit
+
+  /**
+    * Get information for selected disks.
+    */
+  def getDiskInfo(names: Seq[String]): Seq[Disk]
+
+  /**
+    * Get the global read/written bytes information for selected disks.
+    */
+  def getGlobalDiskBytes(disks: Seq[Disk]): Seq[Disk]
+
+  /**
+    * Get the target read/written bytes information for a given target on selected disks.
+    */
+  def getTargetDiskBytes(disks: Seq[Disk], target: Target): Seq[Disk]
+
+  /**
+    * Get all directories recursively inside a given path.
+    */
+  def getAllDirectories(dir: File): Seq[File] = {
+    val current = dir.listFiles.filter(_.isDirectory)
+    current ++ current.flatMap(getAllDirectories)
   }
 }
 
@@ -165,6 +224,24 @@ class LinuxHelper extends Configuration(None) with OSHelper {
   } match {
     case ConfigValue(p) => p
     case _ => "/sys/devices/system/cpu/cpu%?index/cpufreq/stats/time_in_state"
+  }
+  /**
+    * Cgroup base directory.
+    */
+  lazy val cgroupSysFSPath = load {
+    _.getString("powerapi.sysfs.cgroup-sysfs-path")
+  } match {
+    case ConfigValue(p) => p
+    case _ => "/sys/fs/cgroup"
+  }
+  /**
+    * Disk stats filepath.
+    */
+  lazy val diskStatPath = load {
+    _.getString("powerapi.procfs.disk-stats-path")
+  } match {
+    case ConfigValue(p) => p
+    case _ => "/proc/diskstats"
   }
   /**
     * CPU's topology.
@@ -297,6 +374,91 @@ class LinuxHelper extends Configuration(None) with OSHelper {
 
     TimeInStates(result.toMap[Long, Long])
   }
+
+  def createCGroup(subsystem: String, name: String): Unit = {
+    Seq("cgcreate", "-g", s"$subsystem:/$name").!
+  }
+
+  def existsCGroup(subsystem: String, name: String): Boolean = {
+    new File(s"$cgroupSysFSPath/$subsystem/$name").exists()
+  }
+
+  def attachToCGroup(subsystem: String, name: String, toAttach: String): Unit = {
+    Seq("cgclassify", "-g", s"$subsystem:/$name", s"$toAttach").!
+  }
+
+  def deleteCGroup(subsystem: String, name: String): Unit = {
+    Seq("cgdelete", s"$subsystem:/$name").!
+  }
+
+  def getDiskInfo(names: Seq[String]): Seq[Disk] = {
+    val Regex = s"\\s+([0-9]+)\\s+([0-9]+)\\s+(${names.mkString("|")})\\s+.*".r
+
+    using(diskStatPath)(source => {
+      source.getLines().collect {
+        case line => line match {
+          case Regex(major, minor, name) => Some(Disk(name, major.toInt, minor.toInt))
+          case _ => None
+        }
+      }.filter(_.isDefined).map(_.get).toList
+    })
+  }
+
+  def getGlobalDiskBytes(disks: Seq[Disk]): Seq[Disk] = {
+    val directory = new File(s"$cgroupSysFSPath/blkio")
+    val directories = Seq(directory) ++ getAllDirectories(directory)
+    val bytesRead = collection.mutable.Map[String, Long]()
+    val bytesWritten = collection.mutable.Map[String, Long]()
+
+    for (dir <- directories) {
+      using(s"${dir.getAbsolutePath}/blkio.throttle.io_service_bytes")(source => {
+        val lines = source.getLines().toList
+
+        for (disk <- disks) {
+          val ReadRegex = s"(${disk.major}):(${disk.minor})\\s+Read\\s+([0-9]+)".r
+          val WriteRegex = s"(${disk.major}):(${disk.minor})\\s+Write\\s+([0-9]+)".r
+
+          for (line <- lines) {
+            line match {
+              case ReadRegex(_, _, bytes) => bytesRead += (disk.name -> (bytesRead.getOrElse(disk.name, 0l) + bytes.toLong))
+              case WriteRegex(_, _, bytes) => bytesWritten += (disk.name -> (bytesWritten.getOrElse(disk.name, 0l) + bytes.toLong))
+              case _ =>
+            }
+          }
+        }
+      })
+    }
+
+    disks.map(disk => Disk(disk.name, disk.major, disk.minor, bytesRead.getOrElse(disk.name, 0l), bytesWritten.getOrElse(disk.name, 0l)))
+  }
+
+  def getTargetDiskBytes(disks: Seq[Disk], target: Target): Seq[Disk] = {
+    val pids = getProcesses(target).map(_.pid)
+    val directories = pids.map(pid => new File(s"$cgroupSysFSPath/blkio/powerapi/$pid"))
+    val bytesRead = collection.mutable.Map[String, Long]()
+    val bytesWritten = collection.mutable.Map[String, Long]()
+
+    for (dir <- directories) {
+      using(s"${dir.getAbsolutePath}/blkio.throttle.io_service_bytes")(source => {
+        val lines = source.getLines().toList
+
+        for (disk <- disks) {
+          val ReadRegex = s"(${disk.major}):(${disk.minor})\\s+Read\\s+([0-9]+)".r
+          val WriteRegex = s"(${disk.major}):(${disk.minor})\\s+Write\\s+([0-9]+)".r
+
+          for (line <- lines) {
+            line match {
+              case ReadRegex(_, _, bytes) => bytesRead += (disk.name -> (bytesRead.getOrElse(disk.name, 0l) + bytes.toLong))
+              case WriteRegex(_, _, bytes) => bytesWritten += (disk.name -> (bytesWritten.getOrElse(disk.name, 0l) + bytes.toLong))
+              case _ =>
+            }
+          }
+        }
+      })
+    }
+
+    disks.map(disk => Disk(disk.name, disk.major, disk.minor, bytesRead.getOrElse(disk.name, 0l), bytesWritten.getOrElse(disk.name, 0l)))
+  }
 }
 
 trait SigarHelperConfiguration extends Configuration {
@@ -356,4 +518,18 @@ class SigarHelper(sigar: SigarProxy) extends OSHelper {
   }
 
   def getTimeInStates: TimeInStates = throw new SigarException("sigar cannot be able to get how many time CPU spent under each frequency")
+
+  def createCGroup(subsystem: String, name: String): Unit = {}
+
+  def existsCGroup(subsystem: String, name: String): Boolean = false
+
+  def attachToCGroup(subsystem: String, name: String, toAttach: String): Unit = {}
+
+  def deleteCGroup(subsystem: String, name: String): Unit = {}
+
+  def getDiskInfo(names: Seq[String]): Seq[Disk] = Seq()
+
+  def getGlobalDiskBytes(disks: Seq[Disk]): Seq[Disk] = Seq()
+
+  def getTargetDiskBytes(disks: Seq[Disk], target: Target): Seq[Disk] = Seq()
 }

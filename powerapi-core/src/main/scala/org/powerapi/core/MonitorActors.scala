@@ -151,7 +151,7 @@ class MonitorChild(eventBus: MessageBus, muid: UUID, targets: Set[Target]) exten
     * Aggregate all RawPowerReport for the current monitoring.
     */
   def aggregate(aggR: AggregatePowerReport, powerReport: RawPowerReport, aggregator: Option[Seq[Power] => Power]): Unit = {
-    if (aggR.size == 0 || aggR.tick == powerReport.tick) {
+    if (aggR.size == 0 || aggR.ticks.map(_.timestamp).contains(powerReport.tick.timestamp)) {
       aggR += powerReport
     }
     else {

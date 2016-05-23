@@ -28,16 +28,15 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.concurrent.{Await, Future}
-
 import akka.actor._
 import akka.pattern.{after, ask, gracefulStop, pipe}
 import akka.util.Timeout
-
 import org.powerapi.core.MonitorChannel.{startMonitor, stopAllMonitor}
 import org.powerapi.core.power._
 import org.powerapi.core.target.Target
 import org.powerapi.core.{ActorComponent, Clocks, ConfigValue, Configuration, MessageBus, Monitor, Monitors}
 import org.powerapi.module.FormulaChannel.{startFormula, stopAllFormula}
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 import org.powerapi.module.SensorChannel.{startSensor, stopAllSensor}
 import org.powerapi.module.{Formula, Formulas, Sensor, Sensors}
 import org.powerapi.reporter.ReporterChannel.stopAllReporter
@@ -245,5 +244,5 @@ trait PowerMonitoring {
   */
 trait PowerDisplay {
 
-  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power)
+  def display(aggregatePowerReport: AggregatePowerReport)
 }
