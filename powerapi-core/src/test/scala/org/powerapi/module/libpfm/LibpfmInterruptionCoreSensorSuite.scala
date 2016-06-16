@@ -26,17 +26,16 @@ import java.util.UUID
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-
 import akka.actor.Props
 import akka.testkit.{EventFilter, TestActorRef}
 import akka.pattern.gracefulStop
 import akka.util.Timeout
-
+import com.google.protobuf.ByteString
 import org.powerapi.UnitTest
-import org.powerapi.core.{Tick, MessageBus}
+import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.core.target.{Application, Process}
 import org.powerapi.core.MonitorChannel.publishMonitorTick
-import org.powerapi.module.SensorChannel.{stopSensor, startSensor}
+import org.powerapi.module.SensorChannel.{startSensor, stopSensor}
 import org.powerapi.module.Sensors
 import org.powerapi.module.libpfm.PayloadProtocol.{MapEntry, Payload}
 import org.powerapi.module.libpfm.PCInterruptionChannel.{InterruptionHWCounter, InterruptionPCReport, subscribeInterruptionPCReport}
@@ -72,10 +71,10 @@ class LibpfmInterruptionCoreSensorSuite extends UnitTest {
       .setTimestamp(System.nanoTime())
       .addCounters(0, MapEntry.newBuilder().setKey("event").setValue(1000))
       .addCounters(1, MapEntry.newBuilder().setKey("event1").setValue(10))
-      .addTraces(0, PayloadProtocol.String.newBuilder().setValue("c"))
-      .addTraces(1, PayloadProtocol.String.newBuilder().setValue("b"))
-      .addTraces(2, PayloadProtocol.String.newBuilder().setValue("a"))
-      .addTraces(3, PayloadProtocol.String.newBuilder().setValue("main"))
+      .addTraces("c")
+      .addTraces("b")
+      .addTraces("a")
+      .addTraces("main")
       .build()
     val payload2 = Payload.newBuilder().setCore(0)
       .setPid(target.pid)
@@ -83,11 +82,11 @@ class LibpfmInterruptionCoreSensorSuite extends UnitTest {
       .setTimestamp(System.nanoTime() + 1000000000)
       .addCounters(0, MapEntry.newBuilder().setKey("event").setValue(1100))
       .addCounters(1, MapEntry.newBuilder().setKey("event1").setValue(11))
-      .addTraces(0, PayloadProtocol.String.newBuilder().setValue("d"))
-      .addTraces(1, PayloadProtocol.String.newBuilder().setValue("c"))
-      .addTraces(2, PayloadProtocol.String.newBuilder().setValue("b"))
-      .addTraces(3, PayloadProtocol.String.newBuilder().setValue("a"))
-      .addTraces(4, PayloadProtocol.String.newBuilder().setValue("main"))
+      .addTraces("d")
+      .addTraces("c")
+      .addTraces("b")
+      .addTraces("a")
+      .addTraces("main")
       .build()
     val payload3 = Payload.newBuilder().setCore(1)
       .setPid(target.pid)
@@ -95,8 +94,8 @@ class LibpfmInterruptionCoreSensorSuite extends UnitTest {
       .setTimestamp(System.nanoTime() + 2000000000)
       .addCounters(0, MapEntry.newBuilder().setKey("event").setValue(1300))
       .addCounters(1, MapEntry.newBuilder().setKey("event1").setValue(13))
-      .addTraces(0, PayloadProtocol.String.newBuilder().setValue("z"))
-      .addTraces(1, PayloadProtocol.String.newBuilder().setValue("main"))
+      .addTraces("z")
+      .addTraces("main")
       .build()
     val payload4 = Payload.newBuilder().setCore(1)
       .setPid(target.pid)
@@ -118,9 +117,9 @@ class LibpfmInterruptionCoreSensorSuite extends UnitTest {
       .setTimestamp(System.nanoTime() + 3000000000l)
       .addCounters(0, MapEntry.newBuilder().setKey("event").setValue(1500))
       .addCounters(1, MapEntry.newBuilder().setKey("event1").setValue(15))
-      .addTraces(0, PayloadProtocol.String.newBuilder().setValue("c"))
-      .addTraces(1, PayloadProtocol.String.newBuilder().setValue("b"))
-      .addTraces(2, PayloadProtocol.String.newBuilder().setValue("main"))
+      .addTraces("c")
+      .addTraces("b")
+      .addTraces("main")
       .build()
     val payload7 = Payload.newBuilder().setCore(2)
       .setPid(target.pid)
@@ -128,8 +127,8 @@ class LibpfmInterruptionCoreSensorSuite extends UnitTest {
       .setTimestamp(System.nanoTime() + 4000000000l)
       .addCounters(0, MapEntry.newBuilder().setKey("event").setValue(1600))
       .addCounters(1, MapEntry.newBuilder().setKey("event1").setValue(16))
-      .addTraces(0, PayloadProtocol.String.newBuilder().setValue("d"))
-      .addTraces(1, PayloadProtocol.String.newBuilder().setValue("main"))
+      .addTraces("d")
+      .addTraces("main")
       .build()
 
     val tick1 = AgentTick("test", payload1.getTimestamp, payload1)
@@ -217,14 +216,6 @@ class LibpfmInterruptionCoreSensorSuite extends UnitTest {
     EventFilter.info(occurrences = 1, start = s"sensor is stopped, class: ${classOf[LibpfmInterruptionCoreSensor].getName}").intercept({
       stopSensor(muid)(eventBus)
     })
-
-    EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[LibpfmInterruptionCoreSensor].getName}").intercept({
-      startSensor(muid, Application("test"), classOf[LibpfmInterruptionCoreSensor], Seq(eventBus, muid, Application("test"), topology, events))(eventBus)
-    })
-    subscribeInterruptionPCReport(muid, Application("test"))(eventBus)(testActor)
-
-    publishMonitorTick(muid, Application("test"), tick1)(eventBus)
-    expectNoMsg()
 
     Await.result(gracefulStop(sensors, timeout.duration), timeout.duration)
   }

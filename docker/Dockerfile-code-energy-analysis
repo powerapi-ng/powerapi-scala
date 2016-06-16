@@ -1,22 +1,20 @@
-FROM alpine:3.3
+FROM openjdk:8-jre
 
 ENV POWERAPI_PACKAGE powerapi-code-energy-analysis
 ENV LIBPFM_PACKAGE libpfm-4.6.0
 
-ENV INSTALL_PACKAGES ca-certificates linux-headers libc-dev make gcc patch
-ENV RUNTIME_PACKAGES openjdk8-jre bash libcgroup-tools procps
+ENV INSTALL_PACKAGES wget make gcc
+ENV RUNTIME_PACKAGES cgroup-tools
 
-COPY docker/libpfm/config.mk.patch /root/
 COPY ${POWERAPI_PACKAGE}/target/universal/${POWERAPI_PACKAGE} /root/${POWERAPI_PACKAGE}/
 
 VOLUME /conf /tmp
 
-RUN apk update && apk upgrade && apk add $INSTALL_PACKAGES $RUNTIME_PACKAGES --update-cache --repository http://dl-3.alpinelinux.org/alpine/edge/testing/ && \
-  wget https://circle-artifacts.com/gh/sgerrand/alpine-pkg-glibc/6/artifacts/0/home/ubuntu/alpine-pkg-glibc/packages/x86_64/glibc-2.21-r2.apk && apk --allow-untrusted add glibc-2.21-r2.apk && rm -f glibc-2.21-r2.apk && \
-  wget http://downloads.sourceforge.net/project/perfmon2/libpfm4/${LIBPFM_PACKAGE}.tar.gz && tar -C /root -xzvf ${LIBPFM_PACKAGE}.tar.gz && patch -d /root/$LIBPFM_PACKAGE -p1 < /root/config.mk.patch && (cd /root/$LIBPFM_PACKAGE; make lib; make install) && rm -rf /root/config.mk.patch /root/$LIBPFM_PACKAGE ${LIBPFM_PACKAGE}.tar.gz && \
+RUN apt-get update && apt-get -y upgrade && apt-get -y install $INSTALL_PACKAGES $RUNTIME_PACKAGES && \
+  wget http://downloads.sourceforge.net/project/perfmon2/libpfm4/${LIBPFM_PACKAGE}.tar.gz && tar -C /root -xzvf ${LIBPFM_PACKAGE}.tar.gz && (cd /root/$LIBPFM_PACKAGE; make lib; make install) && rm -rf /root/$LIBPFM_PACKAGE ${LIBPFM_PACKAGE}.tar.gz && \
   rm -rf /root/${POWERAPI_PACKAGE}/conf && ln -s /conf/ /root/${POWERAPI_PACKAGE}/conf && \
-  apk del glibc $INSTALL_PACKAGES && \
-  rm -rf /var/cache/apk/*
+  apt-get -y remove --auto-remove $INSTALL_PACKAGES && \
+  rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/$POWERAPI_PACKAGE
 

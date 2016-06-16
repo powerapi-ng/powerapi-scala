@@ -56,17 +56,7 @@ class LibpfmInterruptionCoreSensor(eventBus: MessageBus, muid: UUID, target: Tar
 
   def terminate(): Unit = unsubscribeMonitorTick(muid, target)(eventBus)(self)
 
-  def handler: Actor.Receive = {
-    if (target.isInstanceOf[Process]) {
-      sense(Map())
-    }
-
-    else {
-      unsubscribeMonitorTick(muid, target)(eventBus)(self)
-      self ! PoisonPill
-      sensorDefault
-    }
-  }
+  def handler: Actor.Receive = sense(Map())
 
   // payloads: Map[cpu index -> Payload]
   def sense(payloads: Map[Int, Payload]): Actor.Receive = {
@@ -91,7 +81,7 @@ class LibpfmInterruptionCoreSensor(eventBus: MessageBus, muid: UUID, target: Tar
         val allWrappers = for ((core, index, event) <- combinations if currentPayloads.contains(index)) yield {
           val payload = currentPayloads(index)
           val triggering = tick.payload.getTimestamp == payload.getTimestamp
-          val counter = InterruptionHWCounter(index, payload.getTid, payload.getTracesList.map(_.getValue).reverse.mkString("."), payload.getCountersList.filter(_.getKey == event).head.getValue, triggering)
+          val counter = InterruptionHWCounter(index, payload.getTid, payload.getTracesList.reverse.mkString("."), payload.getCountersList.filter(_.getKey == event).head.getValue, triggering)
           InterruptionPCWrapper(core, event, List(counter))
         }
 

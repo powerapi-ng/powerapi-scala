@@ -72,6 +72,6 @@ class GuardianFailureStrategy extends SupervisorStrategyConfigurator {
   }
 
   def handleFailure: PartialFunction[Throwable, Directive] = {
-    case _: UnsupportedOperationException => Resume
+    case _ => Resume
   }
 }

@@ -99,7 +99,7 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
       }
     }
 
-    class Agent(muid: UUID, software: String, payloads: Map[Int, Payload]) extends Thread {
+    class Agent(muid: UUID, label: String, software: String, payloads: Map[Int, Payload]) extends Thread {
       val probe = TestProbe()
       subscribeMonitorTick(muid, software)(eventBus)(probe.ref)
 
@@ -109,12 +109,15 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
         val controlWriter = new BufferedWriter(new OutputStreamWriter(Channels.newOutputStream(UnixSocketChannel.open(controlAddress))))
 
         val servers = (for (core <- baseTopology.values.flatten) yield {
-          val dataPath = new File(s"/tmp/agent-$core-$software.sock")
+          val dataPath = new File(s"/tmp/agent-$core-$label.sock")
           val dataAddress = new UnixSocketAddress(dataPath)
           val dataServer = UnixServerSocketChannel.open()
           dataServer.socket().bind(dataAddress)
           core -> (dataPath, dataServer)
         }).toMap
+
+        controlWriter.write(s"$label\n")
+        controlWriter.flush()
 
         controlWriter.write(s"$software\n")
         controlWriter.flush()
@@ -241,8 +244,8 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
     }
     server.start()
 
-    val agent1 = new Agent(muid1, "test1", payloads1)
-    val agent2 = new Agent(muid2, "test2", payloads2)
+    val agent1 = new Agent(muid1, "label1", "test1", payloads1)
+    val agent2 = new Agent(muid2, "label2", "test2", payloads2)
     agent1.start()
     agent2.start()
 
@@ -255,7 +258,7 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
     Await.result(gracefulStop(monitorActor2, timeout.duration), timeout.duration)
   }
 
-  "An InterruptionInfluxDisplay" should "write data inside an Influx database" in {
+  "An InterruptionInfluxDisplay" should "write data into an Influx DB" in {
     val timeout = 10.seconds
 
     val muid1 = UUID.randomUUID()
@@ -286,11 +289,12 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
       )
     }
 
-    val display1 = new InterruptionInfluxDisplay(influxHost, influxPort, influxUser, influxPwd, influxDB, "test")
+    val display1 = new InterruptionInfluxDisplay(influxHost, influxPort, influxUser, influxPwd, influxDB, "test1", 1.seconds)
 
+    Thread.sleep(5000)
     display1.display(report1)
     awaitCond({
-      val result = Await.result(database.query("select * from test order by time"), timeout)
+      val result = Await.result(database.query("select * from test1 order by time"), timeout)
       display1.run == 1 &&
       result.series.size == 1 &&
       result.series.head.records.size == 1  &&
@@ -302,9 +306,10 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
       result.series.head.records.last("tid").toString == "10"
     }, 30.seconds, 1.seconds)
 
+    Thread.sleep(5000)
     display1.display(report2)
     awaitCond({
-      val result = Await.result(database.query("select * from test order by time"), timeout)
+      val result = Await.result(database.query("select * from test1 order by time"), timeout)
 
       if (result.series.size == 1) {
         val filteredResult = result.series.head.records.filter(record => ISODateTimeFormat.dateTimeParser().parseDateTime(record.apply("time").toString).getMillis == (timestamp2 / 1e6).toLong)
@@ -333,11 +338,12 @@ class UnixServerSocketSuite extends UnitTest with MockFactory {
       else false
     }, 30.seconds, 1.seconds)
 
-    val display2 = new InterruptionInfluxDisplay(influxHost, influxPort, influxUser, influxPwd, influxDB, "test")
+    val display2 = new InterruptionInfluxDisplay(influxHost, influxPort, influxUser, influxPwd, influxDB, "test1", 1.seconds)
 
+    Thread.sleep(5000)
     display2.display(report3)
     awaitCond({
-      val result = Await.result(database.query("select * from test order by time"), timeout)
+      val result = Await.result(database.query("select * from test1 order by time"), timeout)
 
       if (result.series.size == 1) {
         val filteredResult = result.series.head.records.filter(record => ISODateTimeFormat.dateTimeParser().parseDateTime(record.apply("time").toString).getMillis == (timestamp3 / 1e6).toLong)
