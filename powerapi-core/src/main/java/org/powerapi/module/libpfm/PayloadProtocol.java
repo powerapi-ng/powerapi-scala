@@ -578,498 +578,6 @@ public final class PayloadProtocol {
     // @@protoc_insertion_point(class_scope:MapEntry)
   }
 
-  public interface StringOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:String)
-      com.google.protobuf.MessageOrBuilder {
-
-    /**
-     * <code>required string value = 1;</code>
-     */
-    boolean hasValue();
-    /**
-     * <code>required string value = 1;</code>
-     */
-    java.lang.String getValue();
-    /**
-     * <code>required string value = 1;</code>
-     */
-    com.google.protobuf.ByteString
-        getValueBytes();
-  }
-  /**
-   * Protobuf type {@code String}
-   *
-   * <pre>
-   * We cannot use `repeated string` because there is an encoding problem when data is sending over the network.
-   * </pre>
-   */
-  public static final class String extends
-      com.google.protobuf.GeneratedMessage implements
-      // @@protoc_insertion_point(message_implements:String)
-      StringOrBuilder {
-    // Use String.newBuilder() to construct.
-    private String(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
-      super(builder);
-      this.unknownFields = builder.getUnknownFields();
-    }
-    private String(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
-
-    private static final String defaultInstance;
-    public static String getDefaultInstance() {
-      return defaultInstance;
-    }
-
-    public String getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-
-    private final com.google.protobuf.UnknownFieldSet unknownFields;
-    @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-        getUnknownFields() {
-      return this.unknownFields;
-    }
-    private String(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      initFields();
-      int mutable_bitField0_ = 0;
-      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder();
-      try {
-        boolean done = false;
-        while (!done) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              done = true;
-              break;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                done = true;
-              }
-              break;
-            }
-            case 10: {
-              com.google.protobuf.ByteString bs = input.readBytes();
-              bitField0_ |= 0x00000001;
-              value_ = bs;
-              break;
-            }
-          }
-        }
-      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-        throw e.setUnfinishedMessage(this);
-      } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e.getMessage()).setUnfinishedMessage(this);
-      } finally {
-        this.unknownFields = unknownFields.build();
-        makeExtensionsImmutable();
-      }
-    }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.powerapi.module.libpfm.PayloadProtocol.internal_static_String_descriptor;
-    }
-
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.powerapi.module.libpfm.PayloadProtocol.internal_static_String_fieldAccessorTable
-          .ensureFieldAccessorsInitialized(
-              org.powerapi.module.libpfm.PayloadProtocol.String.class, org.powerapi.module.libpfm.PayloadProtocol.String.Builder.class);
-    }
-
-    public static com.google.protobuf.Parser<String> PARSER =
-        new com.google.protobuf.AbstractParser<String>() {
-      public String parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new String(input, extensionRegistry);
-      }
-    };
-
-    @java.lang.Override
-    public com.google.protobuf.Parser<String> getParserForType() {
-      return PARSER;
-    }
-
-    private int bitField0_;
-    public static final int VALUE_FIELD_NUMBER = 1;
-    private java.lang.Object value_;
-    /**
-     * <code>required string value = 1;</code>
-     */
-    public boolean hasValue() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    /**
-     * <code>required string value = 1;</code>
-     */
-    public java.lang.String getValue() {
-      java.lang.Object ref = value_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        if (bs.isValidUtf8()) {
-          value_ = s;
-        }
-        return s;
-      }
-    }
-    /**
-     * <code>required string value = 1;</code>
-     */
-    public com.google.protobuf.ByteString
-        getValueBytes() {
-      java.lang.Object ref = value_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        value_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
-    private void initFields() {
-      value_ = "";
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized == 1) return true;
-      if (isInitialized == 0) return false;
-
-      if (!hasValue()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      memoizedIsInitialized = 1;
-      return true;
-    }
-
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeBytes(1, getValueBytes());
-      }
-      getUnknownFields().writeTo(output);
-    }
-
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-
-      size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, getValueBytes());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-
-    private static final long serialVersionUID = 0L;
-    @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
-    }
-
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input, extensionRegistry);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input);
-    }
-    public static org.powerapi.module.libpfm.PayloadProtocol.String parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
-    }
-
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.powerapi.module.libpfm.PayloadProtocol.String prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    /**
-     * Protobuf type {@code String}
-     *
-     * <pre>
-     * We cannot use `repeated string` because there is an encoding problem when data is sending over the network.
-     * </pre>
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:String)
-        org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return org.powerapi.module.libpfm.PayloadProtocol.internal_static_String_descriptor;
-      }
-
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return org.powerapi.module.libpfm.PayloadProtocol.internal_static_String_fieldAccessorTable
-            .ensureFieldAccessorsInitialized(
-                org.powerapi.module.libpfm.PayloadProtocol.String.class, org.powerapi.module.libpfm.PayloadProtocol.String.Builder.class);
-      }
-
-      // Construct using org.powerapi.module.libpfm.PayloadProtocol.String.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-
-      private Builder(
-          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-
-      public Builder clear() {
-        super.clear();
-        value_ = "";
-        bitField0_ = (bitField0_ & ~0x00000001);
-        return this;
-      }
-
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.powerapi.module.libpfm.PayloadProtocol.internal_static_String_descriptor;
-      }
-
-      public org.powerapi.module.libpfm.PayloadProtocol.String getDefaultInstanceForType() {
-        return org.powerapi.module.libpfm.PayloadProtocol.String.getDefaultInstance();
-      }
-
-      public org.powerapi.module.libpfm.PayloadProtocol.String build() {
-        org.powerapi.module.libpfm.PayloadProtocol.String result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-
-      public org.powerapi.module.libpfm.PayloadProtocol.String buildPartial() {
-        org.powerapi.module.libpfm.PayloadProtocol.String result = new org.powerapi.module.libpfm.PayloadProtocol.String(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.value_ = value_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.powerapi.module.libpfm.PayloadProtocol.String) {
-          return mergeFrom((org.powerapi.module.libpfm.PayloadProtocol.String)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-
-      public Builder mergeFrom(org.powerapi.module.libpfm.PayloadProtocol.String other) {
-        if (other == org.powerapi.module.libpfm.PayloadProtocol.String.getDefaultInstance()) return this;
-        if (other.hasValue()) {
-          bitField0_ |= 0x00000001;
-          value_ = other.value_;
-          onChanged();
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-
-      public final boolean isInitialized() {
-        if (!hasValue()) {
-          
-          return false;
-        }
-        return true;
-      }
-
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        org.powerapi.module.libpfm.PayloadProtocol.String parsedMessage = null;
-        try {
-          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (org.powerapi.module.libpfm.PayloadProtocol.String) e.getUnfinishedMessage();
-          throw e;
-        } finally {
-          if (parsedMessage != null) {
-            mergeFrom(parsedMessage);
-          }
-        }
-        return this;
-      }
-      private int bitField0_;
-
-      private java.lang.Object value_ = "";
-      /**
-       * <code>required string value = 1;</code>
-       */
-      public boolean hasValue() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      /**
-       * <code>required string value = 1;</code>
-       */
-      public java.lang.String getValue() {
-        java.lang.Object ref = value_;
-        if (!(ref instanceof java.lang.String)) {
-          com.google.protobuf.ByteString bs =
-              (com.google.protobuf.ByteString) ref;
-          java.lang.String s = bs.toStringUtf8();
-          if (bs.isValidUtf8()) {
-            value_ = s;
-          }
-          return s;
-        } else {
-          return (java.lang.String) ref;
-        }
-      }
-      /**
-       * <code>required string value = 1;</code>
-       */
-      public com.google.protobuf.ByteString
-          getValueBytes() {
-        java.lang.Object ref = value_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          value_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <code>required string value = 1;</code>
-       */
-      public Builder setValue(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
-        value_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>required string value = 1;</code>
-       */
-      public Builder clearValue() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        value_ = getDefaultInstance().getValue();
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>required string value = 1;</code>
-       */
-      public Builder setValueBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
-        value_ = value;
-        onChanged();
-        return this;
-      }
-
-      // @@protoc_insertion_point(builder_scope:String)
-    }
-
-    static {
-      defaultInstance = new String(true);
-      defaultInstance.initFields();
-    }
-
-    // @@protoc_insertion_point(class_scope:String)
-  }
-
   public interface PayloadOrBuilder extends
       // @@protoc_insertion_point(interface_extends:Payload)
       com.google.protobuf.MessageOrBuilder {
@@ -1135,28 +643,23 @@ public final class PayloadProtocol {
         int index);
 
     /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
-    java.util.List<org.powerapi.module.libpfm.PayloadProtocol.String> 
+    com.google.protobuf.ProtocolStringList
         getTracesList();
     /**
-     * <code>repeated .String traces = 6;</code>
-     */
-    org.powerapi.module.libpfm.PayloadProtocol.String getTraces(int index);
-    /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
     int getTracesCount();
     /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
-    java.util.List<? extends org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder> 
-        getTracesOrBuilderList();
+    java.lang.String getTraces(int index);
     /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
-    org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder getTracesOrBuilder(
-        int index);
+    com.google.protobuf.ByteString
+        getTracesBytes(int index);
   }
   /**
    * Protobuf type {@code Payload}
@@ -1239,11 +742,12 @@ public final class PayloadProtocol {
               break;
             }
             case 50: {
+              com.google.protobuf.ByteString bs = input.readBytes();
               if (!((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
-                traces_ = new java.util.ArrayList<org.powerapi.module.libpfm.PayloadProtocol.String>();
+                traces_ = new com.google.protobuf.LazyStringArrayList();
                 mutable_bitField0_ |= 0x00000020;
               }
-              traces_.add(input.readMessage(org.powerapi.module.libpfm.PayloadProtocol.String.PARSER, extensionRegistry));
+              traces_.add(bs);
               break;
             }
           }
@@ -1258,7 +762,7 @@ public final class PayloadProtocol {
           counters_ = java.util.Collections.unmodifiableList(counters_);
         }
         if (((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
-          traces_ = java.util.Collections.unmodifiableList(traces_);
+          traces_ = traces_.getUnmodifiableView();
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -1388,38 +892,32 @@ public final class PayloadProtocol {
     }
 
     public static final int TRACES_FIELD_NUMBER = 6;
-    private java.util.List<org.powerapi.module.libpfm.PayloadProtocol.String> traces_;
+    private com.google.protobuf.LazyStringList traces_;
     /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
-    public java.util.List<org.powerapi.module.libpfm.PayloadProtocol.String> getTracesList() {
+    public com.google.protobuf.ProtocolStringList
+        getTracesList() {
       return traces_;
     }
     /**
-     * <code>repeated .String traces = 6;</code>
-     */
-    public java.util.List<? extends org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder> 
-        getTracesOrBuilderList() {
-      return traces_;
-    }
-    /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
     public int getTracesCount() {
       return traces_.size();
     }
     /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
-    public org.powerapi.module.libpfm.PayloadProtocol.String getTraces(int index) {
+    public java.lang.String getTraces(int index) {
       return traces_.get(index);
     }
     /**
-     * <code>repeated .String traces = 6;</code>
+     * <code>repeated string traces = 6;</code>
      */
-    public org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder getTracesOrBuilder(
-        int index) {
-      return traces_.get(index);
+    public com.google.protobuf.ByteString
+        getTracesBytes(int index) {
+      return traces_.getByteString(index);
     }
 
     private void initFields() {
@@ -1428,7 +926,7 @@ public final class PayloadProtocol {
       tid_ = 0;
       timestamp_ = 0L;
       counters_ = java.util.Collections.emptyList();
-      traces_ = java.util.Collections.emptyList();
+      traces_ = com.google.protobuf.LazyStringArrayList.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1458,12 +956,6 @@ public final class PayloadProtocol {
           return false;
         }
       }
-      for (int i = 0; i < getTracesCount(); i++) {
-        if (!getTraces(i).isInitialized()) {
-          memoizedIsInitialized = 0;
-          return false;
-        }
-      }
       memoizedIsInitialized = 1;
       return true;
     }
@@ -1487,7 +979,7 @@ public final class PayloadProtocol {
         output.writeMessage(5, counters_.get(i));
       }
       for (int i = 0; i < traces_.size(); i++) {
-        output.writeMessage(6, traces_.get(i));
+        output.writeBytes(6, traces_.getByteString(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -1518,9 +1010,14 @@ public final class PayloadProtocol {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(5, counters_.get(i));
       }
-      for (int i = 0; i < traces_.size(); i++) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(6, traces_.get(i));
+      {
+        int dataSize = 0;
+        for (int i = 0; i < traces_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeBytesSizeNoTag(traces_.getByteString(i));
+        }
+        size += dataSize;
+        size += 1 * getTracesList().size();
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1632,7 +1129,6 @@ public final class PayloadProtocol {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getCountersFieldBuilder();
-          getTracesFieldBuilder();
         }
       }
       private static Builder create() {
@@ -1655,12 +1151,8 @@ public final class PayloadProtocol {
         } else {
           countersBuilder_.clear();
         }
-        if (tracesBuilder_ == null) {
-          traces_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000020);
-        } else {
-          tracesBuilder_.clear();
-        }
+        traces_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000020);
         return this;
       }
 
@@ -1714,15 +1206,11 @@ public final class PayloadProtocol {
         } else {
           result.counters_ = countersBuilder_.build();
         }
-        if (tracesBuilder_ == null) {
-          if (((bitField0_ & 0x00000020) == 0x00000020)) {
-            traces_ = java.util.Collections.unmodifiableList(traces_);
-            bitField0_ = (bitField0_ & ~0x00000020);
-          }
-          result.traces_ = traces_;
-        } else {
-          result.traces_ = tracesBuilder_.build();
+        if (((bitField0_ & 0x00000020) == 0x00000020)) {
+          traces_ = traces_.getUnmodifiableView();
+          bitField0_ = (bitField0_ & ~0x00000020);
         }
+        result.traces_ = traces_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1777,31 +1265,15 @@ public final class PayloadProtocol {
             }
           }
         }
-        if (tracesBuilder_ == null) {
-          if (!other.traces_.isEmpty()) {
-            if (traces_.isEmpty()) {
-              traces_ = other.traces_;
-              bitField0_ = (bitField0_ & ~0x00000020);
-            } else {
-              ensureTracesIsMutable();
-              traces_.addAll(other.traces_);
-            }
-            onChanged();
+        if (!other.traces_.isEmpty()) {
+          if (traces_.isEmpty()) {
+            traces_ = other.traces_;
+            bitField0_ = (bitField0_ & ~0x00000020);
+          } else {
+            ensureTracesIsMutable();
+            traces_.addAll(other.traces_);
           }
-        } else {
-          if (!other.traces_.isEmpty()) {
-            if (tracesBuilder_.isEmpty()) {
-              tracesBuilder_.dispose();
-              tracesBuilder_ = null;
-              traces_ = other.traces_;
-              bitField0_ = (bitField0_ & ~0x00000020);
-              tracesBuilder_ = 
-                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
-                   getTracesFieldBuilder() : null;
-            } else {
-              tracesBuilder_.addAllMessages(other.traces_);
-            }
-          }
+          onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -1826,12 +1298,6 @@ public final class PayloadProtocol {
         }
         for (int i = 0; i < getCountersCount(); i++) {
           if (!getCounters(i).isInitialized()) {
-            
-            return false;
-          }
-        }
-        for (int i = 0; i < getTracesCount(); i++) {
-          if (!getTraces(i).isInitialized()) {
             
             return false;
           }
@@ -2226,244 +1692,97 @@ public final class PayloadProtocol {
         return countersBuilder_;
       }
 
-      private java.util.List<org.powerapi.module.libpfm.PayloadProtocol.String> traces_ =
-        java.util.Collections.emptyList();
+      private com.google.protobuf.LazyStringList traces_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       private void ensureTracesIsMutable() {
         if (!((bitField0_ & 0x00000020) == 0x00000020)) {
-          traces_ = new java.util.ArrayList<org.powerapi.module.libpfm.PayloadProtocol.String>(traces_);
+          traces_ = new com.google.protobuf.LazyStringArrayList(traces_);
           bitField0_ |= 0x00000020;
          }
       }
-
-      private com.google.protobuf.RepeatedFieldBuilder<
-          org.powerapi.module.libpfm.PayloadProtocol.String, org.powerapi.module.libpfm.PayloadProtocol.String.Builder, org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder> tracesBuilder_;
-
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
-      public java.util.List<org.powerapi.module.libpfm.PayloadProtocol.String> getTracesList() {
-        if (tracesBuilder_ == null) {
-          return java.util.Collections.unmodifiableList(traces_);
-        } else {
-          return tracesBuilder_.getMessageList();
-        }
+      public com.google.protobuf.ProtocolStringList
+          getTracesList() {
+        return traces_.getUnmodifiableView();
       }
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
       public int getTracesCount() {
-        if (tracesBuilder_ == null) {
-          return traces_.size();
-        } else {
-          return tracesBuilder_.getCount();
-        }
+        return traces_.size();
       }
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
-      public org.powerapi.module.libpfm.PayloadProtocol.String getTraces(int index) {
-        if (tracesBuilder_ == null) {
-          return traces_.get(index);
-        } else {
-          return tracesBuilder_.getMessage(index);
-        }
+      public java.lang.String getTraces(int index) {
+        return traces_.get(index);
       }
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
-      public Builder setTraces(
-          int index, org.powerapi.module.libpfm.PayloadProtocol.String value) {
-        if (tracesBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureTracesIsMutable();
-          traces_.set(index, value);
-          onChanged();
-        } else {
-          tracesBuilder_.setMessage(index, value);
-        }
-        return this;
+      public com.google.protobuf.ByteString
+          getTracesBytes(int index) {
+        return traces_.getByteString(index);
       }
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
       public Builder setTraces(
-          int index, org.powerapi.module.libpfm.PayloadProtocol.String.Builder builderForValue) {
-        if (tracesBuilder_ == null) {
-          ensureTracesIsMutable();
-          traces_.set(index, builderForValue.build());
-          onChanged();
-        } else {
-          tracesBuilder_.setMessage(index, builderForValue.build());
-        }
+          int index, java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureTracesIsMutable();
+        traces_.set(index, value);
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public Builder addTraces(org.powerapi.module.libpfm.PayloadProtocol.String value) {
-        if (tracesBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureTracesIsMutable();
-          traces_.add(value);
-          onChanged();
-        } else {
-          tracesBuilder_.addMessage(value);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
       public Builder addTraces(
-          int index, org.powerapi.module.libpfm.PayloadProtocol.String value) {
-        if (tracesBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureTracesIsMutable();
-          traces_.add(index, value);
-          onChanged();
-        } else {
-          tracesBuilder_.addMessage(index, value);
-        }
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureTracesIsMutable();
+        traces_.add(value);
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public Builder addTraces(
-          org.powerapi.module.libpfm.PayloadProtocol.String.Builder builderForValue) {
-        if (tracesBuilder_ == null) {
-          ensureTracesIsMutable();
-          traces_.add(builderForValue.build());
-          onChanged();
-        } else {
-          tracesBuilder_.addMessage(builderForValue.build());
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public Builder addTraces(
-          int index, org.powerapi.module.libpfm.PayloadProtocol.String.Builder builderForValue) {
-        if (tracesBuilder_ == null) {
-          ensureTracesIsMutable();
-          traces_.add(index, builderForValue.build());
-          onChanged();
-        } else {
-          tracesBuilder_.addMessage(index, builderForValue.build());
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
       public Builder addAllTraces(
-          java.lang.Iterable<? extends org.powerapi.module.libpfm.PayloadProtocol.String> values) {
-        if (tracesBuilder_ == null) {
-          ensureTracesIsMutable();
-          com.google.protobuf.AbstractMessageLite.Builder.addAll(
-              values, traces_);
-          onChanged();
-        } else {
-          tracesBuilder_.addAllMessages(values);
-        }
+          java.lang.Iterable<java.lang.String> values) {
+        ensureTracesIsMutable();
+        com.google.protobuf.AbstractMessageLite.Builder.addAll(
+            values, traces_);
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
       public Builder clearTraces() {
-        if (tracesBuilder_ == null) {
-          traces_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000020);
-          onChanged();
-        } else {
-          tracesBuilder_.clear();
-        }
+        traces_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000020);
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .String traces = 6;</code>
+       * <code>repeated string traces = 6;</code>
        */
-      public Builder removeTraces(int index) {
-        if (tracesBuilder_ == null) {
-          ensureTracesIsMutable();
-          traces_.remove(index);
-          onChanged();
-        } else {
-          tracesBuilder_.remove(index);
-        }
+      public Builder addTracesBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureTracesIsMutable();
+        traces_.add(value);
+        onChanged();
         return this;
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public org.powerapi.module.libpfm.PayloadProtocol.String.Builder getTracesBuilder(
-          int index) {
-        return getTracesFieldBuilder().getBuilder(index);
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder getTracesOrBuilder(
-          int index) {
-        if (tracesBuilder_ == null) {
-          return traces_.get(index);  } else {
-          return tracesBuilder_.getMessageOrBuilder(index);
-        }
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public java.util.List<? extends org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder> 
-           getTracesOrBuilderList() {
-        if (tracesBuilder_ != null) {
-          return tracesBuilder_.getMessageOrBuilderList();
-        } else {
-          return java.util.Collections.unmodifiableList(traces_);
-        }
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public org.powerapi.module.libpfm.PayloadProtocol.String.Builder addTracesBuilder() {
-        return getTracesFieldBuilder().addBuilder(
-            org.powerapi.module.libpfm.PayloadProtocol.String.getDefaultInstance());
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public org.powerapi.module.libpfm.PayloadProtocol.String.Builder addTracesBuilder(
-          int index) {
-        return getTracesFieldBuilder().addBuilder(
-            index, org.powerapi.module.libpfm.PayloadProtocol.String.getDefaultInstance());
-      }
-      /**
-       * <code>repeated .String traces = 6;</code>
-       */
-      public java.util.List<org.powerapi.module.libpfm.PayloadProtocol.String.Builder> 
-           getTracesBuilderList() {
-        return getTracesFieldBuilder().getBuilderList();
-      }
-      private com.google.protobuf.RepeatedFieldBuilder<
-          org.powerapi.module.libpfm.PayloadProtocol.String, org.powerapi.module.libpfm.PayloadProtocol.String.Builder, org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder> 
-          getTracesFieldBuilder() {
-        if (tracesBuilder_ == null) {
-          tracesBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
-              org.powerapi.module.libpfm.PayloadProtocol.String, org.powerapi.module.libpfm.PayloadProtocol.String.Builder, org.powerapi.module.libpfm.PayloadProtocol.StringOrBuilder>(
-                  traces_,
-                  ((bitField0_ & 0x00000020) == 0x00000020),
-                  getParentForChildren(),
-                  isClean());
-          traces_ = null;
-        }
-        return tracesBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:Payload)
@@ -2483,11 +1802,6 @@ public final class PayloadProtocol {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_MapEntry_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_String_descriptor;
-  private static
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_String_fieldAccessorTable;
-  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_Payload_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -2502,12 +1816,11 @@ public final class PayloadProtocol {
   static {
     java.lang.String[] descriptorData = {
       "\n\rpayload.proto\"&\n\010MapEntry\022\013\n\003key\030\001 \002(\t" +
-      "\022\r\n\005value\030\002 \002(\004\"\027\n\006String\022\r\n\005value\030\001 \002(\t" +
-      "\"z\n\007Payload\022\014\n\004core\030\001 \002(\r\022\013\n\003pid\030\002 \002(\r\022\013" +
-      "\n\003tid\030\003 \002(\r\022\021\n\ttimestamp\030\004 \002(\004\022\033\n\010counte" +
-      "rs\030\005 \003(\0132\t.MapEntry\022\027\n\006traces\030\006 \003(\0132\007.St" +
-      "ringB-\n\032org.powerapi.module.libpfmB\017Payl" +
-      "oadProtocol"
+      "\022\r\n\005value\030\002 \002(\004\"q\n\007Payload\022\014\n\004core\030\001 \002(\r" +
+      "\022\013\n\003pid\030\002 \002(\r\022\013\n\003tid\030\003 \002(\r\022\021\n\ttimestamp\030" +
+      "\004 \002(\004\022\033\n\010counters\030\005 \003(\0132\t.MapEntry\022\016\n\006tr" +
+      "aces\030\006 \003(\tB-\n\032org.powerapi.module.libpfm" +
+      "B\017PayloadProtocol"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -2527,14 +1840,8 @@ public final class PayloadProtocol {
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_MapEntry_descriptor,
         new java.lang.String[] { "Key", "Value", });
-    internal_static_String_descriptor =
-      getDescriptor().getMessageTypes().get(1);
-    internal_static_String_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-        internal_static_String_descriptor,
-        new java.lang.String[] { "Value", });
     internal_static_Payload_descriptor =
-      getDescriptor().getMessageTypes().get(2);
+      getDescriptor().getMessageTypes().get(1);
     internal_static_Payload_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_Payload_descriptor,

@@ -22,15 +22,15 @@
  */
 package org.powerapi.code.energy.footprint
 
-import java.io.{BufferedReader, File, IOException, InputStreamReader}
+import java.io.{BufferedReader, DataInputStream, EOFException, File, IOException, InputStreamReader}
 import java.nio.channels.Channels
+import java.util.concurrent.TimeUnit
 
 import com.paulgoldbaum.influxdbclient.Parameter.Precision
 import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import com.typesafe.config.Config
 
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{DurationInt, FiniteDuration, DurationLong}
 import collection.JavaConversions._
 import jnr.unixsocket.{UnixServerSocketChannel, UnixSocketAddress, UnixSocketChannel}
 import org.apache.logging.log4j.LogManager
@@ -39,14 +39,14 @@ import org.powerapi.module.libpfm.PayloadProtocol.Payload
 import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
 import org.powerapi.core.power._
 import org.powerapi.core.TickChannel.{publishTick, tickTopic}
-import org.powerapi.core.target.{Application, Process}
+import org.powerapi.core.target.Application
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 import org.powerapi.module.libpfm.AgentTick
 import org.powerapi.module.libpfm.PCInterruptionChannel.InterruptionTick
 
 import scala.concurrent.Await
 
-class InterruptionInfluxDisplay(host: String, port: Int, user: String, pwd: String, dbName: String, measurement: String) extends PowerDisplay {
+class InterruptionInfluxDisplay(host: String, port: Int, user: String, pwd: String, dbName: String, measurement: String, flushingFrequency: FiniteDuration) extends PowerDisplay {
   val timeout = 10.seconds
   val influxdb = InfluxDB.connect(host, port, user, pwd)
   val database = influxdb.selectDatabase(dbName)
@@ -55,36 +55,52 @@ class InterruptionInfluxDisplay(host: String, port: Int, user: String, pwd: Stri
 
   val run = {
     if (measurements.nonEmpty && measurements.head.records.map(record => record("name").toString).contains(measurement)) {
-      val last = Await.result(database.query(s"select last(cpu), run from $measurement"), timeout).series.head.points("run")
-      if (last.isEmpty) 1 else last.head.toString.toInt + 1
+      val series = Await.result(database.query("select last(cpu), run from \"" + measurement + "\""), timeout).series
+      if (series.isEmpty) 1 else series.head.points("run").head.toString.toInt + 1
     }
     else 1
   }
 
+  var baseTimestamp = System.currentTimeMillis
+  val points = scala.collection.mutable.ListBuffer[Point]()
+
   override def display(aggregatePowerReport: AggregatePowerReport): Unit = {
-    val rawPowers = aggregatePowerReport.rawPowers
-    val disk = rawPowers.filter(_.tick.isInstanceOf[AgentTick]).map(_.power.toWatts).sum
+    this.synchronized {
+      val currentTimestamp = System.currentTimeMillis
+      val rawPowers = aggregatePowerReport.rawPowers
+      val disk = rawPowers.filter(_.tick.isInstanceOf[AgentTick]).map(_.power.toWatts).sum
 
-    val points = for (rawPower <- rawPowers.filter(_.tick.isInstanceOf[InterruptionTick])) yield {
-      val interruptionTick = rawPower.tick.asInstanceOf[InterruptionTick]
-      val cpu = rawPower.power.toWatts
+      points ++= (for (rawPower <- rawPowers.filter(_.tick.isInstanceOf[InterruptionTick])) yield {
+        val interruptionTick = rawPower.tick.asInstanceOf[InterruptionTick]
+        val cpu = rawPower.power.toWatts
 
-      Point(measurement, interruptionTick.timestamp)
-        .addField("cpu", cpu)
-        .addField("disk", if (interruptionTick.triggering) disk else 0.0)
-        .addTag("core", s"${interruptionTick.cpu}")
-        .addTag("method", s"${interruptionTick.fullMethodName}")
-        .addTag("run", s"$run")
-        .addTag("tid", s"${interruptionTick.tid}")
+        Point(measurement, interruptionTick.timestamp)
+          .addField("cpu", cpu)
+          .addField("disk", if (interruptionTick.triggering) disk else 0.0)
+          .addTag("core", s"${interruptionTick.cpu}")
+          .addTag("method", s"${interruptionTick.fullMethodName}")
+          .addTag("run", s"$run")
+          .addTag("tid", s"${interruptionTick.tid}")
+      })
+
+      if (currentTimestamp > baseTimestamp + flushingFrequency.toMillis) {
+        database.bulkWrite(points, precision = Precision.NANOSECONDS)
+        points.clear()
+        baseTimestamp = currentTimestamp
+      }
     }
-
-    database.bulkWrite(points, precision = Precision.NANOSECONDS)
   }
 
   def cancel(): Unit = {
+    if (points.nonEmpty) {
+      database.bulkWrite(points, precision = Precision.NANOSECONDS)
+      points.clear()
+    }
+
     database.close()
   }
 }
+
 
 /**
   * Client of a PowerAPI's agent on the DataSocket for getting all sent payloads and
@@ -96,37 +112,27 @@ class DataRequest(dataChannel: UnixSocketChannel, monitor: PowerMonitoring) exte
   private val log = LogManager.getLogger
   @volatile var running = true
 
-  val stream = Channels.newInputStream(dataChannel)
+  val stream = new DataInputStream(Channels.newInputStream(dataChannel))
 
   override def run(): Unit = {
     while (running) {
       try {
-        val sizeBytes: Array[Byte] = Array.fill(4){0}
-        stream.read(sizeBytes, 0, sizeBytes.length)
-        val size = ntohl(sizeBytes)
-        val payloadBytes: Array[Byte] = Array.fill(size){0}
+        val size = stream.readInt()
+        val payloadBytes: Array[Byte] = Array.fill(size) {
+          0
+        }
+
         stream.read(payloadBytes, 0, payloadBytes.length)
         val payload = Payload.parseFrom(payloadBytes)
+        log.debug("{}", payload.toString)
         val tick = AgentTick(tickTopic(monitor.muid), payload.getTimestamp, payload)
         publishTick(tick)(monitor.eventBus)
       }
       catch {
-        case _: IOException =>
-        case _: OutOfMemoryError =>
+        case _: EOFException => cancel()
         case ex: Throwable => log.error(ex)
       }
     }
-  }
-
-  def ntohl(x: Array[Byte]): Int = {
-    var res = 0
-
-    for (i <- 0 until 4) {
-      res <<= 8
-      res |= x(i).toInt
-    }
-
-    res
   }
 
   def cancel(): Unit = {
@@ -162,17 +168,14 @@ class ControlRequest(controlChannel: UnixSocketChannel, configuration: UnixServe
 
   override def run(): Unit = {
     try {
+      val label = reader.readLine()
       val software = reader.readLine()
-      /*val line = reader.readLine()
-      val pid = line match {
-        case PID(p) => p.toInt
-      }*/
-      display = Some(new InterruptionInfluxDisplay(configuration.influxHost, configuration.influxPort, configuration.influxUser, configuration.influxPwd, configuration.influxDB, software))
+      display = Some(new InterruptionInfluxDisplay(configuration.influxHost, configuration.influxPort, configuration.influxUser, configuration.influxPwd, configuration.influxDB, label, configuration.influxFlushingFreq))
       monitor = Some(pMeter.monitor(Application(software))(MAX).to(display.get))
 
       requests ++= {
         for (core <- configuration.topology.values.flatten) yield {
-          val path = new File(s"/tmp/agent-$core-$software.sock")
+          val path = new File(s"/tmp/agent-$core-$label.sock")
           val address = new UnixSocketAddress(path)
           new DataRequest(UnixSocketChannel.open(address), monitor.get)
         }
@@ -249,6 +252,13 @@ class UnixServerSocketConfiguration extends Configuration(None) {
   } match {
     case ConfigValue(value) => value
     case _ => ""
+  }
+
+  lazy val influxFlushingFreq: FiniteDuration = load { conf =>
+    conf.getDuration("powerapi.influx.flushing-frequency", TimeUnit.NANOSECONDS)
+  } match {
+    case ConfigValue(value) => value.nanoseconds
+    case _ => 20l.seconds
   }
 }
 

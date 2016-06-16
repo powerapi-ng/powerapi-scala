@@ -1,5 +1,6 @@
 #define _GNU_SOURCE 1
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +27,7 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
-#include "payload.pb.h"
+#include "payload.pb-c.h"
 
 #define MAX_THREADS 4096
 
@@ -55,28 +56,113 @@ typedef struct {
   int core;
 } socket_t;
 
+
+typedef struct {
+  pid_t tid;
+  unw_addr_space_t as;
+  struct UPT_info *ui;
+} unw_addr_space_t_ext;
+
 char **events_str;
 int nb_cores = NB_CORES;
 int threshold = 0;
+char software_cmd[256] = "";
 
 Dwfl* dwfl;
 size_t pgsz = 0;
 static int buffer_pages = 8;
-static pid_t pid = -1;
 static array sockets = { .__internal = NULL, .length = 0 };
 static array events;
+static array current_pids = { .__internal = NULL, .length = 0 };
 static array current_threads = { .__internal = NULL, .length = 0 };
 static array fds_desc = { .__internal = NULL, .length = 0 };
+static array addr_spaces = { .__internal = NULL, .length = 0 };
+
+int sleep_step_ms = 250;
 
 static int cmp(const void * a, const void * b) {
-   return (*(int*)a - *(int*)b);
+ return (*(int*)a - *(int*)b);
 }
 
 void sleep_ms(int milliseconds) {
-    struct timespec ts;
-    ts.tv_sec = milliseconds / 1000;
-    ts.tv_nsec = (milliseconds % 1000) * 1000000;
-    nanosleep(&ts, NULL);
+  struct timespec ts;
+  ts.tv_sec = milliseconds / 1000;
+  ts.tv_nsec = (milliseconds % 1000) * 1000000;
+  nanosleep(&ts, NULL);
+}
+
+static void add_unw_space(unw_addr_space_t_ext addr_space) {
+  addr_spaces.__internal = realloc(addr_spaces.__internal, (addr_spaces.length + 1) * sizeof(unw_addr_space_t_ext));
+  ((unw_addr_space_t_ext*)addr_spaces.__internal)[addr_spaces.length] = addr_space;
+  addr_spaces.length += 1;
+}
+
+static int tid2space(pid_t tid) {
+  int i = 0;
+  unw_addr_space_t_ext *addr_spaces_tmp = (unw_addr_space_t_ext*)addr_spaces.__internal;
+
+  for (i = 0; i < addr_spaces.length; i++) {
+    if (addr_spaces_tmp[i].tid == tid) break;
+  }
+
+  return i;
+} 
+
+static void del_unw_space(pid_t tid) {
+  unw_addr_space_t_ext *addr_spaces_tmp = (unw_addr_space_t_ext*)addr_spaces.__internal;
+  int i = tid2space(tid), j = 0;
+  unw_destroy_addr_space(addr_spaces_tmp[i].as);
+  _UPT_destroy(addr_spaces_tmp[i].ui);  
+
+  for (j = i; j < addr_spaces.length - 1; j++) {
+    addr_spaces_tmp[j] = addr_spaces_tmp[j + 1];
+  }
+
+  addr_spaces.__internal = realloc(addr_spaces.__internal, (addr_spaces.length - 1) * sizeof(unw_addr_space_t_ext));
+  addr_spaces.length -= 1;
+}
+
+/**
+  * Update all running pids for the underlying command.
+  */
+static void update_pids() {
+  FILE * in;
+  char buffer[512];
+  char pgrep_cmd[512];
+  int retry = 0;
+
+  array pids = { .__internal = NULL, .length = 0 };
+  snprintf(pgrep_cmd, sizeof(pgrep_cmd), "ps -C %s -o pid --no-header", software_cmd);
+
+  while (pids.length == 0 && retry < 10) {
+    if ((in = popen(pgrep_cmd, "r"))) {
+      while (fgets(buffer, sizeof(buffer), in) != NULL) {
+        pids.__internal = realloc(pids.__internal, (pids.length + 1) * sizeof(pid_t));
+        ((pid_t*)pids.__internal)[pids.length] = atol(buffer);
+        pids.length += 1;
+      }
+
+      pclose(in);
+
+      if (pids.length == 0) {
+        retry += 1;
+        sleep_ms(sleep_step_ms);
+      }
+    }
+  }
+
+  if (pids.length > 0) {
+    if (current_pids.__internal != NULL) free(current_pids.__internal);
+    current_pids.__internal = malloc(sizeof(pids.__internal));
+    memcpy((pid_t*)current_pids.__internal, (pid_t*)pids.__internal, pids.length * sizeof(pid_t));
+    current_pids.length = pids.length;
+    free(pids.__internal);
+  }
+
+  else {
+    current_pids.__internal = NULL;
+    current_pids.length = 0;
+  }
 }
 
 /**
@@ -85,7 +171,7 @@ void sleep_ms(int milliseconds) {
 static uint64_t current_timestamp_ns() {
   struct timespec ts; 
   timespec_get(&ts, TIME_UTC);
-  return (long)ts.tv_sec * 1000000000L + ts.tv_nsec;
+  return (uint64_t)(ts.tv_sec * 1000000000L + ts.tv_nsec);
 }
 
 /**
@@ -126,7 +212,7 @@ static void del_fd_desc(pid_t tid) {
   }
 
   for (j = i; j < fds_desc.length - 1; j++) {
-    fds_desc_tmp[i] = fds_desc_tmp[i + 1];
+    fds_desc_tmp[j] = fds_desc_tmp[j + 1];
   }
 
   fds_desc.__internal = realloc(fds_desc.__internal, (fds_desc.length - 1) * sizeof(perf_event_desc_t_ext));
@@ -180,7 +266,6 @@ static array open_counters(pid_t tid) {
   char **_events = (char**)events.__internal;
   char **all_events = calloc(1, nb_cores * events.length * sizeof(char*));
   array fds = { .__internal = NULL, .length = 0 };
-
   for(i = 0; i < nb_cores * events.length; i++) {
     all_events[i] = calloc(1, strlen(_events[i % events.length]) + 1);
     all_events[i][0] = '\0';
@@ -210,6 +295,7 @@ static array open_counters(pid_t tid) {
       _fds[i * events.length + j].fd = perf_event_open(&_fds[i * events.length + j].hw, tid, i, _fds[i * events.length].fd, 0);
       if (_fds[i * events.length + j].fd == -1) errx(1, "cannot attach event %s", _fds[i * events.length + j].name);
     }
+
     sz = (1 + 2 * events.length) * sizeof(uint64_t);
     val = malloc(sz);
     if (!val) errx(1, "cannot allocated memory");
@@ -260,7 +346,7 @@ static array open_counters(pid_t tid) {
   * Utility function to get the difference between two arrays.
   */
 static array get_diff_arrays(array array1, array array2) {
-  pid_t terminated_threads[MAX_THREADS];
+  int diff[256];
   int *arr1 = (int*)array1.__internal, *arr2 = (int*)array2.__internal;
   int n1 = array1.length, n2 = array2.length;
   int i = 0, j = 0, k = 0;
@@ -272,7 +358,7 @@ static array get_diff_arrays(array array1, array array2) {
       j++;
     }
     else if(arr1[i] < arr2[j]) {
-      terminated_threads[k] = arr1[i];
+      diff[k] = arr1[i];
       i++;
       k++;
     }
@@ -280,12 +366,13 @@ static array get_diff_arrays(array array1, array array2) {
   }
   
   while (i < n1) {
-    terminated_threads[k] = arr1[i];
+    diff[k] = arr1[i];
     i++;
     k++;
   }
-
-  ret.__internal = terminated_threads;
+  
+  ret.__internal = malloc(sizeof(diff));
+  memcpy(ret.__internal, diff, sizeof(diff));
   ret.length = k;
 
   return ret;
@@ -295,27 +382,35 @@ static array get_diff_arrays(array array1, array array2) {
   * Update all running threads, clean local and external data when a thread does not exist anymore, open all counters and update data for new threads otherwise.
   */
 static void update_threads() {
-  array threads = { .__internal = malloc(MAX_THREADS * sizeof(pid_t)), .length = 0 };
-  char dirname[64];
-  DIR *dir;
-  struct dirent *entry;
-  int i, value = -1;
-  char dummy;
+  array threads = { .__internal = NULL, .length = 0 };
+  int i;
 
-  snprintf(dirname, sizeof dirname, "/proc/%d/task/", (int)pid);
-  dir = opendir(dirname);
+  update_pids();
+
+  for (i = 0; i < current_pids.length; i++) {
+    char dirname[64];
+    DIR *dir;
+    struct dirent *entry;
+    int value = -1;
+    char dummy;
+    pid_t pid = ((pid_t*)current_pids.__internal)[i];
+
+    snprintf(dirname, sizeof dirname, "/proc/%ld/task/", (long)pid);
+    dir = opendir(dirname);
  
-  if (!dir) errx(1, "pid %i does not exist: %s", pid, strerror(errno));
+    if (!dir) errx(1, "pid %i does not exist: %s", pid, strerror(errno));
 
-  while ((entry = readdir(dir)) != NULL) {
-    value = -1;
-    if (sscanf(entry->d_name, "%d%c", &value, &dummy) != 1) continue;
-    ((pid_t*)threads.__internal)[threads.length] = (pid_t) value;
-    threads.length++;
+    while ((entry = readdir(dir)) != NULL) {
+      value = -1;
+      if (sscanf(entry->d_name, "%d%c", &value, &dummy) != 1) continue;
+      threads.__internal = realloc(threads.__internal, (threads.length + 1) * sizeof(pid_t));
+      ((pid_t*)threads.__internal)[threads.length] = (pid_t)value;
+      threads.length += 1;
+    }
+  
+    if (dir) closedir(dir);
   }
-  
-  if (dir) closedir(dir);
-  
+
   if (threads.length > 0) {
     qsort(threads.__internal, threads.length, sizeof(pid_t), cmp);
     array old_threads = get_diff_arrays(current_threads, threads);
@@ -327,27 +422,33 @@ static void update_threads() {
       desc.tid = ((pid_t*)new_threads.__internal)[i];
       desc.fds = fds;
       add_fd_desc(desc);
+      unw_addr_space_t_ext addr_space;
+      addr_space.tid = ((pid_t*)new_threads.__internal)[i];
+      addr_space.ui = _UPT_create(((pid_t*)new_threads.__internal)[i]);
+      addr_space.as = unw_create_addr_space(&_UPT_accessors, 0);
+      add_unw_space(addr_space);
     }
 
     for (i = 0; i < old_threads.length; i++) {
       del_fd_desc(((pid_t*)old_threads.__internal)[i]);
-      uint32_t core = 0, pid = 0;
-      uint64_t timestamp = 0;
-      uint32_t tid = (uint32_t)((pid_t*)old_threads.__internal)[i];
-      pb_encoder_t payload = payload_encoder_create();
-      pb_error_t error = PB_ERROR_NONE;
-      error = payload_encode_core(&payload, &core);
-      error = payload_encode_pid(&payload, &pid);
-      error = payload_encode_tid(&payload, &tid);
-      error = payload_encode_timestamp(&payload, &timestamp);
-      if (error) errx(1, "ERROR: %s\n", pb_error_string(error));
-      const pb_buffer_t *buffer = pb_encoder_buffer(&payload);
-      const uint8_t *data = pb_buffer_data(buffer);
-      size_t size = pb_buffer_size(buffer);
-      uint32_t sz = htonl((uint32_t)size);
+      del_unw_space(((pid_t*)old_threads.__internal)[i]);
+      Payload payload = PAYLOAD__INIT;
+      void *buf;
+      unsigned len;
+      payload.core = (uint32_t) 0;
+      payload.pid = (uint32_t) 0;
+      payload.tid = (uint32_t) ((pid_t*)old_threads.__internal)[i];
+      payload.timestamp = (uint64_t) 0;
+
+      len = payload__get_packed_size(&payload);
+      buf = malloc(len);
+      payload__pack(&payload, buf);
+
+      int32_t sz = htonl((uint32_t)len);
       send(((socket_t*)sockets.__internal)[0].fd, &sz, sizeof(uint32_t), 0);
-      send(((socket_t*)sockets.__internal)[0].fd, data, size, 0);
-      payload_encoder_destroy(&payload);
+      send(((socket_t*)sockets.__internal)[0].fd, buf, len, 0);
+
+      free(buf);
     }
     
     if (current_threads.__internal != NULL) free(current_threads.__internal);
@@ -355,6 +456,13 @@ static void update_threads() {
     memcpy((pid_t*)current_threads.__internal, (pid_t*)threads.__internal, threads.length * sizeof(pid_t));
     current_threads.length = threads.length;
     free(threads.__internal);
+    if (old_threads.__internal != NULL) free(old_threads.__internal);
+    if (new_threads.__internal != NULL) free(new_threads.__internal);
+  }
+
+  else {
+    if (current_threads.__internal != NULL) free(current_threads.__internal);
+    current_threads.length = 0;
   }
 }
 
@@ -389,32 +497,32 @@ static void interrupt_handler(int n, siginfo_t *info, void *context) {
   tuple indexes;
   perf_event_desc_t* hw;
   uint64_t nr, val64;
-  uint32_t cpu, pid, tid, val32;
+  uint32_t cpu = 0, pid = 0, tid = 0, val32 = 0;
   struct { uint64_t value, id; } grp;
   const char *event;
   counter_field fields[events.length];
    
   ret = ioctl(info->si_fd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
-  if (ret == -1) errx(1, "cannot disabled");
+  if (ret == -1) goto reset_fd; // errx(1, "cannot disabled");
 
-  if (info->si_code < 0) errx(1, "signal not generated by kernel");
-  if (info->si_code != POLL_HUP) errx(1, "signal not generated by SIGIO");
+  if (info->si_code < 0) goto reset_fd; //errx(1, "signal not generated by kernel");
+  if (info->si_code != POLL_HUP) goto reset_fd; //errx(1, "signal not generated by SIGIO");
   
   indexes = fd2event(info->si_fd);
-  if (indexes.a == -1 || indexes.b == -1) errx(1, "no event associated with fd=%d", info->si_fd);
-
+  if (indexes.a == -1 || indexes.b == -1) goto reset_fd;// errx(1, "no event associated with fd=%d", info->si_fd);
+  
   array fds = ((perf_event_desc_t_ext*)fds_desc.__internal)[indexes.a].fds;
   perf_event_desc_t *_fds = (perf_event_desc_t*)fds.__internal;
 
   ret = perf_read_buffer(_fds + indexes.b, &ehdr, sizeof(ehdr));
-  if (ret) errx(1, "cannot read event header");
+  if (ret) goto reset_fd; //errx(1, "cannot read event header");
 
   if (ehdr.type != PERF_RECORD_SAMPLE) {
     warnx("unexpected sample type=%d, skipping\n", ehdr.type);
     perf_skip_buffer(_fds + indexes.b, ehdr.size);
-    goto skip;
+    goto reset_fd;
   }
-
+  
   hw = _fds + indexes.b;
 
   // PERF_SAMPLE_IP
@@ -427,11 +535,8 @@ static void interrupt_handler(int n, siginfo_t *info, void *context) {
   ret = perf_read_buffer_32(hw, &tid);
   if (ret) warnx("cannot read TID");
   
-  unw_addr_space_t as = unw_create_addr_space(&_UPT_accessors, 0);
-  struct UPT_info *ui = _UPT_create(tid);
-  if (!ui) errx(1, "_UPT_create failed"); 
-  
-  ptrace(PTRACE_ATTACH, tid, 0, 0);
+  ptrace(PTRACE_ATTACH, tid, 0, 0); 
+  wait(NULL);
 
   // PERF_SAMPLE_CPU
   ret = perf_read_buffer_32(hw, &cpu);
@@ -451,7 +556,7 @@ static void interrupt_handler(int n, siginfo_t *info, void *context) {
     grp.id = -1;
 
     ret = perf_read_buffer_64(hw, &grp.value);
-    if (ret) {warnx("cannot read group value"); exit(1); }
+    if (ret) {warnx("cannot read group value"); }
 
     ret = perf_read_buffer_64(hw, &grp.id);
     if (ret) warnx("cannot read leader id");
@@ -467,69 +572,68 @@ static void interrupt_handler(int n, siginfo_t *info, void *context) {
   }
   
   //printf("\n\n");
-   
-  ret = unw_init_remote(&cursor, as, ui);
-  if (ret) goto skip;
+  
+  unw_addr_space_t_ext addr_space = ((unw_addr_space_t_ext*)(addr_spaces.__internal))[tid2space(tid)];
+  ret = unw_init_remote(&cursor, addr_space.as, addr_space.ui);
+  if (ret) goto detach_tid;
 
-  char *strings[64];
+  char *strings[256];
 
   while(unw_step(&cursor) > 0) {
     unw_word_t ip;
     unw_get_reg(&cursor, UNW_REG_IP, &ip);
     if (ip == 0) break;
-    char* name = (char*)ip_to_function_name((void*)ip, tid);
-
+    char *name = (char*)ip_to_function_name((void*)ip, tid);
     // FIX: it sometimes appears that the name is set to the null character when an address is not reachable (why?)
     if (name == '\0') break;
-    strings[length] = name;
+    strings[length] = malloc((strlen(name) + 1) * sizeof(char));
+    strings[length][0] = '\0';
+    strncat(strings[length], name, strlen(name));
     length += 1;
     if (strcmp(name, "main") == 0) break;
   }
 
   if (length > 0) {
     int i = 0;
-    pb_encoder_t payload = payload_encoder_create();
-    pb_error_t error = PB_ERROR_NONE;
-    error = payload_encode_core(&payload, &cpu);
-    error = payload_encode_pid(&payload, &pid);
-    error = payload_encode_tid(&payload, &tid);
-    error = payload_encode_timestamp(&payload, &timestamp);
-    pb_encoder_t* entries = malloc(events.length * sizeof(pb_encoder_t));
-    pb_string_t* symbols = malloc(length * sizeof(pb_string_t));
+    Payload payload = PAYLOAD__INIT;
+    void *buf;
+    unsigned len;
+    payload.core = (uint32_t) cpu;
+    payload.pid = (uint32_t) pid;
+    payload.tid = (uint32_t) tid;
+    payload.timestamp = (uint64_t) timestamp;
+    payload.n_counters = events.length;
+    payload.n_traces = length;
+    
+    payload.counters = malloc(payload.n_counters * sizeof(MapEntry));
+    payload.traces = malloc(payload.n_traces * sizeof(char*));
 
-    for (i = 0; i < events.length; i ++) {
-      pb_encoder_t entry = mapentry_encoder_create();
-      pb_string_t key = pb_string_init_from_chars(fields[i].event);
-      error = mapentry_encode_key(&entry, &key);
-      error = mapentry_encode_value(&entry, &fields[i].value);
-      entries[i] = entry;
-   }
-
-    for (i = 0; i < length; i ++) {
-      symbols[i] = pb_string_init_from_chars(strings[i]);
+    for (i = 0; i < payload.n_counters; i++) {
+      payload.counters[i] = malloc(sizeof(MapEntry));
+      map_entry__init(payload.counters[i]);
+      payload.counters[i]->key = fields[i].event;
+      payload.counters[i]->value = (uint64_t)fields[i].value;
     }
 
-    error = payload_encode_counters(&payload, entries, events.length);
-    error = payload_encode_traces(&payload, symbols, length);
+    for (i = 0; i < payload.n_traces; i++) {
+      payload.traces[i] = strings[i];
+    }
 
-    if (error) errx(1, "ERROR: %s\n", pb_error_string(error));
+    len = payload__get_packed_size(&payload);
+    buf = malloc(len);
+    payload__pack(&payload, buf);
 
-    const pb_buffer_t *buffer = pb_encoder_buffer(&payload);
-    const uint8_t *data = pb_buffer_data(buffer);
-    size_t size = pb_buffer_size(buffer);
-    uint32_t sz = htonl((uint32_t)size);
+    int32_t sz = htonl((uint32_t)len);
     send(((socket_t*)sockets.__internal)[cpu].fd, &sz, sizeof(uint32_t), 0);
-    send(((socket_t*)sockets.__internal)[cpu].fd, data, size, 0);  
-    for (i = 0; i < events.length; i ++) {
-      mapentry_encoder_destroy(&(entries[i]));
-    }
-    payload_encoder_destroy(&payload);
-    free(entries);
-    free(symbols);
+    send(((socket_t*)sockets.__internal)[cpu].fd, buf, len, 0);
+    
+    free(buf);
+    for (i = 0; i < length ; i++) free(strings[i]);
   }
-skip:
+
+detach_tid: 
   ptrace(PTRACE_DETACH, tid, 0, 0);
-  _UPT_destroy(ui); 
+reset_fd:
   ret = ioctl(info->si_fd, PERF_EVENT_IOC_REFRESH, PERF_IOC_FLAG_GROUP);
   if (ret == -1) err(1, "cannot refresh");
   ret = ioctl(info->si_fd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
@@ -540,26 +644,24 @@ skip:
 
 /**
   * Main code of the PowerAPI's agent.
-  * This agent is responsible to set the interruption mode on an external pid and to get detailed information when such interruption occurs.
+  * This agent is responsible to set the interruption mode on an external program and to get detailed information when such interruption occurs.
   * The stack trace and the associated hardware counters are retrieved and send to a PowerAPI which is running as a daemon.
   * One Unix server socket (a control socket) is created by PowerAPI for handling softwares and connexion, and server sockets are created per core by the Agent to send interruption data to PowerAPI.
   *
-  * argv[1] => sampling threshold
-  * argv[2] => software's name
-  * argv[3] => software's pid
+  * argv[1] => threshold
+  * argv[2] => software's label
+  * argv[3] => software's cmd used as a direct pgrep parameter.
   */
 int main(int argc, char **argv) {
   struct sigaction act;
   sigset_t new, old;
-  char pid_stat_file[256];
-  char *status = "";
   char *message;
   int ret, i, j;
   struct sockaddr_un addr;
   int socket_servers[nb_cores];
   int control_socket;
   socket_t _sockets[nb_cores];
-  int sleep = 50;
+  char software_label[256] = "";
 
   pgsz = sysconf(_SC_PAGESIZE);
   events_str = malloc(2 * sizeof(char*));
@@ -568,10 +670,9 @@ int main(int argc, char **argv) {
   events.__internal = events_str;
   events.length = 2;
 
-  threshold = atoil(argv[1])
-
-  pid = atoi(argv[3]);
-  snprintf(pid_stat_file, sizeof(pid_stat_file), "/proc/%d/status", (int)pid);
+  threshold = atol(argv[1]);
+  strcpy(software_label, argv[2]);
+  strcpy(software_cmd, argv[3]);
 
   char *debuginfo_path = NULL;
 
@@ -585,7 +686,7 @@ int main(int argc, char **argv) {
  
   for (i = 0; i < nb_cores; i++) {
     char socket_path[256];
-    snprintf(socket_path, sizeof(socket_path), "/tmp/agent-%d-%d.sock", i, (int)pid);
+    snprintf(socket_path, sizeof(socket_path), "/tmp/agent-%d-%s.sock", i, software_label);
     socket_servers[i] = socket(AF_UNIX, SOCK_STREAM, 0);
     if (socket_servers[i] == -1) errx(1, "Socket error %s", socket_path);
 
@@ -611,11 +712,11 @@ int main(int argc, char **argv) {
   strncpy(addr.sun_path, "/tmp/agent-control.sock", sizeof(addr.sun_path) - 1);
   if (connect(control_socket, (struct sockaddr*)&addr, sizeof(addr)) == -1) errx(1, "Connect error");
   message = (char*)malloc(128 * sizeof(char));
-  snprintf(message, 128, "%s\n", argv[2]);
+  snprintf(message, 128, "%s\n", software_label);
   send(control_socket, message, strlen(message), 0);
   free(message);
   message = (char*)malloc(128 * sizeof(char));
-  snprintf(message, 128, "%d\n", pid);
+  snprintf(message, 128, "%s\n", software_cmd);
   send(control_socket, message, strlen(message), 0);
   free(message);
 
@@ -648,31 +749,13 @@ int main(int argc, char **argv) {
     if (ret) errx(1, "sigprocmask failed");
   }
   
-  update_threads(pid);
-  
-  while ((access(pid_stat_file, F_OK) != -1 && strcmp(status, "(zombie)") != 0) || bcl < 5000 / sleep) {
-    update_threads(pid);
-     
-    FILE *fp = fopen(pid_stat_file, "r");
-    char *line = NULL;
-    size_t len = 0; 
-  
-    if (fp == NULL) break;
-    
-    if (getline(&line, &len, fp) == -1) break;
-    line = NULL;
-    
-    if (getline(&line, &len, fp) != -1) {
-      strtok(line, " ");
-      status = strdup(strtok(NULL, " "));
-    }
-    
-    fclose(fp);
-    free(line);
-    sleep_ms(sleep);
-  }
-  free(status);
+  update_threads();
 
+  while (current_threads.length > 0) {
+    sleep_ms(sleep_step_ms);
+    update_threads();
+  }
+ 
   message = (char*)malloc(128 * sizeof(char));
   snprintf(message, 128, "END\n");
   send(control_socket, message, strlen(message), 0);
@@ -689,13 +772,16 @@ int main(int argc, char **argv) {
     }      
   } 
   
-  free(fds_desc.__internal);
+  if (fds_desc.__internal != NULL) free(fds_desc.__internal);
+  if (addr_spaces.__internal != NULL) free(addr_spaces.__internal);
+  if (current_pids.__internal != NULL) free(current_pids.__internal);
+  if (current_threads.__internal != NULL) free(current_threads.__internal);
 
   for (i = 0; i < sockets.length; i++) {
     close(((socket_t*)sockets.__internal)[i].fd);
     close(socket_servers[i]);
     char socket_path[256];
-    snprintf(socket_path, sizeof(socket_path), "/tmp/agent-%d-%d.sock", i, (int)pid);
+    snprintf(socket_path, sizeof(socket_path), "/tmp/agent-%d-%s.sock", i, software_label);
     unlink(socket_path);
   }
   close(control_socket);

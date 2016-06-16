@@ -419,7 +419,7 @@ class LinuxHelper extends Configuration(None) with OSHelper {
   }
 
   def attachToCGroup(subsystem: String, name: String, toAttach: String): Unit = {
-    Seq("cgclassify", "-g", s"$subsystem:/$name", s"$toAttach").!
+    Seq("cgclassify", "-g", s"$subsystem:/$name", "--sticky", s"$toAttach").!
   }
 
   def deleteCGroup(subsystem: String, name: String): Unit = {

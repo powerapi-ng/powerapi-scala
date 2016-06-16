@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
 
-( kill -SIGSTOP $BASHPID; exec "$2" "${@: 3}" ) &
-app_pid=$!
-
-./powerapi-agent $1 $app_pid &
+exec "$4" "${@: 5}" &
+sleep 5
+./powerapi-agent $1 $2 $3 &
 agent_pid=$!
-
-sleep 15
-
-kill -SIGCONT $app_pid
-
 wait $agent_pid
-
 exit 0

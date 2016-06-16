@@ -107,15 +107,16 @@ class ComponentSuite extends UnitTest {
       expectMsgPF() { case Terminated(_) => () }
     })(system)
 
-    EventFilter[Exception]("crash", occurrences = 1, source = supervisor.path.toString).intercept({
+    EventFilter.warning(occurrences = 1, source = supervisor.path.toString).intercept({
       supervisor ! Props[TestChild]
       child = expectMsgClass(classOf[ActorRef])
-      watch(child)
       child ! 42
       child ! "state"
       expectMsg(42)
       child ! new Exception("crash")
-      expectMsgPF() { case t@Terminated(_) if t.existenceConfirmed => () }
+      child ! 52
+      child ! "state"
+      expectMsg(52)
     })(system)
   }
 
@@ -146,7 +147,7 @@ class ComponentSuite extends UnitTest {
       supervisor ! new UnsupportedOperationException("umh, not supported")
     })(system)
 
-    EventFilter[Exception]("crash", occurrences = 1, source = supervisor.path.toString).intercept({
+    EventFilter.warning(occurrences = 1, source = supervisor.path.toString).intercept({
       supervisor ! new Exception("crash")
     })(system)
   }
