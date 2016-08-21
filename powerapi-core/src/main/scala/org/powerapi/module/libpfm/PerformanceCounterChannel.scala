@@ -82,7 +82,7 @@ object PerformanceCounterChannel extends Channel {
     *
     * BUG: We use special characters at the end of strings because there is a problem when we try to get an actor by its name otherwise.
     */
-  def formatLibpfmCoreProcessSensorChildName(core: Int, event: String, muid: UUID, identifier: Int): String = {
+  def formatLibpfmCoreProcessSensorChildName(core: Int, event: String, muid: UUID, identifier: String): String = {
     s"_${core}_${event.toLowerCase().replace('_', '-').replace(':', '-')}_${muid}_${identifier}_"
   }
 

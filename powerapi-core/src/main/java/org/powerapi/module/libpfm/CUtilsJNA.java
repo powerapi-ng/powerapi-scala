@@ -31,6 +31,7 @@ import com.sun.jna.Library;
  */
 public interface CUtilsJNA extends Library {
   int ioctl(int fd, int request, Object... args);
+  int open(String path, int flag);
   long read(int fd, byte[] buf, long nbytes);
   int close(int fd);
 }

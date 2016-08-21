@@ -22,6 +22,7 @@
  */
 package org.powerapi.module.libpfm
 
+import java.io.File
 import java.nio.{ByteBuffer, ByteOrder}
 
 import scala.collection.BitSet
@@ -44,6 +45,8 @@ case class TID(identifier: Int) extends Identifier
 case class CID(core: Int) extends Identifier
 
 case class TCID(identifier: Int, core: Int) extends Identifier
+
+case class CGID(name: String, core: Int) extends Identifier
 
 case class Event(pmu: String, name: String, code: String) extends Ordered[Event] {
   override def equals(that: Any): Boolean = {
@@ -286,6 +289,11 @@ class LibpfmHelper extends Configuration {
           CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, -1, cid, -1, 0)
         case TCID(tid, cid) =>
           CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, tid, cid, -1, 0)
+        case CGID(cName, cid) =>
+          val perfEventCGroupDir = new File("/sys/fs/cgroup/perf_event/docker")
+          val fullCName = perfEventCGroupDir.listFiles.filter(f => f.isDirectory && f.getName.startsWith(cName)).map(_.getName).head
+          val cgroupFD = cUtilsJNA.open(s"/sys/fs/cgroup/perf_event/docker/$fullCName", 0)
+          CUtilsBridJ.perf_event_open(nrPerfEventOpen, eventAttrPointer, cgroupFD, cid, -1, LibpfmLibrary.PERF_FLAG_PID_CGROUP)
         case _ =>
           log.error("The type of the first parameter is unknown.")
           -1

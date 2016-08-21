@@ -35,15 +35,18 @@ import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, LibpfmPi
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class LibpfmPicker(helper: LibpfmHelper, event: String, core: Int, tid: Option[Int], configuration: BitSet) extends ActorComponent {
+class LibpfmPicker(helper: LibpfmHelper, event: String, core: Int, tid: Option[Int], containerName: Option[String], configuration: BitSet) extends ActorComponent {
 
   def receive: Actor.Receive = {
     val fd: Option[Int] = {
-      val identifier = tid match {
-        case Some(value) =>
-          TCID(value, core)
-        case None =>
-          CID(core)
+      val identifier = {
+        if (containerName.isDefined) {
+          CGID(containerName.get, core)
+        }
+        else if (tid.isDefined) {
+          TCID(tid.get, core)
+        }
+        else CID(core)
       }
 
       helper.configurePC(identifier, configuration, event) match {
