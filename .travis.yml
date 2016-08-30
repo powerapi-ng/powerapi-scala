@@ -45,7 +45,9 @@ before_install:
   - sudo dpkg -i influxdb.deb
   - sudo service influxdb start
   - sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi' WITH ALL PRIVILEGES"
-  - sudo bash -c "source /usr/local/rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"
+  - gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+  - curl -sSL https://get.rvm.io | bash
+  - sudo bash -c "source /home/travis/.rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"
 
 after_success:
   - sbt "project powerapi-core" coverageReport
