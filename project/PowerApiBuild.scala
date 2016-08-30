@@ -50,12 +50,12 @@ object PowerApiBuild extends Build {
     unmanagedClasspath in (Compile, runMain) += powerapi.base.getAbsoluteFile  / "external-libs" / "sigar-bin",
     downloadBluecove := {
       val locationBluecove = powerapi.base.getAbsoluteFile / "external-libs" / "bluecove-2.1.0.jar"
-      if (!locationBluecove.exists()) IO.download(url("https://bluecove.googlecode.com/files/bluecove-2.1.0.jar"), locationBluecove)
+      if (!locationBluecove.exists()) IO.download(url("https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/bluecove/bluecove-2.1.0.jar"), locationBluecove)
       locationBluecove
     },
     downloadBluecoveGpl := {
       val locationBluecoveGpl = powerapi.base.getAbsoluteFile / "external-libs" / "bluecove-gpl-2.1.0.jar"
-      if (!locationBluecoveGpl.exists()) IO.download(url("https://bluecove.googlecode.com/files/bluecove-gpl-2.1.0.jar"), locationBluecoveGpl)
+      if (!locationBluecoveGpl.exists()) IO.download(url("https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/bluecove/bluecove-gpl-2.1.0.jar"), locationBluecoveGpl)
       locationBluecoveGpl
     },
     compile in Compile <<= (compile in Compile).dependsOn(downloadBluecove, downloadBluecoveGpl)
