@@ -61,13 +61,13 @@ object PowerApiBuild extends Build {
     compile in Compile <<= (compile in Compile).dependsOn(downloadBluecove, downloadBluecoveGpl)
   )
 
-  lazy val powerapi: sbt.Project = Project(id = "powerapi", base = file(".")).settings(buildSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
+  lazy val powerapi: sbt.Project = Project(id = "powerapi", base = file(".")).settings(buildSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling, powerapiWattskit)
 
   lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core")).settings(buildSettings: _*)
   lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaServerAppPackaging)
   lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
-  lazy val powerapiOSDI = Project(id = "powerapi-osdi", base = file("powerapi-osdi")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val powerapiWattskit = Project(id = "powerapi-wattskit", base = file("powerapi-wattskit")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 
   // example of power meters
   lazy val appMonitorProcsJava =  Project(id = "powerapi-example-app-monitor-procfs-java", base = file("powerapi-powermeter/AppMonitorProcFSJava")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")

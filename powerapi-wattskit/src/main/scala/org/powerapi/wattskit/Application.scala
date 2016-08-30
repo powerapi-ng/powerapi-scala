@@ -20,45 +20,44 @@
  *
  * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
  */
-package org.powerapi.osdi
-
-import java.util.UUID
-import java.util.concurrent.TimeUnit
+package org.powerapi.wattskit
 
 import scala.collection.JavaConversions._
-import scala.io.Source
 import scala.concurrent.duration.DurationLong
-
 import com.github.dockerjava.core.DockerClientBuilder
 import com.paulgoldbaum.influxdbclient.Parameter.Precision
-import com.paulgoldbaum.influxdbclient.{Point, InfluxDB}
+import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import org.powerapi.module.cpu.simple.CpuSimpleModule
-import org.powerapi.{PowerMonitoring, PowerMeter, PowerDisplay}
+import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
 import org.powerapi.core.power._
-import org.powerapi.core.target.{All, Target, Container}
+import org.powerapi.core.target.Container
 import org.powerapi.core.LinuxHelper
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 
-class InfluxDBCadvisor(monitoringF: Long, batchF: Long, host: String, port: Int, user: String, pwd: String, cAdvisorCid: String) extends PowerDisplay {
+class InfluxDBCadvisor(monitoringF: Long, batchF: Long, host: String, port: Int, user: String, pwd: String, hostname: String) extends PowerDisplay {
 
   val influxdb = InfluxDB.connect(host, port, user, pwd)
-  val database = influxdb.selectDatabase("cadvisor")
+  val database = influxdb.selectDatabase("wattskit")
   val points = scala.collection.mutable.ListBuffer[Point]()
   val timestamps = scala.collection.mutable.Set[Long]()
 
-  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
+  def display(aggregatePowerReport: AggregatePowerReport) {
+    val timestamp = aggregatePowerReport.ticks.head.timestamp
+    val targets = aggregatePowerReport.targets
+    val power = aggregatePowerReport.power
+
     this.synchronized {
       if (timestamps.size < batchF.seconds.toMillis / monitoringF) {
         if (targets.size == 1) {
-          val target = targets.head
           val containerName = targets.head match {
-            case All => "/"
             case container: Container => container.name
+            case _ => "unknown"
           }
 
           val point = Point("power", timestamp)
             .addField("value", power.toMilliWatts)
             .addTag("container_name", s"$containerName")
-            .addTag("machine", s"${cAdvisorCid.substring(0, 12)}")
+            .addTag("machine", s"$hostname")
 
           points += point
         }
@@ -89,7 +88,7 @@ object Application extends App {
     powerMeters.clear()
   }
 
-  case class Config(monitoringF: Long = 1000, batchF: Long = 30, tdp: Double = -1, influxHost: String = "", influxPort: Int = -1, influxUser: String = "", influxPwd: String = "", cAdvisorCidPath: String = "")
+  case class Config(monitoringF: Long = 1000, batchF: Long = 30, tdp: Double = -1, influxHost: String = "", influxPort: Int = -1, influxUser: String = "", influxPwd: String = "", hostname: String = "")
 
   val parser = new scopt.OptionParser[Config]("scopt") {
     head("powerapi", "4.0")
@@ -99,6 +98,9 @@ object Application extends App {
     opt[Long]("batch_f") optional() action { (x, c) =>
       c.copy(batchF = x)
     } text "Batch frequency in s for cAdvisor"
+    opt[String]("hostname") required() action { (x, c) =>
+      c.copy(hostname = x)
+    } text "Hostname"
     opt[Double]("tdp") required() action { (x, c) =>
       c.copy(tdp = x)
     } text "TDP value"
@@ -114,9 +116,6 @@ object Application extends App {
     opt[String]("influx_pwd") required() action { (x, c) =>
       c.copy(influxPwd = x)
     } text "Influx DB pwd"
-    opt[String]("cadvisor_cid_path") required() action { (x, c) =>
-      c.copy(cAdvisorCidPath = x)
-    } text "Cadvisor cid filepath"
     help("help") text "help message"
   }
 
@@ -127,9 +126,7 @@ object Application extends App {
 
       val powerapi = PowerMeter.loadModule(new CpuSimpleModule(linuxHelper, config.tdp, 0.7))
       powerMeters += powerapi
-      val display = new InfluxDBCadvisor(config.monitoringF, config.batchF, config.influxHost, config.influxPort, config.influxUser, config.influxPwd, Source.fromFile(config.cAdvisorCidPath).getLines().next())
-
-      monitors += "all" -> powerapi.monitor(All)(MAX).every(config.monitoringF.millis).to(display)
+      val display = new InfluxDBCadvisor(config.monitoringF, config.batchF, config.influxHost, config.influxPort, config.influxUser, config.influxPwd, config.hostname)
 
       val containers = docker.listContainersCmd().exec().map(container => Container(container.getId, container.getNames.mkString(",")))
       containers.foreach(container => monitors += container.id -> powerapi.monitor(container)(MAX).every(config.monitoringF.millis).to(display))
@@ -141,7 +138,7 @@ object Application extends App {
           monitors(container.id).cancel()
           monitors -= container.id
         })
-        currentContainers.diff(containers).foreach(container => monitors += container.id -> powerapi.monitor(container)(MAX).every(1l.seconds).to(display))
+        currentContainers.diff(containers).foreach(container => monitors += container.id -> powerapi.monitor(container)(MAX).every(config.monitoringF.millis).to(display))
         containers.clear()
         containers ++= currentContainers
 

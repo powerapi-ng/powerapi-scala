@@ -1,4 +1,4 @@
-name := "powerapi-osdi"
+name := "powerapi-wattskit"
 
 // App
 libraryDependencies ++= Seq(

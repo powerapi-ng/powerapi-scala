@@ -1,6 +1,6 @@
 FROM alpine:3.3
 
-ENV POWERAPI_PACKAGE powerapi-osdi
+ENV POWERAPI_PACKAGE powerapi-wattskit
 ENV RUNTIME_PACKAGES openjdk7-jre bash
 
 COPY ${POWERAPI_PACKAGE}/target/universal/${POWERAPI_PACKAGE}/ /root/${POWERAPI_PACKAGE}/
