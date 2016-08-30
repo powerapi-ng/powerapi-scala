@@ -316,9 +316,7 @@ class LinuxHelper extends Configuration(None) with OSHelper {
     val pidDirectory = new File(taskPath.replace("%?pid", s"${process.pid}"))
 
     if (pidDirectory.exists && pidDirectory.isDirectory) {
-      /**
-        * The pid is removed because it corresponds to the main thread.
-        */
+      // The pid is removed because it corresponds to the main thread.
       pidDirectory.listFiles.filter(dir => dir.isDirectory && dir.getName != s"${process.pid}").map(dir => Thread(dir.getName.toInt)).toSet
     }
     else Set[Thread]()
@@ -361,11 +359,8 @@ class LinuxHelper extends Configuration(None) with OSHelper {
         log.debug("using {} as a procfs global stat path", globalStatPath)
 
         val cpuTimes = source.getLines.toIndexedSeq(0) match {
-          /**
-            * Exclude all guest columns, they are already added in utime column.
-            *
-            * @see http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
-            */
+          // Exclude all guest columns, they are already added in utime column.
+          // http://lxr.free-electrons.com/source/kernel/sched/cputime.c#L165
           case GlobalStatFormat(times) =>
             val idleTime = times.split("\\s")(3).toLong
             val activeTime = times.split("\\s").slice(0, 8).map(_.toLong).sum - idleTime

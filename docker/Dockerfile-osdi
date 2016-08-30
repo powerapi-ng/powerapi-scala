@@ -1,0 +1,13 @@
+FROM alpine:3.3
+
+ENV POWERAPI_PACKAGE powerapi-osdi
+ENV RUNTIME_PACKAGES openjdk7-jre bash
+
+COPY ${POWERAPI_PACKAGE}/target/universal/${POWERAPI_PACKAGE}/ /root/${POWERAPI_PACKAGE}/
+
+RUN apk update && apk upgrade && apk add $RUNTIME_PACKAGES && \
+  rm -rf /var/cache/apk/*
+
+WORKDIR /root/$POWERAPI_PACKAGE
+
+ENTRYPOINT ["./bin/powerapi"]
