@@ -27,7 +27,7 @@ scala:
   - 2.11.7
 
 jdk:
-  - openjdk7
+  - oraclejdk8
 
 # workaround for openjdk buffer overflow
 addons:
