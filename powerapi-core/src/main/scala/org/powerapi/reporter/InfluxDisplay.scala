@@ -22,13 +22,9 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-
 import com.paulgoldbaum.influxdbclient.Parameter.Precision
 import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import org.powerapi.PowerDisplay
-import org.powerapi.core.power.Power
-import org.powerapi.core.target.Target
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 
 /**

@@ -22,11 +22,9 @@
  */
 package org.powerapi.module.disk.simple
 
-import java.time.Clock
 import java.util.UUID
 
 import akka.actor.Actor
-import akka.event.LoggingReceive
 import org.joda.time.DateTime
 import org.powerapi.core.MessageBus
 import org.powerapi.core.target.Target
