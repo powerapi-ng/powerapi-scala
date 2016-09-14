@@ -28,6 +28,16 @@ libraryDependencies ++= Seq(
   "com.google.protobuf" % "protobuf-java" % "2.6.1"
 )
 
+// temporary
+// it should be a jar-with-dependencies
+unmanagedJars in Compile ++= {
+  baseDirectory.value
+  val m2 = Path.userHome / ".m2/repository"
+  val baseDirectories = (m2 / "org/kevoree/mwg/plugins/structure/7-SNAPSHOT") +++ (m2 / "org/kevoree/mwg/plugins/websocket/7-SNAPSHOT")
+  val customJars = (baseDirectories ** "*.jar")
+  customJars.classpath
+}
+
 // Tests
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % "2.3.14" % "test",
