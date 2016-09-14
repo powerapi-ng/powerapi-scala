@@ -63,7 +63,8 @@ object PowerApiBuild extends Build {
 
   lazy val powerapi: sbt.Project = Project(id = "powerapi", base = file(".")).settings(buildSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
 
-  lazy val mwgPlugin = Project(id="mwgPlugin",base = file("mwg-plugin")).settings(buildSettings: _*)
+  lazy val mwgPlugin = Project(id="mwg-plugin",base = file("mwg-plugin")).settings(buildSettings: _*)
+  lazy val mwgServer = Project(id="mwg-server",base = file("mwg-server")).settings(buildSettings: _*)
 
   lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core")).settings(buildSettings: _*).dependsOn(mwgPlugin % "compile -> compile")
   lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)

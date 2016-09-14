@@ -1,4 +1,4 @@
-name := "mwg-plugin"
+name := "mwg-server"
 
 organization := "org.powerapi"
 
@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
 unmanagedJars in Compile ++= {
   baseDirectory.value
   val m2 = Path.userHome / ".m2/repository"
-  val baseDirectories = (m2 / "org/kevoree/mwg/core/7-SNAPSHOT") +++ (m2 / "org/kevoree/mwg/api/7-SNAPSHOT") +++ (m2 / "org/kevoree/mwg/plugins/ml/7-SNAPSHOT")
+  val baseDirectories = (m2 / "org/kevoree/mwg/core/7-SNAPSHOT") +++ (m2 / "org/kevoree/mwg/api/7-SNAPSHOT") +++ (m2 / "org/kevoree/mwg/plugins/websocket/7-SNAPSHOT") +++ (m2 / "org/kevoree/mwg/plugins/leveldb/7-SNAPSHOT")
   val customJars = (baseDirectories ** "*.jar")
   customJars.classpath
 }

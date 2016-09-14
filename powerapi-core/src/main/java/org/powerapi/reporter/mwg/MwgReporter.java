@@ -4,7 +4,9 @@ import org.mwg.*;
 import org.mwg.core.utility.CoreDeferCounterSync;
 import org.mwg.ml.MLPlugin;
 import org.mwg.ml.algorithm.regression.PolynomialNode;
+import org.mwg.task.Action;
 import org.mwg.task.Task;
+import org.mwg.task.TaskContext;
 import org.powerapi.PowerDisplay;
 import org.powerapi.module.PowerChannel;
 import org.powerapi.module.libpfm.AgentTick;
@@ -35,11 +37,17 @@ public class MwgReporter implements PowerDisplay {
     private final Task finalTask;
 
 
+    /**
+     *
+     * @param dbPath ws URL (and port) to server
+     * @param measurement
+     */
     public MwgReporter(String dbPath, String measurement) {
         GraphBuilder graphBuilder = new GraphBuilder()
-//                .withStorage(new LevelDBStorage(dbPath))
+                .withStorage(new WSClient(dbPath))
                 .withPlugin(new MLPlugin())
-                .withPlugin(new NodeAggregatorPlugin());
+                .withPlugin(new NodeAggregatorPlugin())
+                .withMemorySize(10000);
         graph = graphBuilder.build();
         this.measurement = measurement;
 
@@ -196,6 +204,7 @@ public class MwgReporter implements PowerDisplay {
                     throw new RuntimeException("Error during graph disconnection.");
                 }
                 counter.count();
+                System.out.println("Disconnected.");
             }
         });
 
@@ -230,7 +239,14 @@ public class MwgReporter implements PowerDisplay {
             if(rawPowerReport.tick() instanceof PCInterruptionChannel.InterruptionTick) {
                 PCInterruptionChannel.InterruptionTick tick = (PCInterruptionChannel.InterruptionTick) rawPowerReport.tick();
 
-                inject(tick.fullMethodName())
+                then(new Action() {
+                    @Override
+                    public void eval(TaskContext taskContext) {
+                        System.out.println("Task started");
+                        taskContext.continueTask();
+                    }
+                })
+                .inject(tick.fullMethodName())
                         .asGlobalVar(methodName)
                         .inject(tick.tid().toString())
                         .asGlobalVar(threadID)
@@ -243,7 +259,7 @@ public class MwgReporter implements PowerDisplay {
                         .inject(disk)
                         .asGlobalVar(diskValue)
                         .subTask(finalTask)
-                        .execute(graph,null);
+                        .executeSync(graph);
             }
         }
 
