@@ -7,7 +7,7 @@ import org.mwg.core.utility.CoreDeferCounterSync;
 import org.mwg.ml.algorithm.regression.PolynomialNode;
 import org.mwg.plugin.AbstractNode;
 
-public class PolynomialAggregatorNode extends AbstractNode implements Node{
+public class PolynomialAggregatorNode extends AbstractNode {
 
     public static final String ATT_VALUE = "value";
     public static final String REL_CHILD = "child";

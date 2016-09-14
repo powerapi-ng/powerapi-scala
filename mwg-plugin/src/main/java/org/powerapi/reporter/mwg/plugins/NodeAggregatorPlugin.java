@@ -5,9 +5,6 @@ import org.mwg.Node;
 import org.mwg.plugin.AbstractPlugin;
 import org.mwg.plugin.NodeFactory;
 
-/**
- * Created by ludovicmouline on 07/09/16.
- */
 public class NodeAggregatorPlugin extends AbstractPlugin {
 
     public NodeAggregatorPlugin() {
