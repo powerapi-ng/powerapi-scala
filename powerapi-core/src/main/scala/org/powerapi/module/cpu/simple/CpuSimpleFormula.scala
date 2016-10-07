@@ -50,7 +50,16 @@ class CpuSimpleFormula(eventBus: MessageBus, muid: UUID, target: Target, tdp: Do
 
   def handler: Actor.Receive = LoggingReceive {
     case msg: SimpleUsageReport =>
-      val power = ((tdp * tdpFactor) * msg.targetRatio.ratio).W
+      val power = {
+        try {
+          ((tdp * tdpFactor) * msg.targetRatio.ratio).W
+        }
+        catch {
+          case _: Exception =>
+            log.warning("The power value is out of range. Skip.")
+            0.W
+        }
+      }
       publishRawPowerReport(msg.muid, msg.target, power, "cpu", msg.tick)(eventBus)
   }
 }

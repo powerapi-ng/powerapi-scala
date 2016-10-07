@@ -69,7 +69,15 @@ class CpuDvfsFormula(eventBus: MessageBus, muid: UUID, target: Target, tdp: Doub
 
     val totalTime = timeInStates.times.values.sum
 
-    if (totalTime != 0) (totalPower / totalTime.toDouble).W
-    else 0.W
+    try {
+      if (totalTime != 0) (totalPower / totalTime.toDouble).W
+      else 0.W
+    }
+
+    catch {
+      case _: Exception =>
+        log.warning("The power value is out of range. Skip.")
+        0.W
+    }
   }
 }
