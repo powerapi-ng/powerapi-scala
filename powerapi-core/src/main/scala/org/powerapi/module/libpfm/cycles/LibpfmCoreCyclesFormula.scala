@@ -79,7 +79,18 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus, muid: UUID, target: Target, 
         formula.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(scaledCycles, tuple._2)))
       }
 
-      publishRawPowerReport(muid, target, powers.sum.W, "cpu", msg.tick)(eventBus)
+      val accPower = {
+        try {
+          powers.sum.W
+        }
+        catch {
+          case _: Exception =>
+            log.warning("The power value is out of range. Skip.")
+            0.W
+        }
+      }
+
+      publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
       context.become(compute(now) orElse formulaDefault)
   }
 }

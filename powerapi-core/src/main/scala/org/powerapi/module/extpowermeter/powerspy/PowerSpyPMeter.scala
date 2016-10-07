@@ -69,7 +69,14 @@ class PowerSpyPMeter(mac: String, interval: FiniteDuration) extends ExternalPMet
                 while (running) {
                   pSpy.readRealTime() match {
                     case Some(rtValue) if eventBus.isDefined =>
-                      publishPowerSpyRawPowerReport(rtValue.power.W)(eventBus.get)
+                      try {
+                        publishPowerSpyRawPowerReport(rtValue.power.W)(eventBus.get)
+                      }
+                      catch {
+                        case _: Exception =>
+                          log.warn("The power value is out of range. Skip.")
+                          0.W
+                      }
                     case _ =>
 
                   }

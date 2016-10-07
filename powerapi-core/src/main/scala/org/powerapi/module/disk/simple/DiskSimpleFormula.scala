@@ -75,7 +75,18 @@ class DiskSimpleFormula(eventBus: MessageBus, muid: UUID, target: Target, interv
         readPower.getOrElse(0.0) + writePower.getOrElse(0.0)
       }
 
-      publishRawPowerReport(muid, target, powers.sum.W, "disk", msg.tick)(eventBus)
+      val accPower = {
+        try {
+          powers.sum.W
+        }
+        catch {
+          case _: Exception =>
+            log.warning("The power value is out of range. Skip.")
+            0.W
+        }
+      }
+
+      publishRawPowerReport(muid, target, accPower, "disk", msg.tick)(eventBus)
       context.become(compute(now) orElse formulaDefault)
   }
 }

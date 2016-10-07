@@ -77,7 +77,14 @@ abstract class ExtPowerMeterSensor(eventBus: MessageBus, muid: UUID, target: Tar
     report match {
       case Some(r) =>
         val activePower = r.power.toMilliWatts - idlePower.toMilliWatts
-        if (activePower > 0) activePower.mW else 0.mW
+        try {
+          if (activePower > 0) activePower.mW else 0.mW
+        }
+        catch {
+          case _: Exception =>
+            log.warning("The power value is out of range. Skip.")
+            0.W
+        }
       case _ =>
         0.mW
     }

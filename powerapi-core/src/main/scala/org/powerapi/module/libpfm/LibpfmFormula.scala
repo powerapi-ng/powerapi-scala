@@ -64,7 +64,18 @@ class LibpfmFormula(eventBus: MessageBus, muid: UUID, target: Target, formula: M
         }
       }
 
-      publishRawPowerReport(muid, target, powers.sum.W, "cpu", msg.tick)(eventBus)
+      val accPower = {
+        try {
+          powers.sum.W
+        }
+        catch {
+          case _: Exception =>
+            log.warning("The power value is out of range. Skip.")
+            0.W
+        }
+      }
+
+      publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
 
       context.become(compute(now) orElse formulaDefault)
   }
