@@ -5,7 +5,6 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0)
 [![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg)](https://travis-ci.org/Spirals-Team/powerapi)
 [![Coverage Status](https://coveralls.io/repos/Spirals-Team/powerapi/badge.svg)](https://coveralls.io/r/Spirals-Team/powerapi)
-[![Codacy Badge](https://www.codacy.com/project/badge/31f7762213c340fbb5fe1463a5b871d4)](https://www.codacy.com/app/mcolmant/powerapi)
 
 PowerAPI is a middleware toolkit for building software-defined power meters.
 Software-defined power meters are configurable software libraries that can estimate the power consumption of software in real-time.
@@ -46,20 +45,20 @@ PowerAPI is used in a variety of projects to address key challenges of GreenIT:
 * [Greenspector](http://greenspector.com) optimises the power consumption of software by identifying potential energy leaks in the source code.
 
 ## Acknowledgments
-We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.11.7 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
-* [Akka](http://akka.io) (version 2.3.14 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing
-* [Typesafe Config](https://github.com/typesafehub/config) (version 1.2.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
-* [Apache log4j2](http://logging.apache.org/log4j/2.x) (version 2.5 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for logging outside actors.
-* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.2 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy powermeter](http://www.alciom.com/en/products/powerspy2-en-gb-2.html).
+We all stand on the shoulders of giants and get by with a little help from our friends. PowerAPI is written in [Scala](http://www.scala-lang.org) (version 2.12.1 under [3-clause BSD license](http://www.scala-lang.org/license.html)) and built on top of:
+* [Akka](http://akka.io) (version 2.4.14 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for asynchronous processing.
+* [Typesafe Config](https://github.com/typesafehub/config) (version 1.3.1 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for reading configuration files.
+* [scala-logging](https://github.com/typesafehub/scala-logging) (version 3.5.0 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for Scala wrapping SL4J.
+* [logback](https://github.com/qos-ch/logback) (version 1.1.7 under [LGPL 2.1 license](https://github.com/qos-ch/logback/blob/master/LICENSE.txt)), for logging purpose.
+* [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.2 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy](http://www.alciom.com/en/products/powerspy2-en-gb-2.html) power meter.
 * [BridJ](https://code.google.com/p/bridj/) (version 0.7.0 under [3-clause BSD license](https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE)), for system or C calls.
-* [JNA](https://github.com/twall/jna) (version 4.2.1 under [LGPL 2.1 license](https://github.com/twall/jna/blob/master/LGPL2.1)), for system or C calls.
-* [perfmon2](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree) (version 4.6.0 under [MIT license](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING)), for accessing hardware performance counters.
+* [JNA](https://github.com/twall/jna) (version 4.2.2 under [LGPL 2.1 license](https://github.com/twall/jna/blob/master/LGPL2.1)), for system or C calls.
+* [perfmon2](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree) (version 4.7.0 under [MIT license](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING)), for accessing hardware performance counters.
 * [JFreeChart](http://www.jfree.org/jfreechart/) (version 1.0.19 under [LGPL license](https://www.gnu.org/licenses/lgpl.html)), for creation of interactive and animated charts.
-* [Scala IO](http://jesseeichar.github.io/scala-io-doc/0.4.3/index.html#!/overview) (version 0.4.3 under [3-clause BSD license](http://www.scala-lang.org/license.html)), for an extensions of IO.
-* [Saddle](http://saddle.github.io/) (version 1.3.4 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for data manipulation.
+* [grizzled-scala](http://software.clapper.org/grizzled-scala/) (version 4.0.0 under [3-clause BSD license](https://github.com/bmc/grizzled-scala/blob/master/LICENSE.md)), for new utility classes and objects.
 * [Sigar](https://support.hyperic.com/display/SIGAR/Home) (version 1.6.5 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for providing a portable interface for gathering system information.
 * [spray-json](http://spray.io/) (version 1.3.2 under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0)), for (de)serializing JSON.
-* [scala-influxdb-client](https://github.com/paulgoldbaum/scala-influxdb-client) (version 0.4.5 under [MIT license](https://github.com/paulgoldbaum/scala-influxdb-client/blob/master/LICENSE)), for using an asynchronous scala API for InfluxDB.
+* [scala-influxdb-client](https://github.com/paulgoldbaum/scala-influxdb-client) (version 0.5.2 under [MIT license](https://github.com/paulgoldbaum/scala-influxdb-client/blob/master/LICENSE)), for using an asynchronous scala API for InfluxDB.
 
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.

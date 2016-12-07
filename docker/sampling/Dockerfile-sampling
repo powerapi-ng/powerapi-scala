@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-ENV POWERAPI_PACKAGE powerapi-sampling
+ENV POWERAPI_PACKAGE powerapi-sampling-cpu
 ENV LIBPFM_PACKAGE libpfm-4.6.0
 
 ENV INSTALL_PACKAGES ca-certificates linux-headers libc-dev make gcc patch

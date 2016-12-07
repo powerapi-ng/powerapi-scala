@@ -34,7 +34,7 @@ class LibpfmHelperSuite extends UnitTest {
   }
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "An implicit method" should "convert a BitSet to a long" in {

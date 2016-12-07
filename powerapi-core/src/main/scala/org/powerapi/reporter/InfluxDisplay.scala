@@ -27,6 +27,8 @@ import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import org.powerapi.PowerDisplay
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
   * Write power information inside an InfluxDB database.
   */

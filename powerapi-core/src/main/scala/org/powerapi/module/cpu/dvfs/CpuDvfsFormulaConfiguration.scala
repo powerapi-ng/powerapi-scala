@@ -22,7 +22,7 @@
  */
 package org.powerapi.module.cpu.dvfs
 
-import scala.collection.JavaConversions
+import scala.collection.JavaConverters
 
 import com.typesafe.config.Config
 import org.powerapi.core.ConfigValue
@@ -37,7 +37,7 @@ trait CpuDvfsFormulaConfiguration extends org.powerapi.module.cpu.simple.CpuSimp
     * Map of frequencies and their associated voltages.
     */
   lazy val frequencies = load { conf =>
-    (for (item <- JavaConversions.asScalaBuffer(conf.getConfigList("powerapi.cpu.frequencies")))
+    (for (item <- JavaConverters.asScalaBuffer(conf.getConfigList("powerapi.cpu.frequencies")))
       yield (item.asInstanceOf[Config].getInt("value"), item.asInstanceOf[Config].getDouble("voltage"))).toMap
   } match {
     case ConfigValue(freqs) => freqs

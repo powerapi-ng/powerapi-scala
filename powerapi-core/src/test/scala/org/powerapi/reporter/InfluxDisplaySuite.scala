@@ -39,7 +39,7 @@ class InfluxDisplaySuite extends UnitTest {
   val timeout = Timeout(10.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "An InfluxDisplay" should "write an AggPowerReport message in a database" in {

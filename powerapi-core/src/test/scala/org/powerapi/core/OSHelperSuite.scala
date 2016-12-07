@@ -38,7 +38,7 @@ class OSHelperSuite extends UnitTest {
   val basepath = getClass.getResource("/").getPath
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "An OSHelper" should "allow to get the target processes and to get the target cpu time" in {
@@ -63,10 +63,12 @@ class OSHelperSuite extends UnitTest {
         case Process(1) => 10
         case Process(2) => 11
         case Process(10) => 30
+        case _ => -10
       }
 
       def getDockerContainerCpuTime(container: Container): Long = container match {
         case Container("abcd", "n") => 20 + 21
+        case _ => -10
       }
 
       def getGlobalCpuTimes: GlobalCpuTimes = ???

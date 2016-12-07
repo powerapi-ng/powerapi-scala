@@ -25,7 +25,7 @@ package org.powerapi.module.libpfm
 import java.util.concurrent.TimeUnit
 
 import scala.collection.BitSet
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.DurationLong
 
 import akka.util.Timeout
@@ -47,8 +47,8 @@ class LibpfmCoreSensorConfiguration(prefix: Option[String]) extends Configuratio
   }
 
   lazy val topology: Map[Int, Set[Int]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getIntList("indexes").map(_.toInt).toSet)).toMap
+    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology").asScala)
+      yield (item.getInt("core"), item.getIntList("indexes").asScala.map(_.toInt).toSet)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
@@ -63,7 +63,7 @@ class LibpfmCoreSensorConfiguration(prefix: Option[String]) extends Configuratio
   lazy val configuration =
     BitSet(
       (load {
-        _.getIntList(s"${configurationPath}powerapi.libpfm.configuration")
+        _.getIntList(s"${configurationPath}powerapi.libpfm.configuration").asScala
       } match {
         case ConfigValue(values) => values.map(_.toInt).toList
         case _ => List[Int]()
@@ -71,7 +71,7 @@ class LibpfmCoreSensorConfiguration(prefix: Option[String]) extends Configuratio
     )
 
   lazy val events = load {
-    _.getStringList(s"${configurationPath}powerapi.libpfm.events")
+    _.getStringList(s"${configurationPath}powerapi.libpfm.events").asScala
   } match {
     case ConfigValue(values) => values.map(_.toString).toSet
     case _ => Set[String]()

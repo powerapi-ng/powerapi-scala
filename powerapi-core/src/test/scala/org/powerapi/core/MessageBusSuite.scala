@@ -27,7 +27,7 @@ import org.powerapi.UnitTest
 class MessageBusSuite extends UnitTest {
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "A MessageBus" should "handle messages by topic" in {

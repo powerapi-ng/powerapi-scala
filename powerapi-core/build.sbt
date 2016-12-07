@@ -12,25 +12,24 @@ resolvers ++= Seq(
 
 // App
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.14",
-  "com.typesafe" % "config" % "1.2.1",
+  "com.typesafe.akka" %% "akka-actor" % "2.4.14",
+  "com.typesafe" % "config" % "1.3.1",
   "fr.inria.powerspy" % "powerspy-core_2.11" % "1.2",
   "com.nativelibs4java" % "bridj" % "0.7.0",
-  "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
-  "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
   "org.jfree" % "jfreechart" % "1.0.19",
-  "org.scala-saddle" %% "saddle-core" % "1.3.4",
+  "org.clapper" %% "grizzled-scala" % "4.0.0",
   "org.hyperic" % "sigar" % "1.6.5.132",
-  "net.java.dev.jna" % "jna" % "4.2.1",
+  "net.java.dev.jna" % "jna" % "4.2.2",
   "io.spray" %% "spray-json" % "1.3.2",
-  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.4.5"
+  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.5.2",
+  "joda-time" % "joda-time" % "2.9.6"
 )
 
 // Tests
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.14" % "test",
-  "org.scalatest" %% "scalatest" % "2.2.5" % "test",
-  "org.scalamock" %% "scalamock-scalatest-support" % "3.2.2" % "test"
+  "com.typesafe.akka" %% "akka-testkit" % "2.4.14" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+  "org.scalamock" %% "scalamock-scalatest-support" % "3.4.2" % "test"
 )
 
 startYear := Some(2014)

@@ -34,7 +34,7 @@ class DiskSimpleModulesSuite extends UnitTest with MockFactory {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "The DiskSimpleModule class" should "create the underlying classes (sensor/formula)" in {
@@ -57,5 +57,18 @@ class DiskSimpleModulesSuite extends UnitTest with MockFactory {
       "read" -> Seq(PieceWiseFunction(Condition("<=", 1e06), Seq(2, 1e-8)), PieceWiseFunction(Condition(">", 1e06), Seq(3, 1e-7))),
       "write" -> Seq(PieceWiseFunction(Condition("<=", 1e9), Seq(5, 4e-8)), PieceWiseFunction(Condition(">", 1e09), Seq(6, 1e-6)))
     ))
+  }
+
+  "The DiskSimpleSensorModule class" should "create the underlying classes (sensor)" in {
+    val osHelper = mock[OSHelper]
+
+    val module = new DiskSimpleSensorModule(osHelper, Seq(Disk("sda", 8, 0)))
+
+    module.sensor.get._1 should equal(classOf[DiskSimpleSensor])
+    module.sensor.get._2.size should equal(2)
+    module.sensor.get._2(0) should equal(osHelper)
+    module.sensor.get._2(1).asInstanceOf[Seq[Disk]] should contain theSameElementsAs Seq(Disk("sda", 8, 0))
+
+    module.formula should equal(None)
   }
 }

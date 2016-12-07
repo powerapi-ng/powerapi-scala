@@ -33,7 +33,7 @@ class TargetSuite extends UnitTest {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "The implicit methods" should "convert an int to a Process and a string to an Application" in {

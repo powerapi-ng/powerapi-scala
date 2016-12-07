@@ -49,7 +49,7 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
   val events = Set("event", "event1")
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {

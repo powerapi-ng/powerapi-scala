@@ -37,7 +37,7 @@ class ConsoleDisplaySuite extends UnitTest {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "A ConsoleDisplay" should "display an AggPowerReport message in console" in {

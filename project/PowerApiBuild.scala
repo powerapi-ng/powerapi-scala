@@ -32,8 +32,8 @@ object PowerApiBuild extends Build {
   lazy val downloadBluecoveGpl = taskKey[File]("download-bluecove-gpl-app")
 
   lazy val buildSettings = Seq(
-    version := "4.1",
-    scalaVersion := "2.11.7",
+    version := "4.2",
+    scalaVersion := "2.12.1",
     scalacOptions := Seq(
       "-language:existentials",
       "-language:reflectiveCalls",
@@ -61,12 +61,12 @@ object PowerApiBuild extends Build {
     compile in Compile <<= (compile in Compile).dependsOn(downloadBluecove, downloadBluecoveGpl)
   )
 
-  lazy val powerapi: sbt.Project = Project(id = "powerapi", base = file(".")).settings(buildSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiSampling)
+  lazy val powerapi: sbt.Project = Project(id = "powerapi", base = file(".")).settings(buildSettings: _*).aggregate(powerapiCore, powerapiCli, powerapiDaemon, powerapiCpuSampling)
 
   lazy val powerapiCore = Project(id = "powerapi-core", base = file("powerapi-core")).settings(buildSettings: _*)
   lazy val powerapiCli = Project(id = "powerapi-cli", base = file("powerapi-cli")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
   lazy val powerapiDaemon = Project(id = "powerapi-daemon", base = file("powerapi-daemon")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaServerAppPackaging)
-  lazy val powerapiSampling = Project(id = "powerapi-sampling", base = file("powerapi-sampling")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+  lazy val powerapiCpuSampling = Project(id = "powerapi-sampling-cpu", base = file("powerapi-sampling-cpu")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 
   // example of power meters
   lazy val appMonitorProcsJava =  Project(id = "powerapi-example-app-monitor-procfs-java", base = file("powerapi-powermeter/AppMonitorProcFSJava")).settings(buildSettings: _*).dependsOn(powerapiCore % "compile -> compile")

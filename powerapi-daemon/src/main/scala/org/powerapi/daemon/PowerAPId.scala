@@ -72,12 +72,8 @@ class PowerAPId extends Daemon {
     str match {
       case "max" => MAX
       case "min" => MIN
-      case "geomean" => GEOMEAN
-      case "logsum" => LOGSUM
       case "mean" => MEAN
       case "median" => MEDIAN
-      case "stdev" => STDEV
-      case "variance" => VARIANCE
       case _ => SUM
     }
   }

@@ -22,8 +22,6 @@
  */
 package org.powerapi.daemon
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
 import akka.util.Timeout
 import org.powerapi.UnitTest
 import scala.concurrent.duration.DurationInt
@@ -31,7 +29,7 @@ import scala.concurrent.duration.DurationInt
 class DaemonConfigurationSuite extends UnitTest {
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   val timeout = Timeout(1.seconds)

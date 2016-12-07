@@ -24,12 +24,11 @@ package org.powerapi.core
 
 import java.io.{File, IOException}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.sys.process.stringSeqToProcess
-
 import com.typesafe.config.Config
-import org.apache.logging.log4j.LogManager
+import com.typesafe.scalalogging.Logger
 import org.hyperic.sigar.ptql.ProcessFinder
 import org.hyperic.sigar.{SigarException, SigarProxy}
 import org.powerapi.core.FileHelper.using
@@ -255,8 +254,8 @@ class LinuxHelper extends Configuration(None) with OSHelper {
     * CPU's topology.
     */
   lazy val topology: Map[Int, Set[Int]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology"))
-      yield (item.getInt("core"), item.getIntList("indexes").map(_.toInt).toSet)).toMap
+    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology").asScala)
+      yield (item.getInt("core"), item.getIntList("indexes").asScala.map(_.toInt).toSet)).toMap
   } match {
     case ConfigValue(values) => values
     case _ => Map()
@@ -271,7 +270,7 @@ class LinuxHelper extends Configuration(None) with OSHelper {
     case _ => "/proc/mounts"
   }
 
-  private val log = LogManager.getLogger
+  private val log = Logger(classOf[OSHelper])
   private val PSFormat = """^\s*(\d+)\s*""".r
   private val GlobalStatFormat = """cpu\s+([\d\s]+)""".r
   private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
@@ -394,7 +393,7 @@ class LinuxHelper extends Configuration(None) with OSHelper {
         using(timeInStatePath.replace("%?index", s"$core"))(source => {
           log.debug("using {} as a sysfs timeinstates path", timeInStatePath)
 
-          for (line <- source.getLines) {
+          for (line: String <- source.getLines) {
             line match {
               case TimeInStateFormat(freq, t) => result += (freq.toLong -> (t.toLong + result.getOrElse(freq.toLong, 0l)))
               case _ => log.warn("unable to parse line {} from file {}", line, timeInStatePath)
@@ -515,7 +514,7 @@ trait SigarHelperConfiguration extends Configuration {
   */
 class SigarHelper(sigar: SigarProxy) extends OSHelper {
   lazy val cores = sigar.getCpuInfoList()(0).getTotalCores
-  private val log = LogManager.getLogger
+  private val log = Logger(classOf[SigarHelper])
 
   def getCPUFrequencies: Set[Long] = throw new SigarException("sigar cannot be able to get CPU frequencies")
 

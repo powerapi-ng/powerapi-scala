@@ -50,7 +50,7 @@ import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
   */
 object PowerAPI extends App {
   val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple))*""".r
-  val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
+  val aggR = """max|min|mean|median|sum""".r
   val durationR = """\d+""".r
   val pidsR = """(\d+)(,(\d+))*""".r
   val appsR = """([^,]+)(,([^,]+))*""".r
@@ -76,13 +76,9 @@ object PowerAPI extends App {
     str match {
       case "max" => MAX
       case "min" => MIN
-      case "geomean" => GEOMEAN
-      case "logsum" => LOGSUM
       case "mean" => MEAN
       case "median" => MEDIAN
-      case "stdev" => STDEV
       case "sum" => SUM
-      case "variance" => VARIANCE
     }
   }
 

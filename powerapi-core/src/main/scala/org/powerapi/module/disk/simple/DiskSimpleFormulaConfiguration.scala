@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit
 import com.typesafe.config.Config
 import org.powerapi.core.{ConfigValue, Configuration}
 
-import collection.JavaConversions._
+import collection.JavaConverters._
 import scala.concurrent.duration.DurationLong
 import scala.concurrent.duration.FiniteDuration
 
@@ -87,11 +87,11 @@ class DiskSimpleFormulaConfiguration(prefix: Option[String]) extends Configurati
     * Disk power models, one per ssd disk.
     */
   lazy val formulae: Map[String, Map[String, Seq[PieceWiseFunction]]] = load { conf =>
-    (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.disk.formulae")) yield {
+    (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.disk.formulae").asScala) yield {
       val coefficientsItem = item.getConfig("models")
       item.getString("name") -> Seq(
-        "read" -> coefficientsItem.getConfigList("read").map(config => PieceWiseFunction(Condition(config.getString("condition")), config.getDoubleList("coeffs").map(_.toDouble))).toSeq,
-        "write" -> coefficientsItem.getConfigList("write").map(config => PieceWiseFunction(Condition(config.getString("condition")), config.getDoubleList("coeffs").map(_.toDouble))).toSeq
+        "read" -> coefficientsItem.getConfigList("read").asScala.map(config => PieceWiseFunction(Condition(config.getString("condition")), config.getDoubleList("coeffs").asScala.map(_.toDouble))).toSeq,
+        "write" -> coefficientsItem.getConfigList("write").asScala.map(config => PieceWiseFunction(Condition(config.getString("condition")), config.getDoubleList("coeffs").asScala.map(_.toDouble))).toSeq
       ).toMap
     }).toMap
   } match {

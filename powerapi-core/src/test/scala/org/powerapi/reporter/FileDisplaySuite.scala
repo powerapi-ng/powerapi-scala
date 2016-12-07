@@ -33,12 +33,14 @@ import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, Process, Target}
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 
+import scala.io.Source
+
 class FileDisplaySuite extends UnitTest {
 
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "A FileDisplay" should "display an AggPowerReport message in a File" in {
@@ -62,7 +64,7 @@ class FileDisplaySuite extends UnitTest {
 
     val out = new FileDisplay("output-file.dat")
     out.display(aggregatePowerReport)
-    out.output.lines().toSeq should contain theSameElementsAs Seq(
+    Source.fromFile(file).getLines().toSeq should contain theSameElementsAs Seq(
       s"muid=$muid;timestamp=${baseTick.timestamp};targets=${baseTargets.mkString(",")};devices=${baseDevices.mkString(",")};power=${basePower.toMilliWatts} mW"
     )
 

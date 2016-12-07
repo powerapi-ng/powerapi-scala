@@ -66,7 +66,7 @@ class MonitorSuite extends UnitTest {
   val threshold = 0.5
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {

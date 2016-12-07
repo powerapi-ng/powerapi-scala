@@ -37,7 +37,7 @@ class JFreeChartDisplaySuite extends UnitTest {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "A JFreeChartDisplay" should "display an AggPowerReport message in a JFreeChart" ignore {

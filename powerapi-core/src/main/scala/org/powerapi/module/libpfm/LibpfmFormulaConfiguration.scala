@@ -24,7 +24,7 @@ package org.powerapi.module.libpfm
 
 import java.util.concurrent.TimeUnit
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 import com.typesafe.config.Config
@@ -37,7 +37,7 @@ import org.powerapi.core.{ConfigValue, Configuration}
   */
 class LibpfmFormulaConfiguration(prefix: Option[String]) extends Configuration(prefix) {
   lazy val formula: Map[String, Double] = load { conf =>
-    (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.libpfm.formula"))
+    (for (item: Config <- conf.getConfigList(s"${configurationPath}powerapi.libpfm.formula").asScala)
       yield (item.getString("event"), item.getDouble("coefficient"))).toMap
   } match {
     case ConfigValue(values) => values

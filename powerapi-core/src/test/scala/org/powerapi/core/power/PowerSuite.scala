@@ -33,7 +33,7 @@ class PowerSuite extends UnitTest {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() {
-    system.shutdown()
+    system.terminate()
   }
 
   "A Power" should "handle a various kind of operations" in {

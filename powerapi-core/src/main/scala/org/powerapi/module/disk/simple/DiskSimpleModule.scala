@@ -32,6 +32,11 @@ class DiskSimpleModule(osHelper: OSHelper, disks: Seq[Disk], interval: FiniteDur
   val formula = Some((classOf[DiskSimpleFormula], Seq(interval, formulae)))
 }
 
+class DiskSimpleSensorModule(osHelper: OSHelper, disks: Seq[Disk]) extends PowerModule {
+  val sensor = Some((classOf[DiskSimpleSensor], Seq(osHelper, disks)))
+  val formula = None
+}
+
 object DiskSimpleModule {
   def apply(prefix: Option[String]): DiskSimpleModule = {
     val config = new DiskSimpleFormulaConfiguration(prefix)
@@ -40,5 +45,16 @@ object DiskSimpleModule {
     linuxHelper.createCGroup("blkio", "powerapi")
 
     new DiskSimpleModule(linuxHelper, disks, config.interval, config.formulae)
+  }
+}
+
+object DiskSimpleSensorModule {
+  def apply(prefix: Option[String]): DiskSimpleSensorModule = {
+    val config = new DiskSimpleSensorConfiguration(prefix)
+    val linuxHelper = new LinuxHelper
+    val disks = linuxHelper.getDiskInfo(config.ssds)
+    linuxHelper.createCGroup("blkio", "powerapi")
+
+    new DiskSimpleSensorModule(linuxHelper, disks)
   }
 }

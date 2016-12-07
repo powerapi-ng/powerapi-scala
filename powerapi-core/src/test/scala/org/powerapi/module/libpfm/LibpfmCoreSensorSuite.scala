@@ -49,7 +49,7 @@ class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
   val events = Set("event", "event1")
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {
@@ -109,6 +109,8 @@ class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
             counters.map(_.value).sum should equal(results((value._1, event)))
           }
         }
+      case _ =>
+        {}
     }
 
     EventFilter.info(occurrences = 1, start = s"sensor is stopped, class: ${classOf[LibpfmCoreSensor].getName}").intercept({

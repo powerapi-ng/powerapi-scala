@@ -22,7 +22,8 @@
  */
 package org.powerapi.reporter
 
-import scalax.io.Resource
+import java.io.{File, PrintWriter}
+
 import org.powerapi.PowerDisplay
 import org.powerapi.module.PowerChannel.AggregatePowerReport
 
@@ -34,7 +35,7 @@ import org.powerapi.module.PowerChannel.AggregatePowerReport
   */
 class FileDisplay(filepath: String) extends PowerDisplay {
 
-  val output = Resource.fromFile(filepath)
+  val output = new PrintWriter(new File(filepath))
 
   def display(aggregatePowerReport: AggregatePowerReport) {
     val muid = aggregatePowerReport.muid
@@ -44,5 +45,6 @@ class FileDisplay(filepath: String) extends PowerDisplay {
     val power = aggregatePowerReport.power
 
     output.append(s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW\n")
+    output.flush()
   }
 }
