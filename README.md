@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/Spirals-Team/powerapi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Spirals-Team/powerapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![OSS Licence](http://img.shields.io/badge/license-AGPLv3-532553.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](http://www.gnu.org/licenses/agpl-3.0)
 [![Build Status](https://travis-ci.org/Spirals-Team/powerapi.svg)](https://travis-ci.org/Spirals-Team/powerapi)
 [![Coverage Status](https://coveralls.io/repos/Spirals-Team/powerapi/badge.svg)](https://coveralls.io/r/Spirals-Team/powerapi)
 [![Codacy Badge](https://www.codacy.com/project/badge/31f7762213c340fbb5fe1463a5b871d4)](https://www.codacy.com/app/mcolmant/powerapi)
