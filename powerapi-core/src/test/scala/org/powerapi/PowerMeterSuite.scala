@@ -26,15 +26,14 @@ import java.util.UUID
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-
 import akka.actor.{Actor, Props, Terminated}
 import akka.pattern.{ask, gracefulStop}
 import akka.testkit.{TestActorRef, TestProbe}
 import akka.util.Timeout
-
 import org.powerapi.core.power.Power
 import org.powerapi.core.target.{Application, Process, Target}
 import org.powerapi.core.{MessageBus, Monitor}
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 import org.powerapi.module.{Formula, Sensor}
 
 class EmptySensor(eventBus: MessageBus, muid: UUID, target: Target) extends Sensor(eventBus, muid, target) {
@@ -63,7 +62,7 @@ class PowerMeterSuite extends UnitTest {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {
@@ -78,7 +77,7 @@ class PowerMeterSuite extends UnitTest {
   "A PowerMeterActor" should "be able to handle a software-defined power meter" in new Bus {
     val actor = TestActorRef(Props(classOf[PowerMeterActor], eventBus, Seq(EmptyModule)))
     val out = new PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = {}
+      def display(aggregatePowerReport: AggregatePowerReport): Unit = {}
     }
 
     val watcher = TestProbe()

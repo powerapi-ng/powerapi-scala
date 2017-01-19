@@ -25,9 +25,8 @@ package org.powerapi.module.libpfm
 import java.util.UUID
 
 import scala.collection.BitSet
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 
 import akka.actor.Props
 import akka.pattern.gracefulStop
@@ -40,7 +39,7 @@ import org.powerapi.core.target.{All, Application, Process}
 import org.powerapi.core.{MessageBus, OSHelper, Thread, Tick}
 import org.powerapi.module.SensorChannel.startSensor
 import org.powerapi.module.Sensors
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
 import org.scalamock.scalatest.MockFactory
 
 class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
@@ -50,7 +49,7 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
   val events = Set("event", "event1")
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {
@@ -116,18 +115,15 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
 
     publishMonitorTick(muid, target, tick1)(eventBus)
     expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, _target, wrappers, _) =>
+      case PCReport(_, _, _target, values, _) =>
+        val results = Map[(Int, String), Long]((0, "event") -> 15, (0, "event1") -> 24, (1, "event") -> 33, (1, "event1") -> 42)
         _target should equal(target)
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size * 3))
+        values.size should equal(topology.size)
 
-        wrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).foreach {
-          case ((core, event), _wrappers) =>
-            val pcs = Await.result(Future.sequence(_wrappers.head.values), timeout.duration).asInstanceOf[List[HWCounter]]
-            val values = Map[(Int, String), Long]((0, "event") -> 15, (0, "event1") -> 24, (1, "event") -> 33, (1, "event1") -> 42)
-
-            pcs.map(_.value).sum should equal(values(((core, event))))
+        for (value <- values) {
+          for ((event, counters) <- value._2) {
+            counters.map(_.value).sum should equal(results((value._1, event)))
+          }
         }
     }
 
@@ -148,19 +144,15 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
 
     publishMonitorTick(muid, target, tick2)(eventBus)
     expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, _target, wrappers, _) =>
+      case PCReport(_, _, _target, values, _) =>
+        val results = Map[(Int, String), Long]((0, "event") -> 45, (0, "event1") -> 45, (1, "event") -> 0, (1, "event1") -> 0)
         _target should equal(target)
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
+        values.size should equal(topology.size)
 
-        wrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).foreach {
-          case ((core, event), _wrappers) =>
-            val pcs = Await.result(Future.sequence(_wrappers.head.values), timeout.duration).asInstanceOf[List[HWCounter]]
-            val values = Map[(Int, String), Long]((0, "event") -> 45, (0, "event1") -> 45, (1, "event") -> 0, (1, "event1") -> 0)
-            val periods = Map[(Int, String), Double]((0, "event") -> 2, (0, "event1") -> 2, (1, "event") -> Double.NaN, (1, "event1") -> Double.NaN)
-
-            pcs.map(_.value).sum should equal(values((core, event)))
+        for (value <- values) {
+          for ((event, counters) <- value._2) {
+            counters.map(_.value).sum should equal(results((value._1, event)))
+          }
         }
     }
 

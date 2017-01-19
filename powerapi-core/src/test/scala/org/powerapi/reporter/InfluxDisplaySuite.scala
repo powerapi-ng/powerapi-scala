@@ -23,40 +23,66 @@
 package org.powerapi.reporter
 
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.DurationInt
-import collection.JavaConversions._
-
 import akka.util.Timeout
-
-import org.influxdb.dto.Query
+import org.joda.time.format.ISODateTimeFormat
 import org.powerapi.UnitTest
+import org.powerapi.core.Tick
 import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.module.PowerChannel.AggregatePowerReport
+import org.scalatest.time.{Seconds, Span}
 
 class InfluxDisplaySuite extends UnitTest {
 
   val timeout = Timeout(10.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "An InfluxDisplay" should "write an AggPowerReport message in a database" in {
     val muid = UUID.randomUUID()
-    val timestamp = System.currentTimeMillis()
-    val targets = Set[Target](Application("firefox"), Process(1), Process(2))
-    val devices = Set[String]("cpu", "gpu", "ssd")
-    val power = 10.W
+    val baseTick = new Tick {
+      val topic = ""
+      val timestamp = System.currentTimeMillis()
+    }
+    val baseTargets = Set[Target](Application("firefox"), Process(1), Process(2))
+    val baseDevices = Set[String]("cpu", "gpu", "ssd")
+    val basePower = 10.W
 
-    val influxDisplay = new InfluxDisplay("http://localhost:8086", "powerapi", "powerapi", "test", "event.powerapi")
-    influxDisplay.influxdb.createDatabase("test")
-    influxDisplay.display(muid, timestamp, targets, devices, power)
-    val query = new Query("SELECT * FROM \"event.powerapi\"", "test")
-    val result = influxDisplay.influxdb.query(query, TimeUnit.MILLISECONDS)
-    result.getResults.head.getSeries.head.getValues.head should contain theSameElementsAs Seq(timestamp.toDouble, s"$muid", devices.mkString(","), targets.mkString(","), power.toMilliWatts)
-    influxDisplay.influxdb.deleteDatabase("test")
+    val aggregatePowerReport = new AggregatePowerReport(muid) {
+      override def ticks = Set(baseTick)
+      override def targets = baseTargets
+      override def devices = baseDevices
+      override def power = basePower
+    }
+
+    val influxDisplay = new InfluxDisplay("localhost", 8086, "powerapi", "powerapi", "test", "event.powerapi")
+
+    whenReady(influxDisplay.database.create(), timeout(Span(30, Seconds))) {
+      _ =>
+        influxDisplay.display(aggregatePowerReport)
+
+        awaitCond({
+          whenReady(influxDisplay.database.query("SELECT * FROM \"event.powerapi\"")) {
+            result =>
+              result.series.size == 1 &&
+              result.series.head.records.size == 1 &&
+              ISODateTimeFormat.dateTimeParser().parseDateTime(result.series.head.records.head("time").toString).getMillis == baseTick.timestamp &&
+              result.series.head.records.head("devices") == baseDevices.mkString(",") &&
+              result.series.head.records.head("muid") == s"$muid" &&
+              result.series.head.records.head("power") == basePower.toMilliWatts &&
+              result.series.head.records.head("targets") == baseTargets.mkString(",")
+          }
+        }, 30.seconds, 1.seconds)
+
+        whenReady(influxDisplay.database.drop(), timeout(Span(30, Seconds))) {
+          _ =>
+            assert(true)
+        }
+    }
   }
 }
 

@@ -24,6 +24,7 @@ package org.powerapi.app
 
 import java.lang.management.ManagementFactory
 
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.sys
 import scala.sys.process.stringSeqToProcess
@@ -33,6 +34,7 @@ import org.powerapi.core.power._
 import org.powerapi.core.target._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
 import org.powerapi.module.cpu.simple.{ProcFSCpuSimpleModule, SigarCpuSimpleModule}
+import org.powerapi.module.disk.simple.DiskSimpleModule
 import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.extpowermeter.rapl.RAPLModule
@@ -47,8 +49,8 @@ import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
   * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
   */
 object PowerAPI extends App {
-  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl))*""".r
-  val aggR = """max|min|geomean|logsum|mean|median|stdev|sum|variance""".r
+  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple))*""".r
+  val aggR = """max|min|mean|median|sum""".r
   val durationR = """\d+""".r
   val pidsR = """(\d+)(,(\d+))*""".r
   val appsR = """([^,]+)(,([^,]+))*""".r
@@ -74,13 +76,9 @@ object PowerAPI extends App {
     str match {
       case "max" => MAX
       case "min" => MIN
-      case "geomean" => GEOMEAN
-      case "logsum" => LOGSUM
       case "mean" => MEAN
       case "median" => MEDIAN
-      case "stdev" => STDEV
       case "sum" => SUM
-      case "variance" => VARIANCE
     }
   }
 
@@ -93,12 +91,12 @@ object PowerAPI extends App {
         |Different settings can be used per software-defined power meter by using the prefix option.
         |Please, refer to the documentation inside the GitHub wiki for further details.
         |
-        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl (1, *) *--prefix [name]*
+        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple (1, *) *--prefix [name]*
         |                          monitor (1, *)
         |                            --frequency $MILLISECONDS
         |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
         |                            --agg max|min|geomean|logsum|mean|median|stdev|sum|variance
-        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $USER $PWD $DB $MEASUREMENT (0, *)
+        |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $PORT $USER $PWD $DB $MEASUREMENT (0, *)
         |                  duration [s]
         |
         |example: ./powerapi modules procfs-cpu-simple monitor --frequency 1000 --apps firefox,chrome --agg max --console \
@@ -175,10 +173,12 @@ object PowerAPI extends App {
       cliMonitorsSubcommand(options, currentMonitor + ('displays ->
         (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new JFreeChartDisplay)
       ), tail)
-    case "--influx" :: host :: user :: pwd :: db :: measurement :: tail =>
-      cliMonitorsSubcommand(options, currentMonitor + ('displays ->
-        (currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + new InfluxDisplay(host, user, pwd, db, measurement))
-      ), tail)
+    case "--influx" :: host :: port :: user :: pwd :: db :: measurement :: tail =>
+      cliMonitorsSubcommand(options, currentMonitor + ('displays -> {
+        val influxDisplay = new InfluxDisplay(host, port.toInt, user, pwd, db, measurement)
+        Await.result(influxDisplay.database.create(), 30.seconds)
+        currentMonitor.getOrElse('displays, Set[Any]()).asInstanceOf[Set[Any]] + influxDisplay
+      }), tail)
     case option :: tail =>
       println(s"unknown monitor option $option")
       sys.exit(1)
@@ -225,6 +225,8 @@ object PowerAPI extends App {
             G5kOmegaWattModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
           case "rapl" =>
             RAPLModule()
+          case "disk-simple" =>
+            DiskSimpleModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
         }
       }).toSeq
 

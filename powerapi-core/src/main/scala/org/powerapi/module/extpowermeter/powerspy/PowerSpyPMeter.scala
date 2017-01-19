@@ -22,10 +22,10 @@
  */
 package org.powerapi.module.extpowermeter.powerspy
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import com.typesafe.scalalogging.Logger
 
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import fr.inria.powerspy.core.PowerSpy
-import org.apache.logging.log4j.LogManager
 import org.powerapi.core.power._
 import org.powerapi.core.{ExternalPMeter, MessageBus}
 import org.powerapi.module.extpowermeter.ExtPowerMeterChannel.publishPowerSpyRawPowerReport
@@ -38,7 +38,7 @@ import org.powerapi.module.extpowermeter.ExtPowerMeterChannel.publishPowerSpyRaw
   */
 class PowerSpyPMeter(mac: String, interval: FiniteDuration) extends ExternalPMeter {
 
-  private val log = LogManager.getLogger
+  private val log = Logger(classOf[PowerSpyPMeter])
   protected var eventBus: Option[MessageBus] = None
   @volatile private var running = true
   @volatile private var thread: Option[java.lang.Thread] = None
@@ -69,7 +69,14 @@ class PowerSpyPMeter(mac: String, interval: FiniteDuration) extends ExternalPMet
                 while (running) {
                   pSpy.readRealTime() match {
                     case Some(rtValue) if eventBus.isDefined =>
-                      publishPowerSpyRawPowerReport(rtValue.power.W)(eventBus.get)
+                      try {
+                        publishPowerSpyRawPowerReport(rtValue.power.W)(eventBus.get)
+                      }
+                      catch {
+                        case _: Exception =>
+                          log.warn("The power value is out of range. Skip.")
+                          0.W
+                      }
                     case _ =>
 
                   }

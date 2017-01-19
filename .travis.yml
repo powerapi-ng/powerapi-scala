@@ -6,7 +6,7 @@ services:
 env:
   global:
     - secure: "BfP5e/OPM62e3ktm4RD2nuBJls2u8zdXg/YjNyght5dpD2vCjL6ZHWhgDM2mNFpzgYPiE3DPsSE7g2ZlsBUJCuK8a7lB5r+OiWFcWkilC1E9QX6OMcDTpEKb5A9InFGcpt0xbjY5+8qaIbaN8TJcdxaxeit0TZEvxeirQa5OOEY=" # COVERALLS_REPO_TOKEN
-    - secure: "ldIw526YR2Fe6FlfIPlbbOojEeg7etbO4dqiL4TLm00SBhVkKG+DuckhFixVAvAJx1Q1LuVyUPsXaR77OjqiTxSkaH+GbsmR5VIM4qA/kBheD4IiV4wTamg679d+AldRNWcGtLpefgwqlCJ53FcMzUT9TH/MJcbEaOJ5GKW9v+s=" # CODACY_PROJECT_TOKEN
+#    - secure: "ldIw526YR2Fe6FlfIPlbbOojEeg7etbO4dqiL4TLm00SBhVkKG+DuckhFixVAvAJx1Q1LuVyUPsXaR77OjqiTxSkaH+GbsmR5VIM4qA/kBheD4IiV4wTamg679d+AldRNWcGtLpefgwqlCJ53FcMzUT9TH/MJcbEaOJ5GKW9v+s=" # CODACY_PROJECT_TOKEN
     - secure: "MLFJWju96LymkPNIsUeJelNN5J3BK55OV/RXVMONC5kDr4N7T4JyhT6KUa4k+FSJ0S1GTPQMWQQEkWDF1MlZXv5yGwW4h5rN3tt//vqyHk968SyqlhTdygqzx6tO6t3OsfQ2F1AqVWAWsHQckL+VmhEo53VqVXpsqLy9DyLYGjs=" # DOCKER_EMAIL
     - secure: "FbLHLKNAtpj7ZVgSobOPgAgdLK3/P4sR6RcaOmpVRsgaqodTPx7VkzGpkf4rOqPwxKU3+96vr0TlIdPRYWAE39Y3gMb1dyZ34+CxsrJ3avJYc2+9NT3kmAuU33Iy1DCo3IEnR7pWVVEyR80ob0c1ASfPAW1JN8DhBRRERpkMyn4=" # DOCKER_USER
     - secure: "VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=" # DOCKER_PWD
@@ -24,10 +24,10 @@ cache:
 language: scala
 
 scala:
-  - 2.11.7
+  - 2.12.1
 
 jdk:
-  - openjdk7
+  - oraclejdk8
 
 # workaround for openjdk buffer overflow
 addons:
@@ -35,22 +35,24 @@ addons:
 
 script:
   - sbt compile test:compile
-  - sbt 'set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)' "project powerapi-core" coverage test
+  - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project powerapi-core" test; else sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project powerapi-core" coverage test ; fi'
   - find $HOME/.sbt -name "*.lock" | xargs rm
 
 before_install:
-  - openssl aes-256-cbc -K $encrypted_48ebb0d1c0b9_key -iv $encrypted_48ebb0d1c0b9_iv -in secrets.tar.enc -out secrets.tar -d
-  - tar xvf secrets.tar
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc -K $encrypted_48ebb0d1c0b9_key -iv $encrypted_48ebb0d1c0b9_iv -in secrets.tar.enc -out secrets.tar -d; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then tar xvf secrets.tar; fi'
   - wget -O influxdb.deb https://s3.amazonaws.com/influxdb/influxdb_0.10.2-1_amd64.deb
   - sudo dpkg -i influxdb.deb
   - sudo service influxdb start
   - sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi' WITH ALL PRIVILEGES"
-  - sudo bash -c "source /usr/local/rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then curl -sSL https://get.rvm.io | bash; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sudo bash -c "source /home/travis/.rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"; fi'
 
 after_success:
-  - sbt "project powerapi-core" coverageReport
-  - sbt "project powerapi-core" codacyCoverage
-  - sbt "project powerapi-core" coveralls
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project powerapi-core" coverageReport; fi'
+#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project powerapi-core" codacyCoverage; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project powerapi-core" coveralls; fi'
 
 before_deploy:
   - sbt "project powerapi-sampling" universal:packageZipTarball

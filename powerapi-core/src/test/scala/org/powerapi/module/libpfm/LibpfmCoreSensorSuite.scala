@@ -25,9 +25,8 @@ package org.powerapi.module.libpfm
 import java.util.UUID
 
 import scala.collection.BitSet
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 
 import akka.actor.Props
 import akka.pattern.gracefulStop
@@ -40,7 +39,7 @@ import org.powerapi.core.target.{All, Process}
 import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.module.SensorChannel.{startSensor, stopSensor}
 import org.powerapi.module.Sensors
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport}
 import org.scalamock.scalatest.MockFactory
 
 class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
@@ -50,7 +49,7 @@ class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
   val events = Set("event", "event1")
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {
@@ -102,17 +101,16 @@ class LibpfmCoreSensorSuite extends UnitTest with MockFactory {
     val results = Map[(Int, String), Long]((0, "event") -> 10, (0, "event1") -> 12, (1, "event") -> 18, (1, "event1") -> 20)
     publishMonitorTick(muid, All, tick1)(eventBus)
     expectMsgClass(classOf[PCReport]) match {
-      case PCReport(_, _, All, wrappers, _) =>
-        wrappers.size should equal(topology.size * events.size)
-        events.foreach(event => wrappers.count(_.event == event) should equal(topology.size))
-        wrappers.foreach(wrapper => wrapper.values.size should equal(topology(0).size))
+      case PCReport(_, _, All, values, _) =>
+        values.size should equal(topology.size)
 
-        wrappers.groupBy(wrapper => (wrapper.core, wrapper.event)).foreach {
-          case ((core, event), _wrappers) => Future.sequence(_wrappers.head.values) onSuccess {
-            case pcs: List[HWCounter] =>
-              pcs.map(_.value).sum should equal(results((core, event)))
+        for (value <- values) {
+          for ((event, counters)  <- value._2) {
+            counters.map(_.value).sum should equal(results((value._1, event)))
           }
         }
+      case _ =>
+        {}
     }
 
     EventFilter.info(occurrences = 1, start = s"sensor is stopped, class: ${classOf[LibpfmCoreSensor].getName}").intercept({

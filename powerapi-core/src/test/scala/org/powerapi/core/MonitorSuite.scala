@@ -66,7 +66,7 @@ class MonitorSuite extends UnitTest {
   val threshold = 0.5
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {
@@ -309,35 +309,47 @@ class MonitorSuite extends UnitTest {
       monitor ! MonitorAggregator("test", muid, MEAN)
     })
     monitor ! RawPowerReport("test", muid, 1, 10.W, "cpu", tick1)
+    monitor ! RawPowerReport("test", muid, 1, 2.W, "disk", tick1)
     monitor ! RawPowerReport("test", muid, "java", 5.W, "cpu", tick1)
+    monitor ! RawPowerReport("test", muid, "java", 1.W, "disk", tick1)
     expectNoMsg()
     monitor ! RawPowerReport("test", muid, 1, 15.W, "cpu", tick2)
+    monitor ! RawPowerReport("test", muid, 1, 6.W, "disk", tick2)
     var msg = expectMsgClass(classOf[AggregatePowerReport])
-    msg.size should equal(2)
+    msg.size should equal(4)
     msg.targets should contain theSameElementsAs Seq[Target](1, "java")
-    msg.devices should contain theSameElementsAs Seq("cpu")
-    msg.tick should equal(tick1)
-    msg.power should equal(MEAN(Seq(10.W, 5.W)))
+    msg.devices should contain theSameElementsAs Seq("cpu", "disk")
+    msg.ticks should contain theSameElementsAs Seq(tick1)
+    msg.power should equal(MEAN(Seq(10.W, 2.W, 5.W, 1.W)))
+    msg.powerPerDevice should contain theSameElementsAs Map("cpu" -> MEAN(Seq(10.W, 5.W)), "disk" -> MEAN(Seq(2.W, 1.W)))
+    msg.powerPerTarget should contain theSameElementsAs Map(Process(1) -> MEAN(Seq(10.W, 2.W)), Application("java") -> MEAN(Seq(5.W, 1.W)))
     monitor ! RawPowerReport("test", muid, 1, 12.W, "cpu", tick3)
+    monitor ! RawPowerReport("test", muid, 1, 8.W, "disk", tick3)
     msg = expectMsgClass(classOf[AggregatePowerReport])
-    msg.size should equal(1)
+    msg.size should equal(2)
     msg.targets should contain theSameElementsAs Seq[Target](1)
-    msg.devices should contain theSameElementsAs Seq("cpu")
-    msg.tick should equal(tick2)
-    msg.power should equal(MEAN(Seq(15.W)))
+    msg.devices should contain theSameElementsAs Seq("cpu", "disk")
+    msg.ticks should contain theSameElementsAs Seq(tick2)
+    msg.power should equal(MEAN(Seq(15.W, 6.W)))
+    msg.powerPerDevice should contain theSameElementsAs Map("cpu" -> MEAN(Seq(15.W)), "disk" -> MEAN(Seq(6.W)))
+    msg.powerPerTarget should contain theSameElementsAs Map(Process(1) -> MEAN(Seq(15.W, 6.W)))
     EventFilter.info(occurrences = 1, source = monitor.path.toString).intercept({
       monitor ! MonitorAggregator("test", muid, MAX)
     })
     monitor ! RawPowerReport("test", muid, "java", 3.W, "cpu", tick3)
+    monitor ! RawPowerReport("test", muid, "java", 1.W, "disk", tick3)
     monitor ! RawPowerReport("test", muid, All, 15.W, "cpu", tick3)
+    monitor ! RawPowerReport("test", muid, All, 10.W, "disk", tick3)
     monitor ! RawPowerReport("test", muid, 1, 15.W, "cpu", tick4)
+    monitor ! RawPowerReport("test", muid, 1, 4.W, "disk", tick4)
     msg = expectMsgClass(classOf[AggregatePowerReport])
-    msg.size should equal(3)
+    msg.size should equal(6)
     msg.targets should contain theSameElementsAs Seq[Target](1, "java", All)
-    msg.devices should contain theSameElementsAs Seq("cpu")
-    msg.tick should equal(tick3)
-    msg.power should equal(MAX(Seq(12.W, 3.W, 15.W)))
-
+    msg.devices should contain theSameElementsAs Seq("cpu", "disk")
+    msg.ticks should contain theSameElementsAs Seq(tick3)
+    msg.power should equal(MAX(Seq(12.W, 8.W, 3.W, 1.W, 15.W, 10.W)))
+    msg.powerPerDevice should contain theSameElementsAs Map("cpu" -> MAX(Seq(12.W, 3.W, 15.W)), "disk" -> MAX(Seq(8.W, 1.W, 10.W)))
+    msg.powerPerTarget should contain theSameElementsAs Map(Process(1) -> MAX(Seq(12.W, 8.W)), Application("java") -> MAX(Seq(3.W, 1.W)), All -> MAX(Seq(15.W, 10.W)))
     Await.result(gracefulStop(monitor, timeout.duration), timeout.duration)
   }
 
@@ -410,7 +422,7 @@ class MonitorSuite extends UnitTest {
     msg.devices should contain theSameElementsAs Seq("cpu")
     msg.power should equal(MEDIAN(Seq(1.W, 5.W, 6.W)))
     msg.targets should contain theSameElementsAs Seq[Target](2, "java", All)
-    msg.tick should equal(tick1)
+    msg.ticks should contain theSameElementsAs Seq(tick1)
 
     stopAllMonitor(eventBus)
 
@@ -456,7 +468,7 @@ class MonitorSuite extends UnitTest {
     val reporter = new DisplayMock
 
     class DisplayMock extends PowerDisplay {
-      def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power): Unit = testActor ! power
+      def display(aggregatePowerReport: AggregatePowerReport): Unit = testActor ! aggregatePowerReport.power
     }
 
     EventFilter.info(occurrences = 1, start = s"monitor is started, muid: ${monitorO.muid}").intercept({

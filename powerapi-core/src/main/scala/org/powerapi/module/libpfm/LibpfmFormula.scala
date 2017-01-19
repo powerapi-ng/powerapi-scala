@@ -24,10 +24,7 @@ package org.powerapi.module.libpfm
 
 import java.util.UUID
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success}
 
 import akka.actor.Actor
 
@@ -36,7 +33,7 @@ import org.powerapi.core.power._
 import org.powerapi.core.target.Target
 import org.powerapi.module.Formula
 import org.powerapi.module.PowerChannel.publishRawPowerReport
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport, unsubscribePCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport, unsubscribePCReport}
 
 /**
   * This formula is designed to fit a multivariate power model.
@@ -56,27 +53,29 @@ class LibpfmFormula(eventBus: MessageBus, muid: UUID, target: Target, formula: M
     case msg: PCReport =>
       val now = System.nanoTime()
 
-      val scaledCounters: Future[Iterable[(String, Long)]] = Future.sequence {
-        for ((event, wrappers) <- msg.wrappers.groupBy(_.event)) yield {
-          Future.sequence(wrappers.flatMap(_.values)).map {
-            case counters: Seq[HWCounter] =>
+      val powers = for ((event, coeff) <- formula) yield {
+        if (now - old <= 0) 0
+        else {
+          val value = msg.values.values.flatten.collect {
+            case (ev, counters) if ev == event => counters.map(_.value)
+          }.foldLeft(Seq[Long]())((acc, value) => acc ++ value).sum
 
-              event -> {
-                if (now - old <= 0) 0l else math.round(counters.map(_.value).sum * (samplingInterval.toNanos / (now - old).toDouble))
-              }
-          }
+          coeff * math.round(value * (samplingInterval.toNanos / (now - old).toDouble))
         }
       }
 
-      scaledCounters onComplete {
-        case Success(counters: Iterable[(String, Long)]) =>
-          val power = (for (tuple <- counters) yield formula.getOrElse(tuple._1, 0d) * tuple._2).sum
-          publishRawPowerReport(muid, target, if (power > 0) power.W else 0.W, "cpu", msg.tick)(eventBus)
-
-        case Failure(ex) =>
-          log.warning("An error occurred: {}", ex.getMessage)
-          publishRawPowerReport(muid, target, 0.W, "cpu", msg.tick)(eventBus)
+      val accPower = {
+        try {
+          powers.sum.W
+        }
+        catch {
+          case _: Exception =>
+            log.warning("The power value is out of range. Skip.")
+            0.W
+        }
       }
+
+      publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
 
       context.become(compute(now) orElse formulaDefault)
   }

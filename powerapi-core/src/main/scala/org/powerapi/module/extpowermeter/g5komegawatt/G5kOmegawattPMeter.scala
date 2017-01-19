@@ -22,9 +22,9 @@
  */
 package org.powerapi.module.extpowermeter.g5komegawatt
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import com.typesafe.scalalogging.Logger
 
-import org.apache.logging.log4j.LogManager
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import org.powerapi.core.power._
 import org.powerapi.core.{ExternalPMeter, MessageBus}
 import org.powerapi.module.extpowermeter.ExtPowerMeterChannel.publishG5KOmegaWattRawPowerReport
@@ -49,7 +49,7 @@ object PowerJsonProtocol extends DefaultJsonProtocol {
   */
 class G5kOmegawattPMeter(probeUrl: String, interval: FiniteDuration) extends ExternalPMeter {
 
-  private val log = LogManager.getLogger
+  private val log = Logger(classOf[G5kOmegawattPMeter])
   protected var eventBus: Option[MessageBus] = None
   @volatile private var running = true
   @volatile private var thread: Option[java.lang.Thread] = None

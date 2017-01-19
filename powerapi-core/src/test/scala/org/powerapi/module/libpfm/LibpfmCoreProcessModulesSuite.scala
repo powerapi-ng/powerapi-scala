@@ -37,7 +37,7 @@ class LibpfmCoreProcessModulesSuite extends UnitTest with MockFactory {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "The LibpfmCoreModule class" should "create the underlying classes (sensor/formula)" in {

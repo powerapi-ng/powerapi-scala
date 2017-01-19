@@ -24,7 +24,7 @@ package org.powerapi.daemon
 
 import java.util.concurrent.TimeUnit
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 import com.typesafe.config.Config
@@ -49,15 +49,15 @@ trait DaemonConfiguration extends Configuration {
     * _ an output
     */
   lazy val powerMeters: List[(Set[String], List[(Boolean, Set[String], Set[String], Set[String], FiniteDuration, String, String)])] = load { conf =>
-    (for (powerMeter: Config <- conf.getConfigList("powerapi.daemon.load"))
+    (for (powerMeter: Config <- conf.getConfigList("powerapi.daemon.load").asScala)
       yield (
-        powerMeter.getStringList("power-modules").toSet,
-        (for (monitor: Config <- powerMeter.getConfigList("monitors"))
+        powerMeter.getStringList("power-modules").asScala.toSet,
+        (for (monitor: Config <- powerMeter.getConfigList("monitors").asScala)
           yield (
             monitor.getBoolean("all"),
-            monitor.getStringList("pids").toSet,
-            monitor.getStringList("apps").toSet,
-            monitor.getStringList("containers").toSet,
+            monitor.getStringList("pids").asScala.toSet,
+            monitor.getStringList("apps").asScala.toSet,
+            monitor.getStringList("containers").asScala.toSet,
             monitor.getDuration("frequency", TimeUnit.MILLISECONDS).milliseconds,
             monitor.getString("agg"),
             monitor.getString("output")

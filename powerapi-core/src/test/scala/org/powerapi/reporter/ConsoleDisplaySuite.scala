@@ -25,36 +25,46 @@ package org.powerapi.reporter
 import java.util.UUID
 
 import scala.concurrent.duration.DurationInt
-
 import akka.util.Timeout
-
 import org.powerapi.UnitTest
+import org.powerapi.core.Tick
 import org.powerapi.core.power._
 import org.powerapi.core.target.{Application, Process, Target}
+import org.powerapi.module.PowerChannel.AggregatePowerReport
 
 class ConsoleDisplaySuite extends UnitTest {
 
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "A ConsoleDisplay" should "display an AggPowerReport message in console" in {
     val stream = new java.io.ByteArrayOutputStream()
     val muid = UUID.randomUUID()
-    val timestamp = System.currentTimeMillis()
-    val targets = Set[Target](Application("firefox"), Process(1), Process(2))
-    val devices = Set[String]("cpu", "gpu", "ssd")
-    val power = 10.W
+    val baseTick = new Tick {
+      val topic = ""
+      val timestamp = System.currentTimeMillis()
+    }
+    val baseTargets = Set[Target](Application("firefox"), Process(1), Process(2))
+    val baseDevices = Set[String]("cpu", "gpu", "ssd")
+    val basePower = 10.W
+
+    val aggregatePowerReport = new AggregatePowerReport(muid) {
+      override def ticks = Set(baseTick)
+      override def targets = baseTargets
+      override def devices = baseDevices
+      override def power = basePower
+    }
 
     Console.withOut(stream) {
       val out = new ConsoleDisplay
-      out.display(muid, timestamp, targets, devices, 10.W)
+      out.display(aggregatePowerReport)
     }
 
     new String(stream.toByteArray) should equal(
-      s"muid=$muid;timestamp=$timestamp;targets=${targets.mkString(",")};devices=${devices.mkString(",")};power=${power.toMilliWatts} mW\n"
+      s"muid=$muid;timestamp=${baseTick.timestamp};targets=${baseTargets.mkString(",")};devices=${baseDevices.mkString(",")};power=${basePower.toMilliWatts} mW\n"
     )
   }
 }

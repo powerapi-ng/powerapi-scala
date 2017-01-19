@@ -23,8 +23,6 @@
 package org.powerapi.core.power
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-
-import org.apache.logging.log4j.LogManager
 import org.powerapi.core.power.RawPower._
 
 object Power {
@@ -113,8 +111,6 @@ object RawPower {
   * @author Romain Rouvoy <romain.rouvoy@univ-lille1.fr>
   */
 final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
-  private val log = LogManager.getLogger
-
   def toWatts: Double = unit.toWatts(value)
 
   require(unit match {
@@ -133,7 +129,7 @@ final class RawPower(val value: Double, val unit: PowerUnit) extends Power {
 
   def toUnit(u: PowerUnit): Double = toMilliWatts / MILLIWATTS.convert(1, u)
 
-  override def toString(): String = s"$value $unit"
+  override def toString: String = s"$value $unit"
 
   def compare(other: Power): Int = toMilliWatts compare other.toMilliWatts
 

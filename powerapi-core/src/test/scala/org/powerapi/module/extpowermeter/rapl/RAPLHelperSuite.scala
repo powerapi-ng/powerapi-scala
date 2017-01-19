@@ -36,7 +36,7 @@ class RAPLHelperSuite extends UnitTest {
   val basepath = getClass.getResource("/").getPath
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "The RAPLHelper" should "allow to return a CPU energy estimation" in {

@@ -23,16 +23,17 @@
 package org.powerapi.core
 
 import akka.actor.SupervisorStrategy.{Directive, Escalate, Restart, Resume, Stop}
-import akka.actor.{ActorRef, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.testkit.{EventFilter, TestActorRef}
-
 import org.powerapi.UnitTest
 
-class TestActorComponent extends ActorComponent {
-  def receive = LoggingReceive {
+class TestActorComponent extends ActorComponent with ActorLogging {
+  def receive = processing orElse default
+
+  def processing: Actor.Receive = {
     case "msg" => sender ! "ok"
-  } orElse default
+  }
 }
 
 class TestSupervisor(f: PartialFunction[Throwable, Directive]) extends ActorComponent with Supervisor {
@@ -57,7 +58,7 @@ class TestChild extends ActorComponent {
 class ComponentSuite extends UnitTest {
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {

@@ -25,9 +25,8 @@ package org.powerapi.module.libpfm
 import java.nio.{ByteBuffer, ByteOrder}
 
 import scala.collection.BitSet
-
 import com.sun.jna.Native
-import org.apache.logging.log4j.LogManager
+import com.typesafe.scalalogging.Logger
 import org.bridj.Pointer.{getPointer, pointerToCString}
 import org.powerapi.core.{ConfigValue, Configuration}
 import perfmon2.libpfm.LibpfmLibrary.{pfm_attr_t, pfm_os_t, pfm_pmu_t}
@@ -79,7 +78,7 @@ class LibpfmHelper extends Configuration {
     case _ => 298 // Linux Intel/AMD 64 bits.
   }
   private val format = LibpfmLibrary.perf_event_read_format.PERF_FORMAT_TOTAL_TIME_ENABLED.value().toInt | LibpfmLibrary.perf_event_read_format.PERF_FORMAT_TOTAL_TIME_RUNNING.value.toInt
-  private val log = LogManager.getLogger
+  private val log = Logger(classOf[LibpfmHelper])
   private val cUtilsJNA = Native.loadLibrary("c", classOf[CUtilsJNA]).asInstanceOf[CUtilsJNA]
   private var initialized = false
 

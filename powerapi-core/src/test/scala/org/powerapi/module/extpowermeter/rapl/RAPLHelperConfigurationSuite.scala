@@ -33,7 +33,7 @@ class RAPLHelperConfigurationSuite extends UnitTest {
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "The RAPLHelperConfiguration" should "read correctly the values from a resource file" in {

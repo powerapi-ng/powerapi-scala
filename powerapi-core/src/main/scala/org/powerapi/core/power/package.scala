@@ -22,7 +22,8 @@
  */
 package org.powerapi.core
 
-import org.saddle.Vec
+import Numeric._
+import grizzled.math.stats._
 
 package object power {
   type PowerUnit = org.powerapi.core.power.PowerConverter.PowerUnitVal
@@ -31,29 +32,15 @@ package object power {
   final val KILOWATTS = org.powerapi.core.power.PowerConverter.KILOWATTS
   final val MEGAWATTS = org.powerapi.core.power.PowerConverter.MEGAWATTS
 
-  def MAX(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).max match {
-    case Some(max) => max.mW
-    case None => 0.mW
-  }
+  def MAX(s: Seq[Power]): Power = s.map(_.value).max.mW
 
-  def MIN(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).min match {
-    case Some(min) => min.mW
-    case None => 0.mW
-  }
+  def MIN(s: Seq[Power]): Power = s.map(_.value).min.mW
 
-  def GEOMEAN(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).geomean.mW
+  def SUM(s : Seq[Power]): Power = s.map(_.value).sum.mW
 
-  def LOGSUM(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).logsum.mW
+  def MEAN(s: Seq[Power]): Power = mean(s.map(_.value): _*).mW
 
-  def MEAN(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).mean.mW
-
-  def MEDIAN(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).median.mW
-
-  def STDEV(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).stdev.mW
-
-  def SUM(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).sum.mW
-
-  def VARIANCE(s: Seq[Power]): Power = Vec(s.map(_.toMilliWatts): _*).variance.mW
+  def MEDIAN(s: Seq[Power]): Power = median(s.map(_.value): _*).mW
 
   implicit final class DoublePower(private val value: Double) extends AnyVal {
     def mW: Power = Power(value, MILLIWATTS)

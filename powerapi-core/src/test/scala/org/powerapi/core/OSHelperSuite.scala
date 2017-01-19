@@ -22,6 +22,8 @@
  */
 package org.powerapi.core
 
+import java.io.File
+
 import scala.concurrent.duration.DurationInt
 
 import akka.util.Timeout
@@ -36,11 +38,21 @@ class OSHelperSuite extends UnitTest {
   val basepath = getClass.getResource("/").getPath
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "An OSHelper" should "allow to get the target processes and to get the target cpu time" in {
     val helper = new OSHelper {
+      def createCGroup(subsystem: String, name: String): Unit = ???
+
+      def attachToCGroup(subsystem: String, name: String, toAttach: String): Unit = ???
+
+      def getDiskInfo(names: Seq[String]): Seq[Disk] = ???
+
+      def deleteCGroup(subsystem: String, name: String): Unit = ???
+
+      def existsCGroup(subsystem: String, name: String): Boolean = ???
+
       def getTimeInStates: TimeInStates = ???
 
       def getThreads(process: Process): Set[Thread] = ???
@@ -50,27 +62,39 @@ class OSHelperSuite extends UnitTest {
       def getProcessCpuTime(process: Process): Long = process match {
         case Process(1) => 10
         case Process(2) => 11
-        case Process(3) => 20
-        case Process(4) => 21
         case Process(10) => 30
+        case _ => -10
+      }
+
+      def getDockerContainerCpuTime(container: Container): Long = container match {
+        case Container("abcd", "n") => 20 + 21
+        case _ => -10
       }
 
       def getGlobalCpuTimes: GlobalCpuTimes = ???
 
       def getProcesses(target: Target): Set[Process] = target match {
         case Application("firefox") => Set(1, 2)
-        case Container("docker") => Set(3, 4)
         case Process(10) => Set(10)
       }
+
+      def getGlobalDiskBytes(disks: Seq[Disk]): Seq[Disk] = ???
+
+      def getTargetDiskBytes(disks: Seq[Disk], target: Target): Seq[Disk] = ???
     }
 
     helper.getProcesses(Application("firefox")) should equal(Set(Process(1), Process(2)))
-    helper.getProcesses(Container("docker")) should equal(Set(Process(3), Process(4)))
     helper.getProcesses(Process(10)) should equal(Set(Process(10)))
     helper.getTargetCpuTime(Process(10)) should equal(30)
     helper.getTargetCpuTime(Application("firefox")) should equal(10 + 11)
-    helper.getTargetCpuTime(Container("docker")) should equal(20 + 21)
+    helper.getTargetCpuTime(Container("abcd", "n")) should equal(20 + 21)
     helper.getTargetCpuTime(All) should equal(0)
+    helper.getAllDirectories(new File(s"${basepath}/sys/fs/cgroup/blkio")) should contain theSameElementsAs Seq(
+      new File(s"${basepath}/sys/fs/cgroup/blkio/powerapi"),
+      new File(s"${basepath}/sys/fs/cgroup/blkio/powerapi/1"),
+      new File(s"${basepath}/sys/fs/cgroup/blkio/powerapi/2"),
+      new File(s"${basepath}/sys/fs/cgroup/blkio/test")
+    )
   }
 
   "The LinuxHelper" should "be able to read configuration parameters" in {
@@ -81,7 +105,10 @@ class OSHelperSuite extends UnitTest {
     linuxHelper.globalStatPath should equal("p3")
     linuxHelper.processStatPath should equal("p4/%?pid")
     linuxHelper.timeInStatePath should equal("p5")
+    linuxHelper.cgroupSysFSPath should equal("p6")
+    linuxHelper.diskStatPath should equal("p7")
     linuxHelper.topology should equal(Map(0 -> Set(0, 4), 1 -> Set(1, 5), 2 -> Set(2, 6), 3 -> Set(3, 7)))
+    linuxHelper.mountsPath should equal("p1/mounts")
   }
 
   it should "return the list of available frequencies" in {
@@ -108,6 +135,24 @@ class OSHelperSuite extends UnitTest {
 
     helper.getProcessCpuTime(1) should equal(35)
     helper.getProcessCpuTime(10) should equal(0)
+  }
+
+  it should "return the cgroup mount point if it exists" in {
+    val helper = new LinuxHelper {
+      override lazy val mountsPath = s"${basepath}proc/mounts"
+    }
+
+    helper.cgroupMntPoint("cpuacct") should equal (Some("/sys/fs/cgroup/cpuacct"))
+    helper.cgroupMntPoint("test") should equal (None)
+  }
+
+  it should "return the cpu time of a given docker container" in {
+    val helper = new LinuxHelper {
+      override def cgroupMntPoint(name: String): Option[String] = Some(s"${basepath}sys/fs/cgroup/cpuacct")
+    }
+
+    helper.getDockerContainerCpuTime(Container("abcd", "n")) should equal(2502902 + 277405)
+    helper.getDockerContainerCpuTime(Container("test", "n2")) should equal(0)
   }
 
   it should "return the global cpu time" in {
@@ -145,7 +190,70 @@ class OSHelperSuite extends UnitTest {
     badHelper.getTimeInStates should equal(TimeInStates(Map()))
   }
 
-  "A TimeInStates case class" should "compute the difference with another one" in {
+  it should "get information about selected disks" in {
+    val helper = new LinuxHelper {
+      override lazy val diskStatPath = s"${basepath}/proc/diskstats"
+    }
+
+    helper.getDiskInfo(Seq("sda", "sdb", "test")) should contain theSameElementsAs Seq(Disk("sda", 8, 0), Disk("sdb", 8, 16))
+  }
+
+  it should "return the global disk bytes information" in {
+    val helper = new LinuxHelper {
+      override lazy val cgroupSysFSPath = s"${basepath}/sys/fs/cgroup"
+    }
+
+    val bytesRead = Map(
+      "sda" -> (1743688304128l + 2148007936l + 2148007936l + 2148007936l),
+      "sdb" -> (3969024l + 2147483648l)
+    )
+
+    val bytesWritten = Map(
+      "sda" -> (4773668771328l + 128828350464l + 128828350464l + 128828350464l),
+      "sdb" -> (5242880l + 51546972160l)
+    )
+
+    helper.getGlobalDiskBytes(Seq(Disk("sda", 8, 0), Disk("sdb", 8, 16))) should contain theSameElementsAs Seq(
+      Disk("sda", 8, 0, bytesRead("sda"), bytesWritten("sda")),
+      Disk("sdb", 8, 16, bytesRead("sdb"), bytesWritten("sdb"))
+    )
+  }
+
+  it should "return the disk bytes information for a given target" in {
+    val helper = new LinuxHelper {
+      override lazy val cgroupSysFSPath = s"${basepath}/sys/fs/cgroup"
+
+      override def getProcesses(target: Target): Set[Process] = target match {
+        case Application("firefox") => Set(1, 2)
+        case _ => Set()
+      }
+    }
+
+    val bytesRead = Map(
+      "sda" -> (2148007936l + 2148007936l)
+    )
+
+    val bytesWritten = Map(
+      "sda" -> (128828350464l + 128828350464l)
+    )
+
+    helper.getTargetDiskBytes(Seq(Disk("sda", 8, 0)), Application("firefox")) should contain theSameElementsAs Seq(
+      Disk("sda", 8, 0, bytesRead("sda"), bytesWritten("sda"))
+    )
+  }
+
+  "A Disk case class" should "allow to compute the difference between two instances" in {
+    val disk1T1 = Disk("sda", 0, 8, 10, 20)
+    val disk1T2 = Disk("sda", 0, 8, 12, 22)
+    val disk1T3 = Disk("sda", 0, 8, 12, 22)
+    val disk2T1 = Disk("sdb", 0, 16, 22, 44)
+
+    disk1T2 - disk1T1 should equal(Disk("sda", 0, 8, 2, 2))
+    disk1T3 - disk1T2 should equal(Disk("sda", 0, 8, 0, 0))
+    disk2T1 - disk1T3 should equal(disk2T1)
+  }
+
+  "A TimeInStates case class" should "allow to compute the difference between two instances" in {
     val timesLeft = TimeInStates(Map(1l -> 10l, 2l -> 20l, 3l -> 30l, 4l -> 15l))
     val timesRight = TimeInStates(Map(1l -> 1l, 2l -> 2l, 3l -> 3l, 100l -> 100l))
 

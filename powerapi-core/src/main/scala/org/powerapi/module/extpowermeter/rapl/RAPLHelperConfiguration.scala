@@ -24,7 +24,7 @@ package org.powerapi.module.extpowermeter.rapl
 
 import java.util.concurrent.TimeUnit
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 import com.typesafe.config.Config
@@ -61,7 +61,7 @@ class RAPLHelperConfiguration extends Configuration(None) {
     * Supported architectures
     */
   lazy val supportedArchis: Map[Int, String] = load { conf =>
-    (for (item: Config <- conf.getConfigList("rapl.supported-architectures"))
+    (for (item: Config <- conf.getConfigList("rapl.supported-architectures").asScala)
       yield (item.getInt("id"), item.getString("model"))).toMap
   } match {
     case ConfigValue(values) => values

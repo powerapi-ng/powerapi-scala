@@ -43,8 +43,8 @@ object PerformanceCounterChannel extends Channel {
   /**
     * Publish a PerformanceCounterReport in the event bus.
     */
-  def publishPCReport(muid: UUID, target: Target, wrappers: Seq[PCWrapper], tick: Tick): MessageBus => Unit = {
-    publish(PCReport(pcReportToTopic(muid, target), muid, target, wrappers, tick))
+  def publishPCReport(muid: UUID, target: Target, values: Map[Int, Map[String, Seq[HWCounter]]], tick: Tick): MessageBus => Unit = {
+    publish(PCReport(pcReportToTopic(muid, target), muid, target, values, tick))
   }
 
   /**
@@ -90,7 +90,7 @@ object PerformanceCounterChannel extends Channel {
     * Internal message.
     * One message per core/event.
     */
-  case class PCWrapper(core: Int, event: String, values: Seq[Future[HWCounter]])
+  //case class PCWrapper(core: Int, event: String, values: Seq[Future[HWCounter]])
 
   /**
     * Internal message used to wrap a performance counter value for a period in ns.
@@ -103,13 +103,13 @@ object PerformanceCounterChannel extends Channel {
     * @param topic    : subject used for routing the message.
     * @param muid     : monitor unique identifier (MUID), which is at the origin of the report flow.
     * @param target   : monitor target.
-    * @param wrappers : performance counter wrappers.
+    * @param values : performance counter values.
     * @param tick     : tick origin.
     */
   case class PCReport(topic: String,
                       muid: UUID,
                       target: Target,
-                      wrappers: Seq[PCWrapper],
+                      values: Map[Int, Map[String, Seq[HWCounter]]],
                       tick: Tick) extends Message
 
   /**

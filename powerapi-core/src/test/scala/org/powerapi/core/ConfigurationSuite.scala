@@ -22,7 +22,7 @@
  */
 package org.powerapi.core
 
-import scala.collection.JavaConversions
+import scala.collection.JavaConverters
 
 import com.typesafe.config.{Config, ConfigException}
 import org.powerapi.UnitTest
@@ -36,7 +36,7 @@ class ConfigurationMock(prefix: Option[String]) extends Configuration(prefix) {
   }
   val map = load {
     conf => {
-      (for (item: Config <- JavaConversions.asScalaBuffer(conf.getConfigList(s"${configurationPath}configuration-suite.hash-map")))
+      (for (item: Config <- JavaConverters.asScalaBuffer(conf.getConfigList(s"${configurationPath}configuration-suite.hash-map")))
         yield (item.getString("key"), item.getString("value"))).toMap
     }
   }
@@ -49,7 +49,7 @@ class ConfigurationSuite extends UnitTest {
   val prefixConfig2 = new ConfigurationMock(Some("prefix2."))
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   "A Configuration class" can "be prefixed to search configuration values" in {

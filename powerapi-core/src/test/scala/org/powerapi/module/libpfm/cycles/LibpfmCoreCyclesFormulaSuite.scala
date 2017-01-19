@@ -24,9 +24,8 @@ package org.powerapi.module.libpfm.cycles
 
 import java.util.UUID
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 
 import akka.actor.Props
 import akka.pattern.gracefulStop
@@ -40,15 +39,14 @@ import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.module.FormulaChannel.{startFormula, stopFormula}
 import org.powerapi.module.Formulas
 import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCWrapper, publishPCReport}
-import org.saddle.Vec
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, publishPCReport}
 
 class LibpfmCoreCyclesFormulaSuite extends UnitTest {
 
   val timeout = Timeout(1.seconds)
 
   override def afterAll() = {
-    system.shutdown()
+    system.terminate()
   }
 
   trait Bus {
@@ -90,13 +88,18 @@ class LibpfmCoreCyclesFormulaSuite extends UnitTest {
     })
     subscribeRawPowerReport(muid)(eventBus)(testActor)
 
-    var wrappers = Seq[PCWrapper]()
-    wrappers +:= PCWrapper(0, "thread_p", List[Future[HWCounter]](Future(HWCounter(650000000)), Future(HWCounter(651000000))))
-    wrappers +:= PCWrapper(0, "ref_p", List[Future[HWCounter]](Future(HWCounter(34475589)), Future(HWCounter(34075589))))
-    wrappers +:= PCWrapper(1, "thread_p", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(0))))
-    wrappers +:= PCWrapper(1, "ref_p", List[Future[HWCounter]](Future(HWCounter(0)), Future(HWCounter(0))))
+    val values = Map[Int, Map[String, Seq[HWCounter]]](
+      0 -> Map(
+        "thread_p" -> Seq(HWCounter(650000000), HWCounter(651000000)),
+        "ref_p" -> Seq(HWCounter(34475589), HWCounter(34075589))
+      ),
+      1 -> Map(
+        "thread_p" -> Seq(HWCounter(0), HWCounter(0)),
+        "ref_p" -> Seq(HWCounter(0), HWCounter(0))
+      )
+    )
 
-    publishPCReport(muid, target, wrappers, tick1)(eventBus)
+    publishPCReport(muid, target, values, tick1)(eventBus)
     val rawPowerReport = expectMsgClass(classOf[RawPowerReport])
     rawPowerReport.muid should equal(muid)
     rawPowerReport.target should equal(target)
@@ -108,7 +111,7 @@ class LibpfmCoreCyclesFormulaSuite extends UnitTest {
       stopFormula(muid)(eventBus)
     })
 
-    publishPCReport(muid, target, wrappers, tick2)(eventBus)
+    publishPCReport(muid, target, values, tick2)(eventBus)
     expectNoMsg()
 
     Await.result(gracefulStop(formulas, timeout.duration), timeout.duration)

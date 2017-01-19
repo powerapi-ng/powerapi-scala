@@ -22,32 +22,34 @@
  */
 package org.powerapi.reporter
 
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-
-import collection.JavaConversions._
-
-
-import org.influxdb.InfluxDBFactory
-import org.influxdb.dto.Point
+import com.paulgoldbaum.influxdbclient.Parameter.Precision
+import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import org.powerapi.PowerDisplay
-import org.powerapi.core.power.Power
-import org.powerapi.core.target.Target
+import org.powerapi.module.PowerChannel.AggregatePowerReport
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Write power information inside an InfluxDB database.
   */
-class InfluxDisplay(host: String, user: String, pwd: String, dbName: String, measurement: String) extends PowerDisplay {
+class InfluxDisplay(host: String, port: Int, user: String, pwd: String, dbName: String, measurement: String) extends PowerDisplay {
 
-  val influxdb = InfluxDBFactory.connect(host, user, pwd)
+  val influxdb = InfluxDB.connect(host, port, user, pwd)
+  val database = influxdb.selectDatabase(dbName)
 
-  def display(muid: UUID, timestamp: Long, targets: Set[Target], devices: Set[String], power: Power) {
-    val point = Point.measurement(measurement)
-      .time(timestamp, TimeUnit.MILLISECONDS)
-      .field("power", power.toMilliWatts)
-      .tag(Map("muid" -> s"$muid", "targets" -> s"${targets.mkString(",")}", "devices" -> s"${devices.mkString(",")}"))
-      .build()
+  def display(aggregatePowerReport: AggregatePowerReport): Unit = {
+    val muid = aggregatePowerReport.muid
+    val timestamp = aggregatePowerReport.ticks.map(_.timestamp).head
+    val targets = aggregatePowerReport.targets
+    val devices = aggregatePowerReport.devices
+    val power = aggregatePowerReport.power
 
-    influxdb.write(dbName, "default", point)
+    val point = Point(measurement, timestamp)
+      .addField("power", power.toMilliWatts)
+      .addTag("muid", s"$muid")
+      .addTag("targets", s"${targets.mkString(",")}")
+      .addTag("devices", s"${devices.mkString(",")}")
+
+    database.write(point, precision = Precision.MILLISECONDS)
   }
 }
