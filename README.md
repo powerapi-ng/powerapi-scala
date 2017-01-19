@@ -63,7 +63,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 # License
 This software is licensed under the *GNU Affero General Public License*, quoted below.
 
-Copyright (C) 2011-2016 Inria, University of Lille 1.
+Copyright (C) 2011-2017 Inria, University of Lille 1.
 
 PowerAPI is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
