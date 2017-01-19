@@ -27,6 +27,7 @@ If you would like to contribute code you can do so through GitHub by forking the
 When submitting code, please make every effort to follow existing conventions and style in order to keep the code as readable as possible.
 
 ## Publications
+* **[WattsKit: Software-Defined Power Monitoring of Distributed Systems](https://hal.inria.fr/hal-01439889)**: M. Colmant, P. Felber, R. Rouvoy, L. Seinturier. *IEEE/ACM International Symposium on Cluster, Cloud and Grid Computing* (CCGrid). April 2017, Spain, France. pp.1-14.
 * **[Process-level Power Estimation in VM-based Systems](https://hal.inria.fr/hal-01130030)**: M. Colmant, M. Kurpicz, L. Huertas, R. Rouvoy, P. Felber, A. Sobe. *European Conference on Computer Systems* (EuroSys). April 2015, Bordeaux, France. pp.1-14.
 * **[Monitoring Energy Hotspots in Software](https://hal.inria.fr/hal-01069142)**: A. Noureddine, R. Rouvoy, L. Seinturier. *Journal of Automated Software Engineering*, Springer, 2015, pp.1-42.
 * **[Unit Testing of Energy Consumption of Software Libraries](https://hal.inria.fr/hal-00912613)**: A. Noureddine, R. Rouvoy, L. Seinturier. *International Symposium On Applied Computing* (SAC), March 2014, Gyeongju, South Korea. pp.1200-1205.
@@ -39,6 +40,7 @@ When submitting code, please make every effort to follow existing conventions an
 
 ## Use Cases
 PowerAPI is used in a variety of projects to address key challenges of GreenIT:
+* [GenPack](https://hal.inria.fr/hal-01403486) provides a Docker Swarm strategy to minimize the energy footprint of  Docker containers deployed in a cluster
 * [BitWatts](http://bitwatts.powerapi.org) provides process-level power estimation of applications running in virtual machines
 * [Web Energy Archive](http://webenergyarchive.com) ranks popular websites based on the energy footpring they imposes to browsers
 * [Greenspector](http://greenspector.com) optimises the power consumption of software by identifying potential energy leaks in the source code.
