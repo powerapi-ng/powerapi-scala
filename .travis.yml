@@ -35,7 +35,7 @@ addons:
 
 script:
   - sbt compile test:compile
-  - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project powerapi-core" test; else sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project powerapi-core" coverage test ; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project core" test; else sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project core" coverage test ; fi'
   - find $HOME/.sbt -name "*.lock" | xargs rm
 
 before_install:
@@ -50,14 +50,14 @@ before_install:
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sudo bash -c "source /home/travis/.rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"; fi'
 
 after_success:
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project powerapi-core" coverageReport; fi'
-#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project powerapi-core" codacyCoverage; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project powerapi-core" coveralls; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coverageReport; fi'
+#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" codacyCoverage; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coveralls; fi'
 
 before_deploy:
-  - sbt "project powerapi-sampling" universal:packageZipTarball
-  - sbt "project powerapi-cli" universal:packageZipTarball
-  - sbt "project powerapi-daemon" universal:packageZipTarball
+  - sbt "project cpuSampling" universal:packageZipTarball
+  - sbt "project cli" universal:packageZipTarball
+  - sbt "project daemon" universal:packageZipTarball
   - tar -C powerapi-sampling/target/universal -xvf powerapi-sampling/target/universal/powerapi-sampling.tgz
   - tar -C powerapi-cli/target/universal -xvf powerapi-cli/target/universal/powerapi-cli.tgz
 
@@ -75,7 +75,7 @@ deploy:
     repo: Spirals-Team/powerapi
 
 after_deploy:
-  - sbt "project powerapi-core" publishSigned sonatypeRelease
+  - sbt "project core" publishSigned sonatypeRelease
   - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
   - git config user.name "Travis CI"
   - git config user.email "builds@travis-ci.org"
