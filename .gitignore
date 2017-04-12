@@ -22,7 +22,8 @@ src_managed/
 .idea/
 /project/plugins/project
 project/boot
-target/
+target
+!powerapi-core/src/main/scala/org/powerapi/core/target
 /logs
 .cache
 .classpath
