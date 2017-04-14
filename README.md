@@ -52,7 +52,7 @@ We all stand on the shoulders of giants and get by with a little help from our f
 * [logback](https://github.com/qos-ch/logback) (version 1.1.7 under [LGPL 2.1 license](https://github.com/qos-ch/logback/blob/master/LICENSE.txt)), for logging purpose.
 * [powerspy.scala](https://github.com/Spirals-Team/powerspy.scala) (version 1.2 under [AGPL license](http://www.gnu.org/licenses/agpl-3.0.html)), for using the [PowerSpy](http://www.alciom.com/en/products/powerspy2-en-gb-2.html) power meter.
 * [BridJ](https://code.google.com/p/bridj/) (version 0.7.0 under [3-clause BSD license](https://github.com/ochafik/nativelibs4java/blob/master/libraries/BridJ/LICENSE)), for system or C calls.
-* [JNA](https://github.com/twall/jna) (version 4.2.2 under [LGPL 2.1 license](https://github.com/twall/jna/blob/master/LGPL2.1)), for system or C calls.
+* [JNA](https://github.com/twall/jna) (version 4.4.0 under [LGPL 2.1 license](https://github.com/twall/jna/blob/master/LGPL2.1)), for system or C calls.
 * [perfmon2](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree) (version 4.7.0 under [MIT license](http://sourceforge.net/p/perfmon2/libpfm4/ci/master/tree/COPYING)), for accessing hardware performance counters.
 * [JFreeChart](http://www.jfree.org/jfreechart/) (version 1.0.19 under [LGPL license](https://www.gnu.org/licenses/lgpl.html)), for creation of interactive and animated charts.
 * [grizzled-scala](http://software.clapper.org/grizzled-scala/) (version 4.0.0 under [3-clause BSD license](https://github.com/bmc/grizzled-scala/blob/master/LICENSE.md)), for new utility classes and objects.

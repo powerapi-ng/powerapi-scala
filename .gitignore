@@ -1,4 +1,4 @@
-*.class
+
 *.log
 *~
 
@@ -12,7 +12,6 @@ dist/*
 lib_managed/
 src_managed/
 *#
-*.iml
 *.ipr
 *.iws
 *.pyc
@@ -39,3 +38,4 @@ target
 
 *.gpg
 secrets.tar
+project/project/

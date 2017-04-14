@@ -35,9 +35,7 @@ import org.powerapi.{PowerMeter, PowerMonitoring}
 import org.powerapi.core.power._
 import org.powerapi.core.target.All
 import org.powerapi.module.PowerChannel.AggregatePowerReport
-import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport, unsubscribePCReport}
-import org.powerapi.module.libpfm.{LibpfmCoreSensorModule, LibpfmHelper}
+import org.powerapi.module.hwc.HWCChannel.{HWC, HWCReport, subscribeHWCReport, unsubscribeHWCReport}
 
 /**
   * Define specific kinds of reporters to be sure that all data are written inside files.
@@ -79,16 +77,16 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
   }
 
   def receive: Actor.Receive = {
-    case msg: PCReport => report(msg)
+    case msg: HWCReport => report(msg)
     case msg: String => append(msg)
   }
 
-  def report(msg: PCReport): Unit = {
+  def report(msg: HWCReport): Unit = {
 
     for (event <- events) {
-      val counter = msg.values.values.flatten.collect {
-        case (ev, counters) if ev == event => counters.map(_.value)
-      }.foldLeft(Seq[Long]())((acc, value) => acc ++ value).sum
+      val counter = msg.values.collect {
+        case hwc: HWC if hwc.event == event => hwc.value
+      }.sum
 
       outputs(event).append(s"$counter\n")
       outputs(event).flush()
@@ -108,7 +106,7 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmHelper: LibpfmHelper, powerapi: PowerMeter, externalPMeter: PowerMeter) {
+class Sampling(outputPath: String, configuration: SamplingConfiguration, powerapi: PowerMeter, externalPMeter: PowerMeter) {
 
   private lazy val trash = ProcessLogger(out => {}, err => {})
   private val log = Logger(classOf[Sampling])
@@ -194,7 +192,6 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
 
     allPapi.cancel()
     allExPMeter.cancel()
-    libpfmHelper.deinit()
     val end = System.currentTimeMillis()
     log.info(s"Sampling duration: {}", configuration.formatter.print(new Period(end - begin)))
   }
@@ -218,12 +215,12 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
       * Idle Phase.
       */
     allExPMeter.to(externalPMeterDisplay)
-    allPapi.to(powerapiDisplay, subscribePCReport(allPapi.muid, All))
+    allPapi.to(powerapiDisplay, subscribeHWCReport(allPapi.muid, All))
 
     Thread.sleep(configuration.stepDuration.seconds.toMillis)
 
     allExPMeter.unto(externalPMeterDisplay)
-    allPapi.unto(powerapiDisplay, unsubscribePCReport(allPapi.muid, All))
+    allPapi.unto(powerapiDisplay, unsubscribeHWCReport(allPapi.muid, All))
     writersSys.actorSelection("user/output-cpu") ! configuration.separator
     writersSys.actorSelection("user/output-powers") ! configuration.separator
 
@@ -246,12 +243,12 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
         }
 
         allExPMeter.to(externalPMeterDisplay)
-        allPapi.to(powerapiDisplay, subscribePCReport(allPapi.muid, All))
+        allPapi.to(powerapiDisplay, subscribeHWCReport(allPapi.muid, All))
 
         decreasingLoad(writersSys, index)
 
         allExPMeter.unto(externalPMeterDisplay)
-        allPapi.unto(powerapiDisplay, unsubscribePCReport(allPapi.muid, All))
+        allPapi.unto(powerapiDisplay, unsubscribeHWCReport(allPapi.muid, All))
 
         Thread.sleep(2.seconds.toMillis)
 
@@ -262,7 +259,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
     }
 
     allExPMeter.unto(externalPMeterDisplay)
-    allPapi.unto(powerapiDisplay, unsubscribePCReport(allPapi.muid, All))
+    allPapi.unto(powerapiDisplay, unsubscribeHWCReport(allPapi.muid, All))
     writersSys.stop(externalPMeterDisplay)
     writersSys.stop(powerapiDisplay)
     writersSys.terminate()
@@ -346,13 +343,8 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, libpfmH
 }
 
 object Sampling {
-  @volatile var powerapi: Option[PowerMeter] = None
-  @volatile var externalPMeter: Option[PowerMeter] = None
 
-  def apply(outputPath: String, configuration: SamplingConfiguration, libpfmHelper: LibpfmHelper): Sampling = {
-    libpfmHelper.init()
-    powerapi = Some(PowerMeter.loadModule(LibpfmCoreSensorModule(None, libpfmHelper, configuration.events)))
-    externalPMeter = Some(PowerMeter.loadModule(PowerSpyModule(None)))
-    new Sampling(outputPath, configuration, libpfmHelper, powerapi.get, externalPMeter.get)
+  def apply(outputPath: String, configuration: SamplingConfiguration, powerapi: PowerMeter, groundTruth: PowerMeter): Sampling = {
+    new Sampling(outputPath, configuration, powerapi, groundTruth)
   }
 }

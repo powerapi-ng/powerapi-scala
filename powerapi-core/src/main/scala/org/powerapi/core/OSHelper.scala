@@ -136,6 +136,11 @@ trait OSHelper {
   }
 
   /**
+    * Returns the mount path of a given cgroup if it exists.
+    */
+  def cgroupMntPoint(name: String): Option[String]
+
+  /**
     * Create a cgroup attached to a given subsystem.
     */
   def createCGroup(subsystem: String, name: String): Unit
@@ -276,9 +281,6 @@ class LinuxHelper extends Configuration(None) with OSHelper {
   private val TimeInStateFormat = """(\d+)\s+(\d+)""".r
   private val MountFormat = """^.+\s+(.+)\s+(.+)\s+(.+)\s+.+\s+.+$""".r
 
-  /**
-    * Returns the mount path of a given cgroup if it exists.
-    */
   def cgroupMntPoint(name: String): Option[String] = {
     Source.fromFile(mountsPath).getLines().collectFirst {
       case MountFormat(mnt, typ, tokens) if typ == "cgroup" && tokens.contains(name) =>
@@ -568,4 +570,6 @@ class SigarHelper(sigar: SigarProxy) extends OSHelper {
   def getGlobalDiskBytes(disks: Seq[Disk]): Seq[Disk] = Seq()
 
   def getTargetDiskBytes(disks: Seq[Disk], target: Target): Seq[Disk] = Seq()
+
+  def cgroupMntPoint(name: String): Option[String] = None
 }

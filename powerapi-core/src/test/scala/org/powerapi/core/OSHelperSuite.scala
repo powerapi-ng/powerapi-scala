@@ -81,6 +81,8 @@ class OSHelperSuite extends UnitTest {
       def getGlobalDiskBytes(disks: Seq[Disk]): Seq[Disk] = ???
 
       def getTargetDiskBytes(disks: Seq[Disk], target: Target): Seq[Disk] = ???
+
+      def cgroupMntPoint(name: String): Option[String] = ???
     }
 
     helper.getProcesses(Application("firefox")) should equal(Set(Process(1), Process(2)))

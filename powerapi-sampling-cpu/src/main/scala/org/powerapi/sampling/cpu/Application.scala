@@ -25,10 +25,15 @@ package org.powerapi.sampling.cpu
 import java.io.File
 
 import org.apache.commons.io.filefilter.PrefixFileFilter
+import org.powerapi.PowerMeter
+import org.powerapi.core.LinuxHelper
+import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
+import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
+import org.powerapi.module.hwc.{CHelper, HWCCoreSensorModule, LikwidHelper}
 
 import scala.sys
 import scala.sys.process.stringSeqToProcess
-import org.powerapi.module.libpfm.LibpfmHelper
+import org.powerapi.module.rapl.RaplCpuModule
 
 /**
   * Main application.
@@ -41,7 +46,7 @@ object Application extends App {
   // core -> (governor, frequency)
   val backup = scala.collection.mutable.HashMap[String, (String, Option[Long])]()
 
-  if (new File("/sys/devices/system/cpu/").exists()) {
+  /*if (new File("/sys/devices/system/cpu/").exists()) {
     for (file <- new File("/sys/devices/system/cpu/").list(new PrefixFileFilter("cpu"))) {
       val governor = Seq("cat", s"/sys/devices/system/cpu/$file/cpufreq/scaling_governor").lineStream.toArray.apply(0)
       val frequency = Seq("cat", s"/sys/devices/system/cpu/$file/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
@@ -51,17 +56,20 @@ object Application extends App {
       }
       else backup += (s"/sys/devices/system/cpu/$file" -> ((governor, None)))
     }
-  }
+  }*/
+
+  var powerapi: Option[PowerMeter] = None
+  var groundTruth: Option[PowerMeter] = None
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
-    Sampling.powerapi match {
+    powerapi match {
       case Some(papi) => {
         papi.shutdown()
       }
       case _ => {}
     }
 
-    Sampling.externalPMeter match {
+    groundTruth match {
       case Some(ePMeter) => {
         ePMeter.shutdown()
       }
@@ -86,7 +94,9 @@ object Application extends App {
   val samplingOption = options('sampling).asInstanceOf[(Boolean, String)]
   val processingOption = options('processing).asInstanceOf[(Boolean, String)]
   val computingOption = options('computing).asInstanceOf[(Boolean, String)]
-  val libpfmHelper = new LibpfmHelper
+  val raplOption = options('rapl).asInstanceOf[Boolean]
+  val powerspyOption = options('powerspy).asInstanceOf[Boolean]
+  val kwapiOption = options('kwapi).asInstanceOf[Boolean]
   val configuration = new PolynomCyclesConfiguration
 
   def printHelp(): Unit = {
@@ -97,8 +107,8 @@ object Application extends App {
         |Infers the CPU power model. You have to run this program in sudo mode.
         |Do not forget to configure correctly the modules (see the documentation).
         |
-        |usage: sudo ./bin/sampling --all [sampling-path] [processing-path] [computing-path]
-        |                         ||--sampling [sampling-path]
+        |usage: sudo ./bin/sampling --all [sampling-path] [processing-path] [computing-path] --rapl|--powerspy|--kwapi
+        |                         ||--sampling [sampling-path] --rapl|--powerspy|--kwapi
         |                         ||--processing [sampling-path] [processing-path]
         |                         ||--computing [processing-path] [computing-path]
       """.stripMargin
@@ -109,20 +119,49 @@ object Application extends App {
   def cli(options: Map[Symbol, Any], args: List[String]): Map[Symbol, Any] = args match {
     case Nil =>
       options
-    case "--all" :: samplingPath :: processingPath :: computingPath :: Nil =>
-      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((true, computingPath))), Nil)
-    case "--sampling" :: samplingPath :: Nil =>
-      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((false, "")), 'computing -> ((false, ""))), Nil)
-    case "--processing" :: samplingPath :: processingPath :: Nil =>
+    case "--all" :: samplingPath :: processingPath :: computingPath :: groundTruth =>
+      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((true, computingPath))), groundTruth)
+    case "--sampling" :: samplingPath :: groundTruth =>
+      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((false, "")), 'computing -> ((false, ""))), groundTruth)
+    case "--processing" :: samplingPath :: processingPath :: groundTruth =>
       cli(options +('sampling -> ((false, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((false, ""))), Nil)
-    case "--computing" :: processingPath :: computingPath :: Nil =>
+    case "--computing" :: processingPath :: computingPath :: groundTruth =>
       cli(options +('sampling -> ((false, "")), 'processing -> ((false, processingPath)), 'computing -> ((true, computingPath))), Nil)
+    case "--rapl" :: Nil if options.nonEmpty =>
+      cli(options +('rapl -> true, 'powerspy -> false, 'kwapi -> false), Nil)
+    case "--powerspy" :: Nil if options.nonEmpty =>
+      cli(options +('rapl -> false, 'powerspy -> true, 'kwapi -> false), Nil)
+    case "--kwapi" :: Nil if options.nonEmpty =>
+      cli(options +('rapl -> false, 'powerspy -> false, 'kwapi -> true), Nil)
     case option :: tail =>
       println(s"unknown cli option $option"); sys.exit(1)
   }
 
   if (samplingOption._1) {
-    Sampling(samplingOption._2, configuration, libpfmHelper).run()
+    val osHelper = new LinuxHelper()
+    val likwidHelper = new LikwidHelper()
+    val cHelper = new CHelper()
+
+    likwidHelper.topologyInit()
+    likwidHelper.affinityInit()
+
+    powerapi = Some(PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper)))
+
+    groundTruth = Some({
+      if (raplOption) {
+        PowerMeter.loadModule(RaplCpuModule(likwidHelper))
+      }
+      else if (powerspyOption) {
+        PowerMeter.loadModule(PowerSpyModule(None))
+      }
+      else {
+        PowerMeter.loadModule(G5kOmegaWattModule(None))
+      }
+    })
+
+    Sampling(samplingOption._2, configuration, powerapi.get, groundTruth.get).run()
+
+    likwidHelper.affinityFinalize()
   }
 
   if (processingOption._1) {

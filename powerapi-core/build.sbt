@@ -19,7 +19,8 @@ libraryDependencies ++= Seq(
   "org.jfree" % "jfreechart" % "1.0.19",
   "org.clapper" %% "grizzled-scala" % "4.0.0",
   "org.hyperic" % "sigar" % "1.6.5.132",
-  "net.java.dev.jna" % "jna" % "4.2.2",
+  "net.java.dev.jna" % "jna" % "4.4.0",
+  "com.nativelibs4java" % "jnaerator-runtime" % "0.12",
   "io.spray" %% "spray-json" % "1.3.2",
   "com.paulgoldbaum" %% "scala-influxdb-client" % "0.5.2",
   "joda-time" % "joda-time" % "2.9.6"
@@ -28,8 +29,7 @@ libraryDependencies ++= Seq(
 // Tests
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % "2.4.14" % "test",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
-  "org.scalamock" %% "scalamock-scalatest-support" % "3.4.2" % "test"
+  "org.scalamock" %% "scalamock-scalatest-support" % "3.5.0" % "test"
 )
 
 startYear := Some(2014)
