@@ -14,7 +14,7 @@ resolvers ++= Seq(
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.4.14",
   "com.typesafe" % "config" % "1.3.1",
-  "fr.inria.powerspy" % "powerspy-core_2.11" % "1.2",
+  "fr.inria.powerspy" %% "powerspy-core" % "1.2",
   "com.nativelibs4java" % "bridj" % "0.7.0",
   "org.jfree" % "jfreechart" % "1.0.19",
   "org.clapper" %% "grizzled-scala" % "4.0.0",
