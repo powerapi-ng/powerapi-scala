@@ -32,15 +32,15 @@ package object power {
   final val KILOWATTS = org.powerapi.core.power.PowerConverter.KILOWATTS
   final val MEGAWATTS = org.powerapi.core.power.PowerConverter.MEGAWATTS
 
-  def MAX(s: Seq[Power]): Power = s.map(_.value).max.mW
+  def MAX(s: Seq[Power]): Power = s.map(_.toMilliWatts).max.mW
 
-  def MIN(s: Seq[Power]): Power = s.map(_.value).min.mW
+  def MIN(s: Seq[Power]): Power = s.map(_.toMilliWatts).min.mW
 
-  def SUM(s : Seq[Power]): Power = s.map(_.value).sum.mW
+  def SUM(s : Seq[Power]): Power = s.map(_.toMilliWatts).sum.mW
 
-  def MEAN(s: Seq[Power]): Power = mean(s.map(_.value): _*).mW
+  def MEAN(s: Seq[Power]): Power = mean(s.map(_.toMilliWatts): _*).mW
 
-  def MEDIAN(s: Seq[Power]): Power = median(s.map(_.value): _*).mW
+  def MEDIAN(s: Seq[Power]): Power = median(s.map(_.toMilliWatts): _*).mW
 
   implicit final class DoublePower(private val value: Double) extends AnyVal {
     def mW: Power = Power(value, MILLIWATTS)

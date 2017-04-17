@@ -38,12 +38,8 @@ class PowerSuite extends UnitTest {
 
   "A Power" should "handle a various kind of operations" in {
     val p1 = Power(1.0, "W")
-    p1 should (
-      equal(1.W) and
-        equal(1000L.mW) and
-        equal(0.001.kW) and
-        equal(Power(1.0, "nW"))
-      )
+    p1 should (equal(1.W) and equal(1000L.mW) and equal(0.001.kW) and equal(Power(1.0, "nW")))
+
     p1.value should (
       equal(0.000001.MW.toWatts) and
         equal(1000L.mW.toUnit(WATTS))
@@ -90,6 +86,12 @@ class PowerSuite extends UnitTest {
     500.mW * 2 should equal(1L.W)
     0.5.W / 2 should equal(250.mW)
     1000L.MW / 100 should equal(10000.kW)
+
+    MAX(Seq(10.W, 10.mW)) should equal(10.W)
+    MIN(Seq(10.W, 10.mW)) should equal(10.mW)
+    SUM(Seq(10.W, 10.mW)) should equal(10010.mW)
+    MEAN(Seq(10.W, 10.W)) should equal(10.W)
+    MEDIAN(Seq(10.W, 10.mW, 12.mW)) should equal(12.mW)
 
     intercept[java.lang.IllegalArgumentException] {
       1.W * Double.NaN

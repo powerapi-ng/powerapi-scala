@@ -95,7 +95,7 @@ object PowerAPI extends App {
         |                          monitor (1, *)
         |                            --frequency $MILLISECONDS
         |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
-        |                            --agg max|min|geomean|logsum|mean|median|stdev|sum|variance
+        |                            --agg max|min|mean|median|sum
         |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $PORT $USER $PWD $DB $MEASUREMENT (0, *)
         |                  duration [s]
         |
