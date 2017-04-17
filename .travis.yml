@@ -58,7 +58,7 @@ before_deploy:
   - sbt "project cpuSampling" universal:packageZipTarball
   - sbt "project cli" universal:packageZipTarball
   - sbt "project daemon" universal:packageZipTarball
-  - tar -C powerapi-sampling/target/universal -xvf powerapi-sampling/target/universal/powerapi-sampling.tgz
+  - tar -C powerapi-sampling-cpu/target/universal -xvf powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz
   - tar -C powerapi-cli/target/universal -xvf powerapi-cli/target/universal/powerapi-cli.tgz
 
 deploy:
@@ -66,7 +66,7 @@ deploy:
   api_key:
     secure: IEU1nWNWXW394yjC8/2Ch3naFM18mUmns9q11U0sCWMm9nz7ej4D5crKxCPtIHyHtFlONY1s0udBk6rv3aCVq0UikOysHFiVdPPeJTRCtGptxOb04/pZtq3vITcMzS9+CQc+yV8Y3A2vv15L/30ERMk1fgur+Nb+8vTFfXfzEik=
   file:
-    - "powerapi-sampling/target/universal/powerapi-sampling.tgz"
+    - "powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz"
     - "powerapi-cli/target/universal/powerapi-cli.tgz"
     - "powerapi-daemon/target/universal/powerapi-daemon.tgz"
   skip_cleanup: true
@@ -83,9 +83,9 @@ after_deploy:
   - git commit -m 'core(changelog) update the Changelog'
   - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1
   - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PWD
-  - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling:$TRAVIS_TAG .
+  - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling-cpu:$TRAVIS_TAG .
   - docker build -f docker/Dockerfile-cli -t spirals/powerapi-cli:$TRAVIS_TAG .
-  - docker tag spirals/powerapi-sampling:$TRAVIS_TAG spirals/powerapi-sampling:latest
+  - docker tag spirals/powerapi-sampling-cpu:$TRAVIS_TAG spirals/powerapi-sampling-cpu:latest
   - docker tag spirals/powerapi-cli:$TRAVIS_TAG spirals/powerapi-cli:latest
-  - docker push spirals/powerapi-sampling
+  - docker push spirals/powerapi-sampling-cpu
   - docker push spirals/powerapi-cli
