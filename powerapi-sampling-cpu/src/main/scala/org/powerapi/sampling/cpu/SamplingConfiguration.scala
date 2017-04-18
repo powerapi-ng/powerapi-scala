@@ -69,30 +69,35 @@ class SamplingConfiguration extends Configuration(None) {
     _.getIntList("powerapi.sampling.steps")
   } match {
     case ConfigValue(values) => values.asScala.map(_.toInt).toList.sortWith(_ > _)
-    case _ => List(100, 25)
+    case _ => List(100, 50, 25)
   }
 
   lazy val stepDuration: Int = load {
     _.getInt("powerapi.sampling.step-duration")
   } match {
     case ConfigValue(value) => value
-    case _ => 2
+    case _ => 30
   }
 
-  lazy val topology: Map[Int, Set[Int]] = load { conf =>
-    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology").asScala)
-      yield (item.getInt("core"), item.getIntList("indexes").asScala.map(_.toInt).toSet)).toMap
-  } match {
-    case ConfigValue(values) => values
-    case _ => Map()
-  }
+//  lazy val topology: Map[Int, Set[Int]] = load { conf =>
+//    (for (item: Config <- conf.getConfigList("powerapi.cpu.topology").asScala)
+//      yield (item.getInt("core"), item.getIntList("indexes").asScala.map(_.toInt).toSet)).toMap
+//  } match {
+//    case ConfigValue(values) => values
+//    case _ => Map()
+//  }
 
-  lazy val events: Set[String] = load {
-    _.getStringList("powerapi.sampling.events")
-  } match {
-    case ConfigValue(values) => values.asScala.toSet
-    case _ => Set()
-  }
+//  lazy val events: Set[String] = load {
+//    _.getStringList("powerapi.sampling.events")
+//  } match {
+//    case ConfigValue(values) => values.asScala.toSet
+//    case _ => Set()
+//  }
+
+  lazy val unhaltedCycles = "CPU_CLK_UNHALTED_CORE:FIXC1"
+  lazy val refCycles = "CPU_CLK_UNHALTED_REF:FIXC2"
+
+  lazy val events = Seq(unhaltedCycles, refCycles)
 
   lazy val baseOutput = "output-"
   lazy val powers = "powers"

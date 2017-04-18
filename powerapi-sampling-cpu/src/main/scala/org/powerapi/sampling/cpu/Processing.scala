@@ -129,7 +129,7 @@ class Processing(samplingPath: String, processingPath: String, configuration: Sa
   }
 }
 
-object Processing extends SamplingConfiguration {
+object Processing {
   def apply(samplingPath: String, processingPath: String, configuration: SamplingConfiguration): Processing = {
     new Processing(samplingPath, processingPath, configuration)
   }

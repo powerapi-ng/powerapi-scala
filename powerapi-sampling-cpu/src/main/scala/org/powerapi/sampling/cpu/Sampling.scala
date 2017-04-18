@@ -106,7 +106,7 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class Sampling(outputPath: String, configuration: SamplingConfiguration, powerapi: PowerMeter, externalPMeter: PowerMeter) {
+class Sampling(outputPath: String, configuration: SamplingConfiguration, topology: Map[Int, Seq[Int]], powerapi: PowerMeter, externalPMeter: PowerMeter) {
 
   private lazy val trash = ProcessLogger(out => {}, err => {})
   private val log = Logger(classOf[Sampling])
@@ -130,7 +130,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
       */
     val allExPMeter = externalPMeter.monitor(All)(MEAN).every(configuration.samplingInterval)
     val allPapi = powerapi.monitor(All)(MEAN).every(configuration.samplingInterval)
-    Thread.sleep(15.seconds.toMillis)
+    Thread.sleep(45.seconds.toMillis)
 
     for (index <- 1 to configuration.nbSamples) {
       if (!configuration.dvfs) {
@@ -144,7 +144,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
         })
       }
 
-      else {
+      /*else {
         // Intel processor are homogeneous, we cannot control the frequencies per core.
         // Set the default governor with the userspace governor. It allows us to control the frequency.
         configuration.topology.values.flatten.foreach {
@@ -187,7 +187,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
             })
           case _ =>
         }
-      }
+      }*/
     }
 
     allPapi.cancel()
@@ -200,8 +200,8 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
     * Sampling method, stress the processor in order to get data
     */
   private def sampling(index: Int, frequency: Long, turbo: Boolean, allPapi: PowerMonitoring, allExPMeter: PowerMonitoring): Unit = {
-    val firstCore = configuration.topology.head
-    val remainingCores = configuration.topology.tail
+    val firstCore = topology.head
+    val remainingCores = topology.tail
 
     /**
       * Special actor system and writers.
@@ -217,7 +217,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
     allExPMeter.to(externalPMeterDisplay)
     allPapi.to(powerapiDisplay, subscribeHWCReport(allPapi.muid, All))
 
-    Thread.sleep(configuration.stepDuration.seconds.toMillis)
+    Thread.sleep(30.seconds.toMillis)
 
     allExPMeter.unto(externalPMeterDisplay)
     allPapi.unto(powerapiDisplay, unsubscribeHWCReport(allPapi.muid, All))
@@ -227,7 +227,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
     /**
       * This loop was built to stress the first core (with/without HTs).
       */
-    for (i <- 0 until configuration.topology.size if i == 0 || turbo) {
+    for (i <- 0 until topology.size if i == 0 || turbo) {
       var previous = List[Int]()
       val indexesToStressTB = remainingCores.slice(0, i).values.flatten.toList
 
@@ -344,7 +344,7 @@ class Sampling(outputPath: String, configuration: SamplingConfiguration, powerap
 
 object Sampling {
 
-  def apply(outputPath: String, configuration: SamplingConfiguration, powerapi: PowerMeter, groundTruth: PowerMeter): Sampling = {
-    new Sampling(outputPath, configuration, powerapi, groundTruth)
+  def apply(outputPath: String, configuration: SamplingConfiguration, topology: Map[Int, Seq[Int]], powerapi: PowerMeter, groundTruth: PowerMeter): Sampling = {
+    new Sampling(outputPath, configuration, topology, powerapi, groundTruth)
   }
 }

@@ -50,14 +50,14 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
   def run(): Unit = {
     val begin = System.currentTimeMillis()
 
-    val maxCoefficient = (configuration.maxFrequency.toDouble * 1e6) / (configuration.baseFrequency * 1e6)
+    /*val maxCoefficient = (configuration.maxFrequency.toDouble * 1e6) / (configuration.baseFrequency * 1e6)
     val frequencies = new File(processingPath).list(DirectoryFileFilter.INSTANCE).map(_.toLong)
     val frequenciesNoTB = frequencies.filter { frequency => frequency.toDouble / (configuration.baseFrequency * 1e6) <= maxCoefficient }
-    val nbSteps = configuration.steps.size * configuration.topology.head._2.size
+    val nbSteps = configuration.steps.size * configuration.topology.head._2.size*/
     val formulae = scala.collection.mutable.Map[Double, Array[Double]]()
 
-    for (frequency <- frequenciesNoTB) {
-      val coefficient = frequency.toDouble / (configuration.baseFrequency * 1e6)
+    for (frequency <- Seq(0)) {
+      val coefficient = 0d
       val parts = new File(s"$processingPath/$frequency").list(new SuffixFileFilter(".csv")).map(_.replace(".csv", "").toLong).sorted
       val x = collection.mutable.ListBuffer[Double]()
       val y = collection.mutable.ListBuffer[Double]()
@@ -82,7 +82,7 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
       * We try to infer the different coefficients by stressing the processor core by core to activate or not the heuristics.
       * Given the fact we cannot get the "true" power consumption for a core, we subtract the estimated one when it's necessary.
       */
-    if (configuration.turbo) {
+    /*if (configuration.turbo) {
       val frequency = (configuration.maxFrequency * 1E6).toLong + 1000
       val parts = new File(s"$processingPath/$frequency").list(new SuffixFileFilter(".csv")).map(_.replace(".csv", "").toLong).sorted
       val coefficients = for (part <- 1 until(parts.size, nbSteps)) yield {
@@ -165,7 +165,7 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
           formulae += coefficient -> compute(Map(s"${configuration.unhaltedCycles.toLowerCase().replace('_', '-').replace(':', '-')}" -> x, s"${configuration.powers.toLowerCase().replace('_', '-').replace(':', '-')}" -> y))
         }
       }
-    }
+    }*/
 
     try {
       FileUtils.deleteDirectory(new File(s"$computingPath"))

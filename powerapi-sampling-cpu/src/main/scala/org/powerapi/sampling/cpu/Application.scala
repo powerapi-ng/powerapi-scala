@@ -76,13 +76,13 @@ object Application extends App {
       case _ => {}
     }
 
-    for ((path, (governor, frequency)) <- backup) {
-      (Seq("echo", s"$governor") #>> new File(s"$path/cpufreq/scaling_governor")).!
-
-      if (governor == "userspace" && frequency.isDefined) {
-        (Seq("echo", s"${frequency.get}") #>> new File(s"$path/cpufreq/scaling_setspeed")).!
-      }
-    }
+//    for ((path, (governor, frequency)) <- backup) {
+//      (Seq("echo", s"$governor") #>> new File(s"$path/cpufreq/scaling_governor")).!
+//
+//      if (governor == "userspace" && frequency.isDefined) {
+//        (Seq("echo", s"${frequency.get}") #>> new File(s"$path/cpufreq/scaling_setspeed")).!
+//      }
+//    }
   }
 
   if (args.isEmpty) {
@@ -145,6 +145,13 @@ object Application extends App {
     likwidHelper.topologyInit()
     likwidHelper.affinityInit()
 
+    val topology = likwidHelper.getCpuTopology().threadPool.foldLeft(Map[Int, Seq[Int]]()) {
+      (acc, hwThread) =>
+        acc + (hwThread.coreId -> acc.getOrElse(hwThread.coreId, Seq()).:+(hwThread.threadId))
+    }
+
+    println(topology)
+
     powerapi = Some(PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper)))
 
     groundTruth = Some({
@@ -159,7 +166,7 @@ object Application extends App {
       }
     })
 
-    Sampling(samplingOption._2, configuration, powerapi.get, groundTruth.get).run()
+    Sampling(samplingOption._2, configuration, topology, powerapi.get, groundTruth.get).run()
 
     likwidHelper.affinityFinalize()
   }
