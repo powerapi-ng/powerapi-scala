@@ -72,7 +72,7 @@ class RAPLSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper:
     target match {
       case All =>
         val data = startCollect()
-        sense(Started, data)
+        sense(data)
       case _ =>
         unsubscribeMonitorTick(muid, target)(eventBus)(self)
         self ! PoisonPill
@@ -91,15 +91,10 @@ class RAPLSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper:
     }).toSeq
   }
 
-  def sense(state: State, data: Map[Int, PowerData]): Actor.Receive = {
+  def sense(data: Map[Int, PowerData]): Actor.Receive = {
     case msg: MonitorTick =>
-      state match {
-        case Started =>
-          val results = stopCollect(data)
-          publishRAPLReport(muid, target, domain, results, msg.tick)(eventBus)
-          context.become(sense(Stopped, Map()) orElse sensorDefault)
-        case Stopped =>
-          context.become(sense(Started, startCollect()) orElse sensorDefault)
-      }
+      val results = stopCollect(data)
+      publishRAPLReport(muid, target, domain, results, msg.tick)(eventBus)
+      context.become(sense(startCollect()) orElse sensorDefault)
   }
 }

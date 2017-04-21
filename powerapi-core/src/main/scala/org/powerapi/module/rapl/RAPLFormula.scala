@@ -53,9 +53,11 @@ class RAPLFormula(eventBus: MessageBus, muid: UUID, target: Target, domain: RAPL
     case msg: RAPLReport =>
       val now = System.nanoTime()
 
-      val power = msg.energies.sum * (1.seconds.toNanos / (now - old).toDouble)
+      for ((energy, socket) <- msg.energies.zipWithIndex) {
+        val power = energy * (1.seconds.toNanos / (now - old).toDouble)
+        publishRawPowerReport(muid, target, power.W, s"${domain.toString()}-S$socket", msg.tick)(eventBus)
+      }
 
-      publishRawPowerReport(muid, target, power.W, domain.toString(), msg.tick)(eventBus)
       context.become(compute(now) orElse formulaDefault)
   }
 }

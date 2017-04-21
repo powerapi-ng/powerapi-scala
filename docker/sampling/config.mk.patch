@@ -1,0 +1,29 @@
+--- a/config.mk
++++ b/config.mk
+@@ -49,14 +49,14 @@ ACCESSDAEMON = $(PREFIX)/sbin/likwid-accessD#NO SPACE
+ INSTALLED_ACCESSDAEMON = $(INSTALLED_PREFIX)/sbin/likwid-accessD#NO SPACE
+
+ # Build the accessDaemon. Have a look in the WIKI for details.
+-BUILDDAEMON = true#NO SPACE
++BUILDDAEMON = false#NO SPACE
+ #Build the setFrequencies tool
+-BUILDFREQ = true#NO SPACE
++BUILDFREQ = false#NO SPACE
+
+ # Set the default mode for MSR access.
+ # This can usually be overriden on the commandline.
+ # Valid values are: direct, accessdaemon
+-ACCESSMODE = accessdaemon#NO SPACE
++ACCESSMODE = direct#NO SPACE
+
+ # Change to true to a build shared library instead of a static one
+ SHARED_LIBRARY = true#NO SPACE
+@@ -73,7 +73,7 @@ USE_HWLOC = true#NO SPACE
+
+ # Use Linux perf_event interface for measurements. Does not support thermal or
+ # energy (RAPL) readings.
+-USE_PERF_EVENT = false#NO SPACE
++USE_PERF_EVENT = true#NO SPACE
+
+ # Build LIKWID with debug flags
+ DEBUG = false#NO SPACE

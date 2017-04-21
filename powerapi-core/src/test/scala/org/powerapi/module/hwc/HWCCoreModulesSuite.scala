@@ -23,6 +23,7 @@
 package org.powerapi.module.hwc
 
 import akka.util.Timeout
+import com.twitter.zk.ZkClient
 import org.powerapi.UnitTest
 import org.powerapi.core.OSHelper
 import org.scalamock.scalatest.MockFactory
@@ -41,8 +42,9 @@ class HWCCoreModulesSuite extends UnitTest with MockFactory {
     val osHelper = mock[OSHelper]
     val likwidHelper = mock[LikwidHelper]
     val cHelper = mock[CHelper]
+    val zkClient = mock[ZkClient]
 
-    val module = new HWCCoreModule(osHelper, likwidHelper, cHelper, Seq("e1"), Map(1d -> List(1d, 2d)), 10.milliseconds)
+    val module = new HWCCoreModule(osHelper, likwidHelper, cHelper, Seq("e1"), zkClient)
 
     module.sensor.get._1 should equal(classOf[HWCCoreSensor])
     module.sensor.get._2.size should equal(4)
@@ -53,32 +55,18 @@ class HWCCoreModulesSuite extends UnitTest with MockFactory {
 
     module.formula.get._1 should equal(classOf[HWCCoreFormula])
     module.formula.get._2.size should equal(2)
-    module.formula.get._2(0) should equal(Map(1d -> List(1d, 2d)))
-    module.formula.get._2(1) should equal(10.milliseconds)
+    module.formula.get._2(0) should equal(likwidHelper)
+    module.formula.get._2(1) should equal(zkClient)
   }
 
   "The HWCCoreModule object" should "build correctly the companion class" in {
     val osHelper = mock[OSHelper]
     val likwidHelper = mock[LikwidHelper]
     val cHelper = mock[CHelper]
+    val zkClient = mock[ZkClient]
 
-    val module1 = HWCCoreModule(osHelper = osHelper, likwidHelper = likwidHelper, cHelper = cHelper)
-    val module2 = HWCCoreModule(Some("hwc"), osHelper = osHelper, likwidHelper = likwidHelper, cHelper = cHelper)
-
-    val formulae = Map[Double, List[Double]](
-      12d -> List(85.7545270697, 1.10006565433e-08, -2.0341944068e-18),
-      13d -> List(87.0324917754, 9.03486530986e-09, -1.31575869787e-18),
-      14d -> List(86.3094440375, 1.04895773556e-08, -1.61982669617e-18),
-      15d -> List(88.2194900717, 8.71468661777e-09, -1.12354133527e-18),
-      16d -> List(85.8010062547, 1.05239105674e-08, -1.34813984791e-18),
-      17d -> List(85.5127064474, 1.05732955159e-08, -1.28040830962e-18),
-      18d -> List(85.5593567382, 1.07921513277e-08, -1.22419197787e-18),
-      19d -> List(87.2004521609, 9.99728883739e-09, -9.9514346029e-19),
-      20d -> List(87.7358230435, 1.00553994023e-08, -1.00002335486e-18),
-      21d -> List(94.4635683042, 4.83140424765e-09, 4.25218895447e-20),
-      22d -> List(104.356371072, 3.75414807806e-09, 6.73289818651e-20)
-    )
-
+    val module1 = HWCCoreModule(osHelper = osHelper, likwidHelper = likwidHelper, cHelper = cHelper, zkClient = zkClient)
+    val module2 = HWCCoreModule(Some("hwc"), osHelper = osHelper, likwidHelper = likwidHelper, cHelper = cHelper, zkClient)
 
     module1.sensor.get._1 should equal(classOf[HWCCoreSensor])
     module1.sensor.get._2.size should equal(4)
@@ -89,9 +77,8 @@ class HWCCoreModulesSuite extends UnitTest with MockFactory {
 
     module1.formula.get._1 should equal(classOf[HWCCoreFormula])
     module1.formula.get._2.size should equal(2)
-    module1.formula.get._2(0) should equal(formulae)
-    module1.formula.get._2(1) should equal(125.milliseconds)
-
+    module1.formula.get._2(0) should equal(likwidHelper)
+    module1.formula.get._2(1) should equal(zkClient)
 
     module2.sensor.get._1 should equal(classOf[HWCCoreSensor])
     module1.sensor.get._2.size should equal(4)
@@ -103,8 +90,8 @@ class HWCCoreModulesSuite extends UnitTest with MockFactory {
 
     module2.formula.get._1 should equal(classOf[HWCCoreFormula])
     module2.formula.get._2.size should equal(2)
-    module2.formula.get._2(0) should equal(Map[Double, List[Double]](1d -> List(10.0, 1.0e-08, -4.0e-18)))
-    module2.formula.get._2(1) should equal(10.milliseconds)
+    module2.formula.get._2(0) should equal(likwidHelper)
+    module2.formula.get._2(1) should equal(zkClient)
   }
 
   "The HWCCoreSensorModule object" should "build correctly the companion class" in {

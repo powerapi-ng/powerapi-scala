@@ -22,17 +22,16 @@
  */
 package org.powerapi.sampling.cpu
 
-import java.io.File
-
-import org.apache.commons.io.filefilter.PrefixFileFilter
+import com.twitter.util.{Await, Duration, JavaTimer, Return}
+import com.twitter.zk.{ZNode, ZkClient}
+import likwid.LikwidLibrary
+import org.apache.zookeeper.ZooDefs.Ids.OPEN_ACL_UNSAFE
 import org.powerapi.PowerMeter
 import org.powerapi.core.LinuxHelper
-import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
-import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.hwc.{CHelper, HWCCoreSensorModule, LikwidHelper}
 
 import scala.sys
-import scala.sys.process.stringSeqToProcess
+import scala.collection.JavaConverters._
 import org.powerapi.module.rapl.RaplCpuModule
 
 /**
@@ -44,9 +43,9 @@ import org.powerapi.module.rapl.RaplCpuModule
 object Application extends App {
 
   // core -> (governor, frequency)
-  val backup = scala.collection.mutable.HashMap[String, (String, Option[Long])]()
+  /*val backup = scala.collection.mutable.HashMap[String, (String, Option[Long])]()
 
-  /*if (new File("/sys/devices/system/cpu/").exists()) {
+  if (new File("/sys/devices/system/cpu/").exists()) {
     for (file <- new File("/sys/devices/system/cpu/").list(new PrefixFileFilter("cpu"))) {
       val governor = Seq("cat", s"/sys/devices/system/cpu/$file/cpufreq/scaling_governor").lineStream.toArray.apply(0)
       val frequency = Seq("cat", s"/sys/devices/system/cpu/$file/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
@@ -90,14 +89,14 @@ object Application extends App {
     sys.exit(1)
   }
 
-  val options = cli(Map(), args.toList)
-  val samplingOption = options('sampling).asInstanceOf[(Boolean, String)]
-  val processingOption = options('processing).asInstanceOf[(Boolean, String)]
-  val computingOption = options('computing).asInstanceOf[(Boolean, String)]
-  val raplOption = options('rapl).asInstanceOf[Boolean]
-  val powerspyOption = options('powerspy).asInstanceOf[Boolean]
-  val kwapiOption = options('kwapi).asInstanceOf[Boolean]
-  val configuration = new PolynomCyclesConfiguration
+//  val options = cli(Map(), args.toList)
+//  val samplingOption = options('sampling).asInstanceOf[(Boolean, String)]
+//  val processingOption = options('processing).asInstanceOf[(Boolean, String)]
+//  val computingOption = options('computing).asInstanceOf[(Boolean, String)]
+//  val raplOption = options('rapl).asInstanceOf[Boolean]
+//  val powerspyOption = options('powerspy).asInstanceOf[Boolean]
+//  val kwapiOption = options('kwapi).asInstanceOf[Boolean]
+//  val configuration = new PolynomCyclesConfiguration
 
   def printHelp(): Unit = {
     val str =
@@ -107,77 +106,131 @@ object Application extends App {
         |Infers the CPU power model. You have to run this program in sudo mode.
         |Do not forget to configure correctly the modules (see the documentation).
         |
-        |usage: sudo ./bin/sampling --all [sampling-path] [processing-path] [computing-path] --rapl|--powerspy|--kwapi
-        |                         ||--sampling [sampling-path] --rapl|--powerspy|--kwapi
-        |                         ||--processing [sampling-path] [processing-path]
-        |                         ||--computing [processing-path] [computing-path]
+        |usage: sudo ./bin/sampling --zkUrl [url] --zkTimeout [s]
       """.stripMargin
 
     println(str)
   }
 
+//  def cli(options: Map[Symbol, Any], args: List[String]): Map[Symbol, Any] = args match {
+//    case Nil =>
+//      options
+//    case "--all" :: samplingPath :: processingPath :: computingPath :: groundTruth =>
+//      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((true, computingPath))), groundTruth)
+//    case "--sampling" :: samplingPath :: groundTruth =>
+//      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((false, "")), 'computing -> ((false, ""))), groundTruth)
+//    case "--processing" :: samplingPath :: processingPath :: groundTruth =>
+//      cli(options +('sampling -> ((false, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((false, ""))), Nil)
+//    case "--computing" :: processingPath :: computingPath :: groundTruth =>
+//      cli(options +('sampling -> ((false, "")), 'processing -> ((false, processingPath)), 'computing -> ((true, computingPath))), Nil)
+//    case "--rapl" :: Nil if options.nonEmpty =>
+//      cli(options +('rapl -> true, 'powerspy -> false, 'kwapi -> false), Nil)
+//    case "--powerspy" :: Nil if options.nonEmpty =>
+//      cli(options +('rapl -> false, 'powerspy -> true, 'kwapi -> false), Nil)
+//    case "--kwapi" :: Nil if options.nonEmpty =>
+//      cli(options +('rapl -> false, 'powerspy -> false, 'kwapi -> true), Nil)
+//    case option :: tail =>
+//      println(s"unknown cli option $option"); sys.exit(1)
+//  }
+
   def cli(options: Map[Symbol, Any], args: List[String]): Map[Symbol, Any] = args match {
     case Nil =>
       options
-    case "--all" :: samplingPath :: processingPath :: computingPath :: groundTruth =>
-      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((true, computingPath))), groundTruth)
-    case "--sampling" :: samplingPath :: groundTruth =>
-      cli(options +('sampling -> ((true, samplingPath)), 'processing -> ((false, "")), 'computing -> ((false, ""))), groundTruth)
-    case "--processing" :: samplingPath :: processingPath :: groundTruth =>
-      cli(options +('sampling -> ((false, samplingPath)), 'processing -> ((true, processingPath)), 'computing -> ((false, ""))), Nil)
-    case "--computing" :: processingPath :: computingPath :: groundTruth =>
-      cli(options +('sampling -> ((false, "")), 'processing -> ((false, processingPath)), 'computing -> ((true, computingPath))), Nil)
-    case "--rapl" :: Nil if options.nonEmpty =>
-      cli(options +('rapl -> true, 'powerspy -> false, 'kwapi -> false), Nil)
-    case "--powerspy" :: Nil if options.nonEmpty =>
-      cli(options +('rapl -> false, 'powerspy -> true, 'kwapi -> false), Nil)
-    case "--kwapi" :: Nil if options.nonEmpty =>
-      cli(options +('rapl -> false, 'powerspy -> false, 'kwapi -> true), Nil)
+    case "--zkUrl" :: zkUrl :: tail =>
+      cli(options +('zkUrl -> zkUrl), tail)
+    case "--zkTimeout" :: zkTimeout :: tail =>
+      cli(options +('zkTimeout -> zkTimeout), tail)
     case option :: tail =>
       println(s"unknown cli option $option"); sys.exit(1)
   }
 
-  if (samplingOption._1) {
-    val osHelper = new LinuxHelper()
-    val likwidHelper = new LikwidHelper()
-    val cHelper = new CHelper()
+  val options = cli(Map(), args.toList)
+  val zkUrl = options('zkUrl).asInstanceOf[String]
+  val zkTimeout = options('zkTimeout).asInstanceOf[String].toInt
+  val configuration = new PolynomCyclesConfiguration
 
-    likwidHelper.topologyInit()
-    likwidHelper.affinityInit()
+  val osHelper = new LinuxHelper()
+  val likwidHelper = new LikwidHelper()
+  likwidHelper.useDirectMode()
+  val cHelper = new CHelper()
 
-    val topology = likwidHelper.getCpuTopology().threadPool.foldLeft(Map[Int, Seq[Int]]()) {
-      (acc, hwThread) =>
-        acc + (hwThread.coreId -> acc.getOrElse(hwThread.coreId, Seq()).:+(hwThread.threadId))
-    }
+  likwidHelper.topologyInit()
+  likwidHelper.affinityInit()
 
-    println(topology)
-
-    powerapi = Some(PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper)))
-
-    groundTruth = Some({
-      if (raplOption) {
-        PowerMeter.loadModule(RaplCpuModule(likwidHelper))
-      }
-      else if (powerspyOption) {
-        PowerMeter.loadModule(PowerSpyModule(None))
-      }
-      else {
-        PowerMeter.loadModule(G5kOmegaWattModule(None))
-      }
-    })
-
-    Sampling(samplingOption._2, configuration, topology, powerapi.get, groundTruth.get).run()
-
-    likwidHelper.affinityFinalize()
+  implicit val timer = new JavaTimer(true)
+  val zkClient = ZkClient(zkUrl, Duration.fromSeconds(zkTimeout)).withAcl(OPEN_ACL_UNSAFE.asScala)
+  val ModelRegex = ".+\\s+(.+)(?:\\s+v?\\d?)\\s+@.+".r
+  val cpuModel = likwidHelper.getCpuInfo().osname match {
+    case ModelRegex(model) => model.toLowerCase
   }
 
-  if (processingOption._1) {
-    Processing(samplingOption._2, processingOption._2, configuration).run()
+  val setup = zkClient(s"/$cpuModel").exists() respond {
+    case Return(n) =>
+      zkClient(s"/$cpuModel").delete(n.stat.getVersion)
+    case _ =>
   }
 
-  if (computingOption._1) {
-    PolynomialCyclesRegression(processingOption._2, computingOption._2, configuration).run()
+  Await.ready(setup, Duration.fromSeconds(zkTimeout))
+  Await.result(zkClient(s"/$cpuModel").create(), Duration.fromSeconds(zkTimeout))
+
+  val topology = likwidHelper.getCpuTopology().threadPool.foldLeft(Map[Int, Seq[Int]]()) {
+    (acc, hwThread) =>
+      acc + (hwThread.coreId -> acc.getOrElse(hwThread.coreId, Seq()).:+(hwThread.apicId))
   }
+
+  powerapi = Some(PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper)))
+  groundTruth = Some(PowerMeter.loadModule(RaplCpuModule(likwidHelper)))
+
+  Sampling("sampling", configuration, topology, powerapi.get, groundTruth.get).run()
+
+  likwidHelper.topologyFinalize()
+  likwidHelper.affinityFinalize()
+
+  Processing("sampling", "processing", configuration).run()
+
+  PolynomialCyclesRegression("processing", zkClient(s"/$cpuModel"), zkTimeout, configuration).run()
+
+  zkClient.release()
+
+//  if (samplingOption._1) {
+//    val osHelper = new LinuxHelper()
+//    val likwidHelper = new LikwidHelper()
+//    val cHelper = new CHelper()
+//
+//    likwidHelper.topologyInit()
+//    likwidHelper.affinityInit()
+//
+//    val topology = likwidHelper.getCpuTopology().threadPool.foldLeft(Map[Int, Seq[Int]]()) {
+//      (acc, hwThread) =>
+//        acc + (hwThread.coreId -> acc.getOrElse(hwThread.coreId, Seq()).:+(hwThread.apicId))
+//    }
+//
+//    powerapi = Some(PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper)))
+//
+//    groundTruth = Some({
+//      if (raplOption) {
+//        PowerMeter.loadModule(RaplCpuModule(likwidHelper))
+//      }
+//      else if (powerspyOption) {
+//        PowerMeter.loadModule(PowerSpyModule(None))
+//      }
+//      else {
+//        PowerMeter.loadModule(G5kOmegaWattModule(None))
+//      }
+//    })
+//
+//    Sampling(samplingOption._2, configuration, topology, powerapi.get, groundTruth.get).run()
+//
+//    likwidHelper.affinityFinalize()
+//  }
+//
+//  if (processingOption._1) {
+//    Processing(samplingOption._2, processingOption._2, configuration).run()
+//  }
+//
+//  if (computingOption._1) {
+//    PolynomialCyclesRegression(processingOption._2, computingOption._2, configuration).run()
+//  }
 
   shutdownHookThread.start()
   shutdownHookThread.join()

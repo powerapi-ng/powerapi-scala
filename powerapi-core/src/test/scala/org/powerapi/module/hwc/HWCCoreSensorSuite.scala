@@ -82,6 +82,7 @@ class HWCCoreSensorSuite extends UnitTest with MockFactory {
     likwidHelper.perfmonGetLastResult _ expects (10, 1, 0) returning 1000
     likwidHelper.perfmonGetLastResult _ expects (10, 1, 1) returning 2000
     likwidHelper.perfmonStopCounters _ expects() returning 1
+    likwidHelper.perfmonStartCounters _ expects() returning 1
     likwidHelper.perfmonFinalize _ expects()
 
     EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[HWCCoreSensor].getName}").intercept({
@@ -141,6 +142,7 @@ class HWCCoreSensorSuite extends UnitTest with MockFactory {
     likwidHelper.perfmonGetLastResult _ expects (10, 1, 0) returning 1000
     likwidHelper.perfmonGetLastResult _ expects (10, 1, 1) returning 2000
     likwidHelper.perfmonStopCounters _ expects() returning 1
+    likwidHelper.perfmonStartCounters _ expects() returning 1
     likwidHelper.perfmonFinalize _ expects()
 
     EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[HWCCoreSensor].getName}").intercept({

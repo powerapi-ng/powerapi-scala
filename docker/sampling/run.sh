@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-cd powerapi-sampling && ./bin/sampling --all results/sampling results/processing results/computing
+sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
+modprobe msr
 
-echo ""
-echo "Here is your CPU power model to use with PowerAPI"
-echo ""
-cat results/computing/libpfm-formula.conf
-echo ""
+cd powerapi-sampling-cpu && ./bin/sampling-cpu "$@" > /dev/null
+
+exit 0

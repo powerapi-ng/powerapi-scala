@@ -25,6 +25,8 @@ package org.powerapi.module.hwc
 import java.util.UUID
 
 import akka.actor.Actor
+import com.twitter.util.Return
+import com.twitter.zk.{ZNode, ZkClient}
 import org.powerapi.core.MessageBus
 import org.powerapi.core.power._
 import org.powerapi.core.target.Target
@@ -40,28 +42,47 @@ import scala.concurrent.duration.FiniteDuration
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, formulae: Map[Double, List[Double]],
-                     samplingInterval: FiniteDuration) extends Formula(eventBus, muid, target) {
+class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper, zkClient: ZkClient) extends Formula(eventBus, muid, target) {
 
   def init(): Unit = subscribeHWCReport(muid, target)(eventBus)(self)
 
   def terminate(): Unit = unsubscribeHWCReport(muid, target)(eventBus)(self)
 
-  def handler: Actor.Receive = compute(System.nanoTime())
+  def handler: Actor.Receive = {
+    val ModelRegex = ".+\\s+(.+)(?:\\s+v?\\d?)\\s+@.+".r
+    val cpuModel = likwidHelper.getCpuInfo().osname match {
+      case ModelRegex(model) => model.toLowerCase
+    }
+    val zkNodeModel = zkClient(s"/$cpuModel")
+    val monitoring = zkNodeModel.getData.monitor()
 
-  def compute(old: Long): Actor.Receive = {
+    monitoring.foreach {
+      case Return(node) =>
+        node.getData() onSuccess {
+          case data: ZNode.Data =>
+            context.become(compute(new String(data.bytes).split(",").map(_.toDouble)) orElse formulaDefault)
+        }
+      case _ =>
+
+    }
+
+    compute(Seq())
+  }
+
+  def compute(formula: Seq[Double]): Actor.Receive = {
     case msg: HWCReport =>
-      val now = System.nanoTime()
+      //val now = System.nanoTime()
 
       val powers = for ((core, hwcs) <- msg.values.groupBy(_.hwThread.coreId)) yield {
         val cycles = hwcs.filter(_.event.startsWith("CPU_CLK_UNHALTED_CORE"))
-        val refs = hwcs.filter(_.event.startsWith("CPU_CLK_UNHALTED_REF"))
         val cyclesVal = cycles.map(_.value).sum
-        val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
-        val refsVal = refs.map(_.value).sum
-        val scaledRefs = if (now - old <= 0) 0l else math.round(refsVal * (samplingInterval.toNanos / (now - old).toDouble))
+        val scaledCycles = cyclesVal
+        //val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
+        //val refs = hwcs.filter(_.event.startsWith("CPU_CLK_UNHALTED_REF"))
+        //val refsVal = refs.map(_.value).sum
+        //val scaledRefs = if (now - old <= 0) 0l else math.round(refsVal * (samplingInterval.toNanos / (now - old).toDouble))
 
-        var coefficient: Double = math.round(scaledCycles / scaledRefs.toDouble)
+        /*var coefficient: Double = math.round(scaledCycles / scaledRefs.toDouble)
 
         if (coefficient.isNaN || coefficient < formulae.keys.min) coefficient = formulae.keys.min
 
@@ -70,10 +91,10 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, formulae:
         if (!formulae.contains(coefficient)) {
           val coefficientsBefore = formulae.keys.filter(_ < coefficient)
           coefficient = coefficientsBefore.max
-        }
+        }*/
 
-        val formula = formulae(coefficient).updated(0, 0d)
-        formula.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(scaledCycles, tuple._2)))
+        val formulaWoIdle = formula.updated(0, 0d)
+        formulaWoIdle.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(scaledCycles, tuple._2)))
       }
 
       val accPower = {
@@ -88,6 +109,5 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, formulae:
       }
 
       publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
-      context.become(compute(now) orElse formulaDefault)
   }
 }

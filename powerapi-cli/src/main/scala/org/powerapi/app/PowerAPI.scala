@@ -24,12 +24,13 @@ package org.powerapi.app
 
 import java.lang.management.ManagementFactory
 
+import org.powerapi.core.LinuxHelper
+
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.sys
 import scala.sys.process.stringSeqToProcess
 import scala.util.matching.Regex
-
 import org.powerapi.core.power._
 import org.powerapi.core.target._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
@@ -37,9 +38,9 @@ import org.powerapi.module.cpu.simple.{ProcFSCpuSimpleModule, SigarCpuSimpleModu
 import org.powerapi.module.disk.simple.DiskSimpleModule
 import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
-import org.powerapi.module.extpowermeter.rapl.RAPLModule
-import org.powerapi.module.libpfm.{LibpfmCoreModule, LibpfmCoreProcessModule, LibpfmHelper, LibpfmModule, LibpfmProcessModule}
-import org.powerapi.reporter.{InfluxDisplay, ConsoleDisplay, FileDisplay, JFreeChartDisplay}
+import org.powerapi.module.hwc.{CHelper, HWCCoreModule, LikwidHelper}
+import org.powerapi.module.rapl.RaplCpuModule
+import org.powerapi.reporter.{ConsoleDisplay, FileDisplay, InfluxDisplay, JFreeChartDisplay}
 import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
 
 /**
@@ -49,7 +50,7 @@ import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
   * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
   */
 object PowerAPI extends App {
-  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple))*""".r
+  val modulesR = """(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|hwc|powerspy|g5k-omegawatt|rapl|disk-simple)(,(procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|hwc|powerspy|g5k-omegawatt|rapl|disk-simple))*""".r
   val aggR = """max|min|mean|median|sum""".r
   val durationR = """\d+""".r
   val pidsR = """(\d+)(,(\d+))*""".r
@@ -91,7 +92,7 @@ object PowerAPI extends App {
         |Different settings can be used per software-defined power meter by using the prefix option.
         |Please, refer to the documentation inside the GitHub wiki for further details.
         |
-        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple (1, *) *--prefix [name]*
+        |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|hwc|powerspy|g5k-omegawatt|rapl|disk-simple (1, *) *--prefix [name]*
         |                          monitor (1, *)
         |                            --frequency $MILLISECONDS
         |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
@@ -195,12 +196,11 @@ object PowerAPI extends App {
     }
     val (configuration, duration) = cli(List(), "3600", args.toList)
 
-    var libpfmHelper: Option[LibpfmHelper] = None
+   /* if (configuration.count(powerMeterConf => powerMeterConf('modules).toString.contains("hwc")) != 0) {
 
-    if (configuration.count(powerMeterConf => powerMeterConf('modules).toString.contains("libpfm")) != 0) {
       libpfmHelper = Some(new LibpfmHelper)
       libpfmHelper.get.init()
-    }
+    }*/
 
     for (powerMeterConf <- configuration) {
       val modules = (for (module <- powerMeterConf('modules).toString.split(",")) yield {
@@ -211,20 +211,29 @@ object PowerAPI extends App {
             SigarCpuSimpleModule()
           case "cpu-dvfs" =>
             CpuDvfsModule()
-          case "libpfm" =>
-            LibpfmModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
-          case "libpfm-process" =>
-            LibpfmProcessModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
-          case "libpfm-core" =>
-            LibpfmCoreModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
-          case "libpfm-core-process" =>
-            LibpfmCoreProcessModule(powerMeterConf('prefix).asInstanceOf[Option[String]], libpfmHelper.get)
+          case "hwc" =>
+            val osHelper = new LinuxHelper()
+            val likwidHelper = new LikwidHelper()
+            likwidHelper.useDirectMode()
+            val cHelper = new CHelper()
+
+            likwidHelper.topologyInit()
+            likwidHelper.affinityInit()
+
+            //TODO
+            //HWCCoreModule(powerMeterConf('prefix).asInstanceOf[Option[String]], osHelper, likwidHelper, cHelper)
           case "powerspy" =>
             PowerSpyModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
           case "g5k-omegawatt" =>
             G5kOmegaWattModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
           case "rapl" =>
-            RAPLModule()
+            val likwidHelper = new LikwidHelper()
+            likwidHelper.useDirectMode()
+
+            likwidHelper.topologyInit()
+            likwidHelper.affinityInit()
+
+            RaplCpuModule(likwidHelper)
           case "disk-simple" =>
             DiskSimpleModule(powerMeterConf('prefix).asInstanceOf[Option[String]])
         }
@@ -253,9 +262,10 @@ object PowerAPI extends App {
 
     Thread.sleep(duration.toInt.seconds.toMillis)
 
-    libpfmHelper match {
-      case Some(helper) => helper.deinit()
-      case _ =>
+    if (configuration.count(powerMeterConf => powerMeterConf('modules).toString.contains("hwc") || powerMeterConf('modules).toString.contains("rapl")) != 0) {
+      val likwidHelper = new LikwidHelper()
+      likwidHelper.topologyFinalize()
+      likwidHelper.affinityFinalize()
     }
   }
 

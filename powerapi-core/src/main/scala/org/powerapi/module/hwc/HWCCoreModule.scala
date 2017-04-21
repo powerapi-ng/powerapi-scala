@@ -22,24 +22,24 @@
  */
 package org.powerapi.module.hwc
 
+import com.twitter.zk.ZkClient
 import org.powerapi.PowerModule
 import org.powerapi.core.{LinuxHelper, OSHelper}
 
 import scala.concurrent.duration.FiniteDuration
 
 class HWCCoreModule(osHelper: OSHelper, likwidHelper: LikwidHelper, cHelper: CHelper, events: Seq[String],
-                    formulae: Map[Double, List[Double]], samplingInterval: FiniteDuration) extends PowerModule {
+                    zkClient: ZkClient) extends PowerModule {
 
   val sensor = Some((classOf[HWCCoreSensor], Seq[Any](osHelper, likwidHelper, cHelper, events)))
-  val formula = Some((classOf[HWCCoreFormula], Seq[Any](formulae, samplingInterval)))
+  val formula = Some((classOf[HWCCoreFormula], Seq[Any](likwidHelper, zkClient)))
 }
 
 object HWCCoreModule {
-  def apply(prefixConfig: Option[String] = None, osHelper: OSHelper, likwidHelper: LikwidHelper, cHelper: CHelper): HWCCoreModule = {
+  def apply(prefixConfig: Option[String] = None, osHelper: OSHelper, likwidHelper: LikwidHelper, cHelper: CHelper, zkClient: ZkClient): HWCCoreModule = {
     val sensorConfig = new HWCCoreSensorConfiguration(prefixConfig)
-    val formulaConfig = new HWCCoreFormulaConfiguration(prefixConfig)
 
-    new HWCCoreModule(osHelper, likwidHelper, cHelper, sensorConfig.events, formulaConfig.formulae, formulaConfig.samplingInterval)
+    new HWCCoreModule(osHelper, likwidHelper, cHelper, sensorConfig.events, zkClient)
   }
 }
 

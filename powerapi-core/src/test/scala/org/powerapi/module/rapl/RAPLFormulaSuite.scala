@@ -79,12 +79,20 @@ class RAPLFormulaSuite extends UnitTest with MockFactory {
     Thread.sleep(1000)
 
     publishRAPLReport(muid, target, RAPLDomain.DRAM, values, tick1)(eventBus)
-    val rawPowerReport = expectMsgClass(classOf[RawPowerReport])
-    rawPowerReport.muid should equal(muid)
-    rawPowerReport.target should equal(target)
-    rawPowerReport.power should (be > 0.W and be <= values.sum.W)
-    rawPowerReport.device should equal("ram")
-    rawPowerReport.tick should equal(tick1)
+    val reports = receiveN(2).asInstanceOf[Seq[RawPowerReport]]
+    reports.size should equal(2)
+    val reportS0 = reports.find(_.device == "rapl-dram-S0").get
+    val reportS1 = reports.find(_.device == "rapl-dram-S1").get
+    reportS0.muid should equal(muid)
+    reportS0.target should equal(target)
+    reportS0.power should (be > 0.W and be <= 80.40.W)
+    reportS0.device should equal("rapl-dram-S0")
+    reportS0.tick should equal(tick1)
+    reportS1.muid should equal(muid)
+    reportS1.target should equal(target)
+    reportS1.power should (be > 0.W and be <= 20.10.W)
+    reportS1.device should equal("rapl-dram-S1")
+    reportS1.tick should equal(tick1)
 
     EventFilter.info(occurrences = 1, start = s"formula is stopped, class: ${classOf[RAPLFormula].getName}").intercept({
       stopFormula(muid)(eventBus)

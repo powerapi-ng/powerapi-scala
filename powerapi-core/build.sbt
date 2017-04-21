@@ -22,8 +22,14 @@ libraryDependencies ++= Seq(
   "net.java.dev.jna" % "jna" % "4.4.0",
   "com.nativelibs4java" % "jnaerator-runtime" % "0.12",
   "io.spray" %% "spray-json" % "1.3.2",
-  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.5.2",
-  "joda-time" % "joda-time" % "2.9.6"
+  "joda-time" % "joda-time" % "2.9.6",
+  "com.twitter" %% "util-zk" % "6.42.0"
+    exclude("io.netty", "netty")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("log4j", "log4j"),
+  // BUG WITH NETTY, INFLUX SCALA API AND UTIL-ZK...!
+  "io.netty" % "netty-all" % "4.1.3.Final",
+  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.5.2"
 )
 
 // Tests

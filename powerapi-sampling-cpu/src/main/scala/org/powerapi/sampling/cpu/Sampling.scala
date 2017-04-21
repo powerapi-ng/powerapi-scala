@@ -64,7 +64,7 @@ class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
   }
 }
 
-class CountersDisplay(basepath: String, events: Set[String]) extends Actor with ActorLogging {
+class CountersDisplay(basepath: String, events: Seq[String]) extends Actor with ActorLogging {
   var outputs = (for (event <- events) yield {
     event -> new PrintWriter(new FileOutputStream(new File(s"$basepath${event.toLowerCase().replace('_', '-').replace(':', '-')}.dat"), true))
   }).toMap

@@ -111,7 +111,7 @@ class HWCCoreSensor(eventBus: MessageBus, muid: UUID, target: Target,
         sensorDefault
       case _ =>
         startCollect()
-        sense(Started)
+        sense
     }
   }
 
@@ -130,16 +130,10 @@ class HWCCoreSensor(eventBus: MessageBus, muid: UUID, target: Target,
     }
   }
 
-  def sense(state: State): Actor.Receive = {
+  def sense: Actor.Receive = {
     case msg: MonitorTick =>
-      state match {
-        case Started =>
-          val results = stopCollect()
-          publishHWCReport(muid, target, results, msg.tick)(eventBus)
-          context.become(sense(Stopped) orElse sensorDefault)
-        case Stopped =>
-          startCollect()
-          context.become(sense(Started) orElse sensorDefault)
-      }
+      val results = stopCollect()
+      publishHWCReport(muid, target, results, msg.tick)(eventBus)
+      startCollect()
   }
 }

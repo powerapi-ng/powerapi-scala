@@ -28,19 +28,23 @@ import akka.actor.Props
 import akka.pattern.gracefulStop
 import akka.testkit.{EventFilter, TestActorRef}
 import akka.util.Timeout
+import com.twitter.util.{Await, Duration, JavaTimer}
+import com.twitter.zk.ZkClient
+import org.apache.zookeeper.ZooDefs.Ids.OPEN_ACL_UNSAFE
 import org.powerapi.UnitTest
 import org.powerapi.core.power._
-import org.powerapi.core.target.{Target, intToProcess}
+import org.powerapi.core.target.{All, Target, intToProcess}
 import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.module.FormulaChannel.{startFormula, stopFormula}
 import org.powerapi.module.Formulas
 import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
 import org.powerapi.module.hwc.HWCChannel.{HWC, publishHWCReport}
+import org.scalamock.scalatest.MockFactory
 
-import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.collection.JavaConverters._
 
-class HWCCoreFormulaSuite extends UnitTest {
+class HWCCoreFormulaSuite extends UnitTest with MockFactory {
 
   val timeout = Timeout(1.seconds)
 
@@ -52,7 +56,7 @@ class HWCCoreFormulaSuite extends UnitTest {
     val eventBus = new MessageBus
   }
 
-  trait Formulae {
+  /*trait Formulae {
     var formulae = Map[Double, List[Double]]()
     formulae += 12d -> List(85.7545270697, 1.10006565433e-08, -2.0341944068e-18)
     formulae += 13d -> List(87.0324917754, 9.03486530986e-09, -1.31575869787e-18)
@@ -65,11 +69,23 @@ class HWCCoreFormulaSuite extends UnitTest {
     formulae += 20d -> List(87.7358230435, 1.00553994023e-08, -1.00002335486e-18)
     formulae += 21d -> List(94.4635683042, 4.83140424765e-09, 4.25218895447e-20)
     formulae += 22d -> List(104.356371072, 3.75414807806e-09, 6.73289818651e-20)
-  }
+  }*/
 
-  "A HWCCoreFormula" should "process a SensorReport and then publish a RawPowerReport" in new Bus with Formulae {
+  "A HWCCoreFormula" should "process a SensorReport and then publish a RawPowerReport" in new Bus {
     val muid = UUID.randomUUID()
-    val target: Target = 1
+    val target: Target = All
+    var formula = Seq(87.7358230435, 2.00553994023e-09, -1.00002335486e-18)
+    implicit val timer = new JavaTimer(true)
+
+    val likwidHelper = mock[LikwidHelper]
+    likwidHelper.getCpuInfo _ expects() returning CpuInfo(0, 0, 0, 0, 0, "Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz", "", "", "", 0, 0, 0, 0, 0, 0, 0)
+
+    var version = 0
+
+    val zk = ZkClient("localhost:2181", Duration.fromSeconds(10)).withAcl(OPEN_ACL_UNSAFE.asScala)
+    val zNode = Await.result(zk("/e5-2630").create(), Duration.fromSeconds(10))
+    Await.result(zNode.setData(new String(formula.mkString(",")).getBytes, version), Duration.fromSeconds(10))
+    version += 1
 
     val tick1 = new Tick {
       val topic = "test"
@@ -83,13 +99,24 @@ class HWCCoreFormulaSuite extends UnitTest {
 
     val formulas = TestActorRef(Props(classOf[Formulas], eventBus), "formulas")
     EventFilter.info(occurrences = 1, start = s"formula is started, class: ${classOf[HWCCoreFormula].getName}").intercept({
-      startFormula(muid, target, classOf[HWCCoreFormula], Seq(eventBus, muid, target, formulae, 250.millis))(eventBus)
+      startFormula(muid, target, classOf[HWCCoreFormula], Seq(eventBus, muid, target, likwidHelper, zk))(eventBus)
     })
     subscribeRawPowerReport(muid)(eventBus)(testActor)
 
-    val values = Seq[HWC](
-      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 650000000d),
-      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 651000000d),
+//    val values = Seq[HWC](
+//      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 650000000d),
+//      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 651000000d),
+//      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC2", 34475589d),
+//      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_REF:FIXC2", 34075589d),
+//      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
+//      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
+//      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_REF:FIXC2", 0d),
+//      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC2", 0d)
+//    )
+
+    var values = Seq[HWC](
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 1E9),
+      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 1E9),
       HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC2", 34475589d),
       HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_REF:FIXC2", 34075589d),
       HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
@@ -99,10 +126,33 @@ class HWCCoreFormulaSuite extends UnitTest {
     )
 
     publishHWCReport(muid, target, values, tick1)(eventBus)
-    val rawPowerReport = expectMsgClass(classOf[RawPowerReport])
+    var rawPowerReport = expectMsgClass(classOf[RawPowerReport])
     rawPowerReport.muid should equal(muid)
     rawPowerReport.target should equal(target)
-    rawPowerReport.power should be > 0.W
+    rawPowerReport.power should (be > 16.W and be <= 17.W)
+    rawPowerReport.device should equal("cpu")
+    rawPowerReport.tick should equal(tick1)
+
+    Await.result(zNode.setData(new String(Seq(87.7358230435, 2.00553994023e-08, -1.00002335486e-18).mkString(",")).getBytes, version), Duration.fromSeconds(10))
+    version += 1
+    values = Seq[HWC](
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 1E9),
+      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 0E9),
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC2", 34475589d),
+      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_REF:FIXC2", 34075589d),
+      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
+      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
+      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_REF:FIXC2", 0d),
+      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC2", 0d)
+    )
+
+    Thread.sleep(5.seconds.toMillis)
+
+    publishHWCReport(muid, target, values, tick1)(eventBus)
+    rawPowerReport = expectMsgClass(classOf[RawPowerReport])
+    rawPowerReport.muid should equal(muid)
+    rawPowerReport.target should equal(target)
+    rawPowerReport.power should (be > 19.W and be <= 20.W)
     rawPowerReport.device should equal("cpu")
     rawPowerReport.tick should equal(tick1)
 
@@ -113,6 +163,8 @@ class HWCCoreFormulaSuite extends UnitTest {
     publishHWCReport(muid, target, values, tick2)(eventBus)
     expectNoMsg()
 
-    Await.result(gracefulStop(formulas, timeout.duration), timeout.duration)
+    Await.result(zk("/e5-2630").delete(version), Duration.fromSeconds(10))
+
+    scala.concurrent.Await.result(gracefulStop(formulas, timeout.duration), timeout.duration)
   }
 }

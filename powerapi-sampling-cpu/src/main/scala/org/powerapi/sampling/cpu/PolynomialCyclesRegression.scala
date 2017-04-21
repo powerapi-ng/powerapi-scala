@@ -24,17 +24,17 @@ package org.powerapi.sampling.cpu
 
 import java.io.File
 
+import com.twitter.util.{Await, Duration}
+import com.twitter.zk.ZNode
 import com.typesafe.scalalogging.Logger
-import org.apache.commons.io.filefilter.{DirectoryFileFilter, SuffixFileFilter}
+import org.apache.commons.io.filefilter.SuffixFileFilter
 import org.ejml.data.DenseMatrix64F
 import org.ejml.ops.CommonOps
 import org.joda.time.Period
 import grizzled.math.stats._
-import org.apache.commons.io.FileUtils
 
 import Numeric._
 import scala.io.Source
-import scala.collection.JavaConverters._
 
 /**
   * Compute the CPU formulae by using the unhalted and the reference cycles.
@@ -42,7 +42,7 @@ import scala.collection.JavaConverters._
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class PolynomialCyclesRegression(processingPath: String, computingPath: String, configuration: PolynomCyclesConfiguration) extends Regression {
+class PolynomialCyclesRegression(processingPath: String, zNode: ZNode, zkTimeout: Int, configuration: PolynomCyclesConfiguration) extends Regression {
 
   private val log = Logger(classOf[PolynomialCyclesRegression])
   private val degree = 2
@@ -76,6 +76,13 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
 
       formulae += coefficient -> compute(Map(s"${configuration.unhaltedCycles.toLowerCase().replace('_', '-').replace(':', '-')}" -> x, s"${configuration.powers.toLowerCase().replace('_', '-').replace(':', '-')}" -> y))
     }
+
+    Await.result(zNode.setData(new String(formulae(0).mkString(",")).getBytes, 0), Duration.fromSeconds(zkTimeout))
+    //Await.result(zNode.setData(new String(formulae(0).mkString(",")).getBytes, 0), Duration.fromSeconds(zkTimeout))
+
+    val end = System.currentTimeMillis()
+
+    log.info("Regression duration: {}", configuration.formatter.print(new Period(end - begin)))
 
     /**
       * We apply a specific algorithm for the turbo frequencies.
@@ -167,7 +174,7 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
       }
     }*/
 
-    try {
+    /*try {
       FileUtils.deleteDirectory(new File(s"$computingPath"))
       FileUtils.forceMkdir(new File(s"$computingPath"))
     }
@@ -176,7 +183,7 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
         log.error(s"Failure: ${ex.getMessage}")
     }
 
-    var lines = List[String]("powerapi.libpfm.formulae.cycles = [")
+    var lines = List[String]("powerapi.hwc.formulae.cycles = [")
 
     for (coefficient <- formulae.keys.toList.sorted) {
       lines :+= s"  { coefficient = $coefficient, formula = [${formulae(coefficient).mkString(",")}] }"
@@ -184,11 +191,11 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
 
     lines :+= "]"
 
-    FileUtils.writeLines(new File(s"$computingPath/libpfm-formula.conf"), lines.asJavaCollection, "\n", true)
+    FileUtils.writeLines(new File(s"$computingPath/hwc-formula.conf"), lines.asJavaCollection, "\n", true)
 
     val end = System.currentTimeMillis()
 
-    log.info("Regression duration: {}", configuration.formatter.print(new Period(end - begin)))
+    log.info("Regression duration: {}", configuration.formatter.print(new Period(end - begin)))*/
   }
 
   private def compute(data: Map[String, Seq[Double]]): Array[Double] = {
@@ -236,7 +243,7 @@ class PolynomialCyclesRegression(processingPath: String, computingPath: String, 
 
 object PolynomialCyclesRegression {
 
-  def apply(processingPath: String, computingPath: String, configuration: PolynomCyclesConfiguration): PolynomialCyclesRegression = {
-    new PolynomialCyclesRegression(processingPath, computingPath, configuration)
+  def apply(processingPath: String, zNode: ZNode, zkTimeout: Int, configuration: PolynomCyclesConfiguration): PolynomialCyclesRegression = {
+    new PolynomialCyclesRegression(processingPath, zNode, zkTimeout, configuration)
   }
 }

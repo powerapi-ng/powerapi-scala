@@ -43,12 +43,14 @@ case class PowerInfo(baseFrequency: Double, minFrequency: Double, turbo: TurboBo
 
 case class PowerData(domain: Int, before: Int, after: Int)
 
+case class CpuInfo(family: Int, model: Int, stepping: Int, clock: Long, turbo: Int, osname: String, name: String, shortName: String, features: String, isIntel: Int, supportUncore: Int, featureFlags: Int, perfVersion: Int, perfNumCtr: Int, perfWidthCtr: Int, perfNumFixedCtr: Int)
+
 object RAPLDomain extends Enumeration {
   type RAPLDomain = Value
-  val PKG = Value("cpu")
+  val PKG = Value("rapl-cpu")
   val PP0 = Value
   val PP1 = Value
-  val DRAM = Value("ram")
+  val DRAM = Value("rapl-dram")
 }
 
 /**
@@ -59,6 +61,11 @@ object RAPLDomain extends Enumeration {
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
 class LikwidHelper {
+
+  def useDirectMode(): Unit = {
+    // Direct access
+    LikwidLibrary.INSTANCE.HPMmode(0)
+  }
 
   def topologyInit(): Int = {
     LikwidLibrary.INSTANCE.topology_init()
@@ -163,6 +170,15 @@ class LikwidHelper {
         PowerDomain(powerDomain.`type`, powerDomain.supportFlags, powerDomain.energyUnit, powerDomain.tdp, powerDomain.minPower, powerDomain.maxPower, powerDomain.maxTimeWindow)
     }
     PowerInfo(powerInfo.baseFrequency, powerInfo.minFrequency, tb, powerInfo.hasRAPL > 0, powerInfo.powerUnit, powerInfo.timeUnit, powerInfo.uncoreMinFreq, powerInfo.uncoreMaxFreq, powerInfo.perfBias, powerDomains)
+  }
+
+  def getCpuInfo(): CpuInfo = {
+    val cpuInfo = LikwidLibrary.INSTANCE.get_cpuInfo()
+    CpuInfo(
+      cpuInfo.family, cpuInfo.model, cpuInfo.stepping, cpuInfo.clock, cpuInfo.turbo, cpuInfo.osname.getString(0),
+      cpuInfo.name.getString(0), cpuInfo.short_name.getString(0), cpuInfo.features.getString(0), cpuInfo.isIntel, cpuInfo.supportUncore,
+      cpuInfo.featureFlags, cpuInfo.perf_version, cpuInfo.perf_num_ctr, cpuInfo.perf_width_ctr, cpuInfo.perf_num_fixed_ctr
+    )
   }
 }
 

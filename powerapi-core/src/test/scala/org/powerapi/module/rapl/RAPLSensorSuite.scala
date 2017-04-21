@@ -83,6 +83,8 @@ class RAPLSensorSuite extends UnitTest with MockFactory {
     likwidHelper.powerStop _ expects (PowerData(RAPLDomain.PKG.id, -2, 0), 1) returning PowerData(RAPLDomain.PKG.id, -2, 2)
     likwidHelper.getEnergy _ expects PowerData(RAPLDomain.PKG.id, -1, 1) returning 80
     likwidHelper.getEnergy _ expects PowerData(RAPLDomain.PKG.id, -2, 2) returning 40
+    likwidHelper.powerStart _ expects (0, RAPLDomain.PKG) returning PowerData(RAPLDomain.PKG.id, -1, 0)
+    likwidHelper.powerStart _ expects (1, RAPLDomain.PKG) returning PowerData(RAPLDomain.PKG.id, -2, 0)
     likwidHelper.powerFinalize _ expects()
 
     EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[RAPLSensor].getName}").intercept({
@@ -139,6 +141,8 @@ class RAPLSensorSuite extends UnitTest with MockFactory {
     likwidHelper.powerStop _ expects (PowerData(RAPLDomain.DRAM.id, -2, 0), 1) returning PowerData(RAPLDomain.DRAM.id, -2, 2)
     likwidHelper.getEnergy _ expects PowerData(RAPLDomain.DRAM.id, -1, 1) returning 80
     likwidHelper.getEnergy _ expects PowerData(RAPLDomain.DRAM.id, -2, 2) returning 40
+    likwidHelper.powerStart _ expects (0, RAPLDomain.DRAM) returning PowerData(RAPLDomain.DRAM.id, -1, 0)
+    likwidHelper.powerStart _ expects (1, RAPLDomain.DRAM) returning PowerData(RAPLDomain.DRAM.id, -2, 0)
     likwidHelper.powerFinalize _ expects()
 
     EventFilter.info(occurrences = 1, start = s"sensor is started, class: ${classOf[RAPLSensor].getName}").intercept({

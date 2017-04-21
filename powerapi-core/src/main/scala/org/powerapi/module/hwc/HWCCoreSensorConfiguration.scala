@@ -43,6 +43,6 @@ class HWCCoreSensorConfiguration(prefix: Option[String]) extends Configuration(p
     _.getStringList(s"${configurationPath}powerapi.hwc.events").asScala
   } match {
     case ConfigValue(values) => values.map(_.toString).toList
-    case _ => List[String]()
+    case _ => List[String]("CPU_CLK_UNHALTED_CORE:FIXC1", "CPU_CLK_UNHALTED_REF:FIXC2")
   }
 }

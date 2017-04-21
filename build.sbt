@@ -42,6 +42,7 @@ lazy val root: sbt.Project = (project in file(".")).aggregate(core, cli, cpuSamp
 lazy val core = (project in file("powerapi-core")).settings(shared)
 lazy val cli = (project in file("powerapi-cli")).settings(shared).dependsOn(core % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 lazy val cpuSampling = (project in file("powerapi-sampling-cpu")).settings(shared).dependsOn(core % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
+lazy val activeLearning = (project in file("powerapi-learning")).settings(shared).dependsOn(core % "compile -> compile; test -> test").enablePlugins(JavaAppPackaging)
 // NOT MAINTENED...
 lazy val daemon = (project in file("powerapi-daemon")).settings(shared).dependsOn(core % "compile -> compile; test -> test").enablePlugins(JavaServerAppPackaging)
 
