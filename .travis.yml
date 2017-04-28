@@ -59,6 +59,7 @@ deploy:
   file:
     - "powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz"
     - "powerapi-cli/target/universal/powerapi-cli.tgz"
+  skip_cleanup: true
   on:
     tags: true
     repo: Spirals-Team/powerapi
