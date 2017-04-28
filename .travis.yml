@@ -45,9 +45,9 @@ before_install:
   - sudo dpkg -i influxdb.deb
   - sudo service influxdb start
   - sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi' WITH ALL PRIVILEGES"
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then curl -sSL https://get.rvm.io | bash; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sudo bash -c "source /home/travis/.rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"; fi'
+#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3; fi'
+#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then curl -sSL https://get.rvm.io | bash; fi'
+#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sudo bash -c "source /home/travis/.rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"; fi'
 
 after_success:
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coverageReport; fi'
@@ -57,7 +57,7 @@ after_success:
 before_deploy:
   - sbt "project cpuSampling" universal:packageZipTarball
   - sbt "project cli" universal:packageZipTarball
-  - sbt "project daemon" universal:packageZipTarball
+#  - sbt "project daemon" universal:packageZipTarball
   - tar -C powerapi-sampling-cpu/target/universal -xvf powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz
   - tar -C powerapi-cli/target/universal -xvf powerapi-cli/target/universal/powerapi-cli.tgz
 
@@ -68,7 +68,7 @@ deploy:
   file:
     - "powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz"
     - "powerapi-cli/target/universal/powerapi-cli.tgz"
-    - "powerapi-daemon/target/universal/powerapi-daemon.tgz"
+#    - "powerapi-daemon/target/universal/powerapi-daemon.tgz"
   skip_cleanup: true
   on:
     tags: true
@@ -76,12 +76,12 @@ deploy:
 
 after_deploy:
   - sbt "project core" publishSigned sonatypeRelease
-  - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
-  - git config user.name "Travis CI"
-  - git config user.email "builds@travis-ci.org"
-  - git add CHANGELOG.md
-  - git commit -m 'core(changelog) update the Changelog'
-  - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1
+#  - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
+#  - git config user.name "Travis CI"
+#  - git config user.email "builds@travis-ci.org"
+#  - git add CHANGELOG.md
+#  - git commit -m 'core(changelog) update the Changelog'
+#  - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1
   - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PWD
   - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling-cpu:$TRAVIS_TAG .
   - docker build -f docker/Dockerfile-cli -t spirals/powerapi-cli:$TRAVIS_TAG .
