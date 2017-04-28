@@ -5,15 +5,14 @@ services:
 
 env:
   global:
-    - secure: "BfP5e/OPM62e3ktm4RD2nuBJls2u8zdXg/YjNyght5dpD2vCjL6ZHWhgDM2mNFpzgYPiE3DPsSE7g2ZlsBUJCuK8a7lB5r+OiWFcWkilC1E9QX6OMcDTpEKb5A9InFGcpt0xbjY5+8qaIbaN8TJcdxaxeit0TZEvxeirQa5OOEY=" # COVERALLS_REPO_TOKEN
-#    - secure: "ldIw526YR2Fe6FlfIPlbbOojEeg7etbO4dqiL4TLm00SBhVkKG+DuckhFixVAvAJx1Q1LuVyUPsXaR77OjqiTxSkaH+GbsmR5VIM4qA/kBheD4IiV4wTamg679d+AldRNWcGtLpefgwqlCJ53FcMzUT9TH/MJcbEaOJ5GKW9v+s=" # CODACY_PROJECT_TOKEN
-    - secure: "MLFJWju96LymkPNIsUeJelNN5J3BK55OV/RXVMONC5kDr4N7T4JyhT6KUa4k+FSJ0S1GTPQMWQQEkWDF1MlZXv5yGwW4h5rN3tt//vqyHk968SyqlhTdygqzx6tO6t3OsfQ2F1AqVWAWsHQckL+VmhEo53VqVXpsqLy9DyLYGjs=" # DOCKER_EMAIL
-    - secure: "FbLHLKNAtpj7ZVgSobOPgAgdLK3/P4sR6RcaOmpVRsgaqodTPx7VkzGpkf4rOqPwxKU3+96vr0TlIdPRYWAE39Y3gMb1dyZ34+CxsrJ3avJYc2+9NT3kmAuU33Iy1DCo3IEnR7pWVVEyR80ob0c1ASfPAW1JN8DhBRRERpkMyn4=" # DOCKER_USER
-    - secure: "VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=" # DOCKER_PWD
-    - secure: "YdYgoOCsfP8etDVdbURY/HCqZhGUrWzOsgQcfBCnkbBueU0ugt48rX/BFTtrq/qIJp/N9YqDpw7Vz3X1mhfT3EMpNJRDkbHaMM1YxWX++PmGdVu71ZCiONd2/Q8h8uZP7MLgeD7nnMhls8LBgiCqqWUK0NXfMQwzALYechV42nw=" # SONATYPE_USER
-    - secure: "a5ZD5zp0Nu1GQUMJeTL9fCNxbtKfRzXOafWsrCipP/qg+uKrbNVS5sbhCBu7WB/Qf1x8cQapyXgRcFX/13bTkB+SWYEcUeRK5FH0hByaWLbjxuQNx5QjoRZEgi7lgvEbgyFPnsqAKLPoKmauRGGAlkhZOwnLRFpdha/+b2lKRs8=" # SONATYPE_PWD
-    - secure: "D/lV1ExPr9QJci0sVGbXhyaESFC1fxwxFQ6u/CG0o8MuFMi+LHgp64Ga6BkKBy5xVhhMLOtW+wlYps7SBHUY/taWArhNBmuaIx567+2i0fAccM7QB3YcwPLeZLtu9aE+VF0QF5+4QolREqT7CWScW0Xwg4QsYkP+FXHxoTSnAyk=" # PGP_PASSPHRASE
-    - secure: "mgJrLXgbKE3nBR3CdjD1jL3ygxEtRiOATOqbzzOwAMjcfNffwrs1G/pWrDNn+Ogn5rX+9cK1tkCi98gcLWaCgyUNPs2VB6BYGY4ADXpxQDmM2ihyw2/bLqbyFxGJ/sIQ7H/lmi+bB7CCFwT5Ej/fBPn9Cj7qu2Z4KW9nTPK9LK0=" # GITHUB_TOKEN
+  - secure: BfP5e/OPM62e3ktm4RD2nuBJls2u8zdXg/YjNyght5dpD2vCjL6ZHWhgDM2mNFpzgYPiE3DPsSE7g2ZlsBUJCuK8a7lB5r+OiWFcWkilC1E9QX6OMcDTpEKb5A9InFGcpt0xbjY5+8qaIbaN8TJcdxaxeit0TZEvxeirQa5OOEY=
+  - secure: MLFJWju96LymkPNIsUeJelNN5J3BK55OV/RXVMONC5kDr4N7T4JyhT6KUa4k+FSJ0S1GTPQMWQQEkWDF1MlZXv5yGwW4h5rN3tt//vqyHk968SyqlhTdygqzx6tO6t3OsfQ2F1AqVWAWsHQckL+VmhEo53VqVXpsqLy9DyLYGjs=
+  - secure: FbLHLKNAtpj7ZVgSobOPgAgdLK3/P4sR6RcaOmpVRsgaqodTPx7VkzGpkf4rOqPwxKU3+96vr0TlIdPRYWAE39Y3gMb1dyZ34+CxsrJ3avJYc2+9NT3kmAuU33Iy1DCo3IEnR7pWVVEyR80ob0c1ASfPAW1JN8DhBRRERpkMyn4=
+  - secure: VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=
+  - secure: YdYgoOCsfP8etDVdbURY/HCqZhGUrWzOsgQcfBCnkbBueU0ugt48rX/BFTtrq/qIJp/N9YqDpw7Vz3X1mhfT3EMpNJRDkbHaMM1YxWX++PmGdVu71ZCiONd2/Q8h8uZP7MLgeD7nnMhls8LBgiCqqWUK0NXfMQwzALYechV42nw=
+  - secure: a5ZD5zp0Nu1GQUMJeTL9fCNxbtKfRzXOafWsrCipP/qg+uKrbNVS5sbhCBu7WB/Qf1x8cQapyXgRcFX/13bTkB+SWYEcUeRK5FH0hByaWLbjxuQNx5QjoRZEgi7lgvEbgyFPnsqAKLPoKmauRGGAlkhZOwnLRFpdha/+b2lKRs8=
+  - secure: D/lV1ExPr9QJci0sVGbXhyaESFC1fxwxFQ6u/CG0o8MuFMi+LHgp64Ga6BkKBy5xVhhMLOtW+wlYps7SBHUY/taWArhNBmuaIx567+2i0fAccM7QB3YcwPLeZLtu9aE+VF0QF5+4QolREqT7CWScW0Xwg4QsYkP+FXHxoTSnAyk=
+  - secure: mgJrLXgbKE3nBR3CdjD1jL3ygxEtRiOATOqbzzOwAMjcfNffwrs1G/pWrDNn+Ogn5rX+9cK1tkCi98gcLWaCgyUNPs2VB6BYGY4ADXpxQDmM2ihyw2/bLqbyFxGJ/sIQ7H/lmi+bB7CCFwT5Ej/fBPn9Cj7qu2Z4KW9nTPK9LK0=
 
 cache:
   directories:
@@ -25,63 +24,47 @@ language: scala
 
 scala:
   - 2.12.1
-
 jdk:
-  - oraclejdk8
-
-# workaround for openjdk buffer overflow
+- oraclejdk8
 addons:
   hostname: localhost
 
 script:
   - sbt compile test:compile
-  - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project core" test; else sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project core" coverage test ; fi'
+  - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project core" test; else sbt "set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)" "project core" coverage test ; fi
   - find $HOME/.sbt -name "*.lock" | xargs rm
 
 before_install:
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc -K $encrypted_48ebb0d1c0b9_key -iv $encrypted_48ebb0d1c0b9_iv -in secrets.tar.enc -out secrets.tar -d; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then tar xvf secrets.tar; fi'
+  - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc -K $encrypted_48ebb0d1c0b9_key -iv $encrypted_48ebb0d1c0b9_iv -in secrets.tar.enc -out secrets.tar -d; fi
+  - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then tar xvf secrets.tar; fi
   - wget -O influxdb.deb https://s3.amazonaws.com/influxdb/influxdb_0.10.2-1_amd64.deb
   - sudo dpkg -i influxdb.deb
   - sudo service influxdb start
   - sleep 5; /usr/bin/influx --execute "CREATE USER powerapi WITH PASSWORD 'powerapi' WITH ALL PRIVILEGES"
-#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3; fi'
-#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then curl -sSL https://get.rvm.io | bash; fi'
-#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sudo bash -c "source /home/travis/.rvm/scripts/rvm; rvm use 2.2.3; gem install github_changelog_generator"; fi'
 
 after_success:
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coverageReport; fi'
-#  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" codacyCoverage; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coveralls; fi'
+  - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coverageReport; fi
+  - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt "project core" coveralls; fi
 
 before_deploy:
   - sbt "project cpuSampling" universal:packageZipTarball
   - sbt "project cli" universal:packageZipTarball
-#  - sbt "project daemon" universal:packageZipTarball
   - tar -C powerapi-sampling-cpu/target/universal -xvf powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz
   - tar -C powerapi-cli/target/universal -xvf powerapi-cli/target/universal/powerapi-cli.tgz
 
 deploy:
   provider: releases
   api_key:
-    secure: IEU1nWNWXW394yjC8/2Ch3naFM18mUmns9q11U0sCWMm9nz7ej4D5crKxCPtIHyHtFlONY1s0udBk6rv3aCVq0UikOysHFiVdPPeJTRCtGptxOb04/pZtq3vITcMzS9+CQc+yV8Y3A2vv15L/30ERMk1fgur+Nb+8vTFfXfzEik=
+    secure: Wa5OZQqXWkVuoDr8QXiCbsRmJcgxnpr36/CcDzQMjrBEGxfO5NMql0eHBnJ8DwoL109aBO48AQUoz/zwPXPCgx1l152ccMfAvtilVcTKXR52TRZKMRe/qsirxcQ6tvI1AuJ0IpRgdeH5qOp3f8EgbBKGgIilo80OlHy0LcKn+Bc=
   file:
     - "powerapi-sampling-cpu/target/universal/powerapi-sampling-cpu.tgz"
     - "powerapi-cli/target/universal/powerapi-cli.tgz"
-#    - "powerapi-daemon/target/universal/powerapi-daemon.tgz"
-  skip_cleanup: true
   on:
     tags: true
     repo: Spirals-Team/powerapi
 
 after_deploy:
   - sbt "project core" publishSigned sonatypeRelease
-#  - github_changelog_generator Spirals-Team/powerapi --token $GITHUB_TOKEN
-#  - git config user.name "Travis CI"
-#  - git config user.email "builds@travis-ci.org"
-#  - git add CHANGELOG.md
-#  - git commit -m 'core(changelog) update the Changelog'
-#  - git push --quiet "https://${GITHUB_TOKEN}@github.com/Spirals-Team/powerapi" master > /dev/null 2>&1
   - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PWD
   - docker build -f docker/sampling/Dockerfile-sampling -t spirals/powerapi-sampling-cpu:$TRAVIS_TAG .
   - docker build -f docker/Dockerfile-cli -t spirals/powerapi-cli:$TRAVIS_TAG .
