@@ -1,0 +1,20 @@
+FROM openjdk:8-jre
+
+ENV POWERAPI_PACKAGE powerapi-learning
+
+ENV INSTALL_PACKAGES build-essential git
+ENV RUNTIME_PACKAGES module-init-tools
+
+COPY docker/active-learning/config.mk.patch /root/
+COPY docker/active-learning/run.sh /root/
+COPY ${POWERAPI_PACKAGE}/target/universal/${POWERAPI_PACKAGE}/ /root/${POWERAPI_PACKAGE}/
+
+RUN apt-get update && apt-get install -y $INSTALL_PACKAGES $RUNTIME_PACKAGES \
+    && cd /root && git clone https://github.com/mcolmant/likwid.git && (cd likwid;  git apply < ../config.mk.patch; make; make install) && rm -rf likwid config.mk.patch && cd / \
+    && apt-get autoremove -y $INSTALL_PACKAGES \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root
+
+ENTRYPOINT ["./run.sh"]

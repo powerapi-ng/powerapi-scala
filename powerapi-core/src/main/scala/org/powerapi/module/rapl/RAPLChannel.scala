@@ -43,7 +43,7 @@ object RAPLChannel extends Channel {
   }
 
   def raplReportToTopic(muid: UUID, target: Target, domain: RAPLDomain): String = {
-    s"rapl-sensor:$muid-$target-${domain.id}"
+    s"rapl-${domain.id}-sensor:$muid-$target"
   }
 
   def subscribeRAPLReport(muid: UUID, target: Target, domain: RAPLDomain): MessageBus => ActorRef => Unit = {

@@ -22,29 +22,6 @@
  */
 package org.powerapi.experimental.learning
 
-/*
- * This software is licensed under the GNU Affero General Public License, quoted below.
- *
- * This file is a part of PowerAPI.
- *
- * Copyright (C) 2011-2016 Inria, University of Lille 1.
- *
- * PowerAPI is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
- *
- * PowerAPI is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with PowerAPI.
- *
- * If not, please consult http://www.gnu.org/licenses/agpl-3.0.html.
- */
-
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import com.github.dockerjava.core.DockerClientBuilder
 import com.paulgoldbaum.influxdbclient.Parameter.Precision
@@ -52,119 +29,138 @@ import com.paulgoldbaum.influxdbclient.{Database, InfluxDB, Point}
 import com.twitter.util.{Duration, JavaTimer}
 import com.twitter.zk.ZkClient
 import org.apache.zookeeper.ZooDefs.Ids.OPEN_ACL_UNSAFE
-import org.powerapi.core.LinuxHelper
+import org.powerapi.core.{LinuxHelper, Message}
 import org.powerapi.core.target.{All, Container}
-import org.powerapi.module.PowerChannel.AggregatePowerReport
+import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, subscribeAggPowerReport}
 import org.powerapi.module.hwc.{CHelper, HWCCoreModule, HWCCoreSensorModule, LikwidHelper, PowerData, RAPLDomain}
 import org.powerapi.core.power._
 import org.powerapi.module.hwc.HWCChannel.{HWC, HWCReport, subscribeHWCReport}
 import org.powerapi.module.hwc.RAPLDomain.RAPLDomain
-import org.powerapi.module.rapl.{RaplCpuModule, RaplDramModule}
 import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
+import org.powerapi.core.TickChannel.{publishTick, tickTopic}
+import org.powerapi.core.ClockChannel.ClockTick
+import org.powerapi.module.rapl.{RAPLCpuModule, RAPLDramModule}
 
 import scala.concurrent.duration.DurationInt
 import scala.io.Source
 import scala.collection.JavaConverters._
+import scala.collection.immutable.ListMap
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.sys
 import scala.util.{Failure, Success}
 
-class InfluxDBMonitoring(db: Database, measurement: String, likwidHelper: LikwidHelper) extends Actor with ActorLogging {
+class InfluxDBMonitoring(db: Database, measurement: String) extends Actor with ActorLogging {
 
-  // One core per socket for RAPL (no need to monitor each core)
-  private var cores: Option[Seq[Int]] = None
+  def receive = accumulator(Map())
 
-  likwidHelper.topologyInit()
-  likwidHelper.affinityInit()
-
-  cores = Some(
-    likwidHelper.getAffinityDomains().domains
-      .filter(_.tag.startsWith("S"))
-      .map(_.processorList.head)
-  )
-
-  // Only on the first core, no need to call powerInit on all cores
-  likwidHelper.powerInit(0)
-
-  cores.get foreach likwidHelper.HPMaddThread
-
-  override def postStop(): Unit = {
-    likwidHelper.powerFinalize()
-    cores = None
-  }
-
-  def receive: Actor.Receive = {
-    val data = startCollect()
-    sense(data)
-  }
-
-  def startCollect(): Map[(Int, RAPLDomain), PowerData] = {
-    (for {
-      core <- cores.get
-      domain <- RAPLDomain.values.toSeq
-    } yield {
-      ((core, domain), likwidHelper.powerStart(core, domain))
-    }).toMap
-  }
-
-  def stopCollect(data: Map[(Int, RAPLDomain), PowerData]): Map[RAPLDomain, Seq[Double]] = {
-    var results = Map[RAPLDomain, Seq[Double]]()
-
-    for (((core, domain), pData) <- data) {
-      val powerData = likwidHelper.powerStop(pData, core)
-      results += domain -> (results.getOrElse(domain, Seq()) :+ likwidHelper.getEnergy(powerData))
-    }
-
-    results
-  }
-
-  def sense(data: Map[(Int, RAPLDomain), PowerData]): Actor.Receive = {
-    case msg: HWCReport =>
-      val results = stopCollect(data)
-      val raplCpu = results(RAPLDomain.PKG)
-      val raplDram = results(RAPLDomain.DRAM)
-
-      val points = for ((socket, values) <- msg.values.groupBy(_.hwThread.packageId)) yield {
-        var point = Point(measurement, msg.tick.timestamp)
-          .addField("cpu", raplCpu(socket))
-          .addField("dram", raplDram(socket))
-          .addTag("socket", s"S$socket")
-
-        var index = 0
-        for ((core, hwc) <- values.groupBy(_.hwThread.coreId)) {
-          assert(hwc.size == 4)
-          val cycles = hwc.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => hwc.value)
-          val refs = hwc.filter(_.event == "CPU_CLK_UNHALTED_REF:FIXC2").foldLeft(0d)((acc, hwc) => hwc.value)
-
-          point = point.addField(s"c$index", cycles)
-          point = point.addField(s"r$index", refs)
-          index += 1
-        }
-
-        point
+  def accumulator(acc: Map[Long, Seq[Message]]): Actor.Receive = {
+    case msg: Message if msg.isInstanceOf[HWCReport] || msg.isInstanceOf[AggregatePowerReport] =>
+      val timestamp = msg match {
+        case r: HWCReport => r.tick.timestamp
+        case r: AggregatePowerReport => r.ticks.head.timestamp
       }
 
-      db.bulkWrite(points.toSeq, precision = Precision.MILLISECONDS)
+      acc.get(timestamp) match {
+        case Some(values) =>
+          val messages = values :+ msg
+          assert(messages.size == 2)
 
-      context.become(sense(startCollect()))
+          val hwcReport = messages.filter(_.isInstanceOf[HWCReport]).head.asInstanceOf[HWCReport]
+          val allReport = messages.filter(_.isInstanceOf[AggregatePowerReport]).head.asInstanceOf[AggregatePowerReport]
+          val raplPowers = allReport.powerPerDevice
+
+          val points = (for ((socket, hwThreads) <- hwcReport.values.groupBy(_.hwThread.packageId)) yield {
+            var point = Point(measurement, timestamp)
+              .addField("gcpu", raplPowers(s"rapl-cpu-S$socket").toWatts)
+              .addField("gdram", raplPowers(s"rapl-dram-S$socket").toWatts)
+              .addTag("socket", s"S$socket")
+
+            var index = 0
+            for ((core, hwcs) <- ListMap(hwThreads.groupBy(_.hwThread.coreId).toSeq.sortBy(_._1): _*)) {
+              assert(hwcs.size == 4)
+              val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => hwc.value)
+              val refs = hwcs.filter(_.event == "CPU_CLK_UNHALTED_REF:FIXC2").foldLeft(0d)((acc, hwc) => hwc.value)
+
+              point = point.addField(s"c$index", cycles)
+              point = point.addField(s"r$index", refs)
+              index += 1
+            }
+
+            point
+          }).toSeq
+
+          db.bulkWrite(points, precision = Precision.MILLISECONDS) onComplete {
+            case Success(result) =>
+              log.info("Flushing points: OK")
+            case Failure(t) =>
+              log.error("Flushing points: KO")
+          }
+
+          context.become(accumulator(acc - timestamp))
+
+        case None =>
+          context.become(accumulator(acc + (timestamp -> Seq(msg))))
+      }
   }
 }
 
-class InfluxDBReporting(db: Database, transform: AggregatePowerReport => Point) extends PowerDisplay {
+class InfluxDBReporting(db: Database, measurement: String, hostname: String) extends Actor with ActorLogging {
 
-  @volatile var timestamps = Set[Long]()
-  @volatile var points = Seq[Point]()
+  def receive = accumulator(Seq(), Set(), Seq())
 
-  def display(aggregatePowerReport: AggregatePowerReport) {
-    timestamps += aggregatePowerReport.ticks.head.timestamp
-    points :+= transform(aggregatePowerReport)
+  def accumulator(points: Seq[Point], timestamps: Set[Long], acc: Seq[AggregatePowerReport]): Actor.Receive = {
+    case report: AggregatePowerReport =>
+      val timestamp = report.ticks.head.timestamp
 
-    if (timestamps.size > 60) {
-      db.bulkWrite(points, precision = Precision.MILLISECONDS)
-      points = Seq()
-      timestamps = Set()
-    }
+      if (timestamps.size > 0 && !timestamps.contains(timestamp)) {
+        var _points = Seq[Point]()
+        val previousTimestamp = acc.head.ticks.head.timestamp
+
+        val allPowers = acc.filter(_.targets.head == All).map(_.powerPerDevice).foldLeft(Map[String, Power]())((acc, map) => acc.++:(map))
+        val gcpuPower = allPowers.filter(_._1.startsWith("rapl-cpu")).values.foldLeft(0.W)((acc, p) => acc + p)
+        val gdramPower = allPowers.filter(_._1.startsWith("rapl-dram")).values.foldLeft(0.W)((acc, p) => acc + p)
+        val vcpuPower = allPowers.filter(_._1.startsWith("cpu")).values.foldLeft(0.W)((acc, p) => acc + p)
+        val vdramPower = allPowers.filter(_._1.startsWith("dram")).values.foldLeft(0.W)((acc, p) => acc + p)
+
+        _points :+= Point(measurement, previousTimestamp)
+          .addField("gcpu", gcpuPower.toWatts)
+          .addField("gdram", gdramPower.toWatts)
+          .addField("vcpu", vcpuPower.toWatts)
+          .addField("vdram", vdramPower.toWatts)
+          .addTag("target", "All")
+          .addTag("node", hostname)
+
+        val containerReports = acc.filter(_.targets.head.isInstanceOf[Container])
+
+        _points ++:= (for (report <- containerReports) yield {
+          val containerPowers = report.powerPerDevice
+          val vcpuPower = containerPowers.getOrElse("cpu", 0.W)
+          val vdramPower = containerPowers.getOrElse("dram", 0.W)
+
+          Point(measurement, previousTimestamp)
+            .addField("gcpu", gcpuPower.toWatts)
+            .addField("gdram", gdramPower.toWatts)
+            .addField("vcpu", vcpuPower.toWatts)
+            .addField("vdram", vdramPower.toWatts)
+            .addTag("target", report.targets.head.asInstanceOf[Container].name)
+            .addTag("node", hostname)
+        })
+
+        if (timestamps.size + 1 > 60) {
+          db.bulkWrite(points ++ _points, precision = Precision.MILLISECONDS) onComplete {
+            case Success(result) =>
+              log.info("Flushing points: OK")
+            case Failure(t) =>
+              log.error("Flushing points: KO")
+          }
+          context.become(accumulator(Seq(), Set(), Seq()))
+        }
+
+        else context.become(accumulator(points ++ _points, timestamps + timestamp, Seq(report)))
+      }
+
+      else context.become(accumulator(points, timestamps + timestamp, acc :+ report))
   }
 }
 
@@ -244,61 +240,74 @@ object Application extends App {
       likwidHelper.topologyInit()
       likwidHelper.affinityInit()
 
-      if (config.mode == "idle") {
-        val papiMonitoring = PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper))
-        pMeters :+= papiMonitoring
+      /** RAPL INIT */
+      // Only on the first core, no need to call powerInit on all cores
+      likwidHelper.powerInit(0)
+      likwidHelper.getAffinityDomains().domains
+        .filter(_.tag.startsWith("S"))
+        .map(_.processorList.head)
+        .foreach(core => likwidHelper.HPMaddThread(core))
 
-        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "idle", likwidHelper))
+      /** PERFMON INIT */
+      if (likwidHelper.perfmonInit(likwidHelper.getCpuTopology().threadPool.map(_.apicId)) < 0) {
+        println("Failed to initialize LIKWID's performance monitoring module")
+        sys.exit(1)
+      }
+
+      val clockTimer = new JavaTimer(true)
+
+      clockTimer.schedule(Duration.fromSeconds(1)) {
+        val timestamp = System.currentTimeMillis()
+        for ((_, monitor) <- monitors) publishTick(ClockTick(tickTopic(monitor.muid), timestamp))(monitor.eventBus)
+      }
+
+      if (config.mode == "idle") {
+        val papiReporting = PowerMeter.loadModule(
+          HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper),
+          RAPLCpuModule(likwidHelper),
+          RAPLDramModule(likwidHelper)
+        )
+        pMeters :+= papiReporting
+
+        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "idlemon"))
         actors :+= monitoringRef
-        val monitor = papiMonitoring.monitor(All)(MAX).every(1.second)
-        monitors += hostname -> monitor.to(monitoringRef, subscribeHWCReport(monitor.muid, All))
+        val monitor = papiReporting.monitor(All)(MAX)
+        monitors += hostname -> monitor
+          .to(monitoringRef, subscribeHWCReport(monitor.muid, All))
+          .to(monitoringRef, subscribeAggPowerReport(monitor.muid))
 
         Thread.sleep(config.duration * 1000)
       }
 
       else if (config.mode == "active") {
         implicit val timer = new JavaTimer(true)
+
         val zkClient = ZkClient(config.zkUrl, Duration.fromSeconds(config.zkTimeout)).withAcl(OPEN_ACL_UNSAFE.asScala)
 
-        val papiMonitoring = PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper))
-        pMeters :+= papiMonitoring
-
-          // TODO
-//        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "active", likwidHelper))
-//        actors :+= monitoringRef
-//        val monitor = papiMonitoring.monitor(All)(MAX).every(1.second)
-//        monitors += hostname -> monitor.to(monitoringRef, subscribeHWCReport(monitor.muid, All))
-
-        val papiReporting = PowerMeter.loadModule(HWCCoreModule(None, osHelper, likwidHelper, cHelper, zkClient), RaplCpuModule(likwidHelper), RaplDramModule(likwidHelper))
+        val papiReporting = PowerMeter.loadModule(
+          HWCCoreModule(None, osHelper, likwidHelper, cHelper, zkClient),
+          RAPLCpuModule(likwidHelper),
+          RAPLDramModule(likwidHelper)
+        )
         pMeters :+= papiReporting
 
-        val hostMeasurement = new InfluxDBReporting(db, (report: AggregatePowerReport) => {
-          val timestamp = report.ticks.head.timestamp
-          val powerPerDevice = report.powerPerDevice
-          val est = powerPerDevice("cpu")
-          val raplCpu = powerPerDevice("rapl-cpu")
-          val raplDram = powerPerDevice("rapl-dram")
-
-          Point(hostname, timestamp)
-            .addField("powerapi", est.toWatts)
-            .addField("cpu", raplCpu.toWatts)
-            .addField("dram", raplDram.toWatts)
-        })
-
-        val containerMeasurement = new InfluxDBReporting(db, (report: AggregatePowerReport) => {
-          val timestamp = report.ticks.head.timestamp
-          val powerPerDevice = report.powerPerDevice
-          val name = report.targets.head.asInstanceOf[Container].name
-          val est = powerPerDevice("cpu")
-
-          Point(name, timestamp)
-            .addField("powerapi", est.toWatts)
-        })
-
-        monitors += hostname -> papiReporting.monitor(All)(MAX).every(1.second).to(hostMeasurement)
+        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "activemon"))
+        actors :+= monitoringRef
+        val reportingRef = system.actorOf(Props(classOf[InfluxDBReporting], db, "activerep" , hostname))
+        actors :+= reportingRef
+        val monitor = papiReporting.monitor(All)(MAX)
+        monitors += hostname -> monitor
+          .to(monitoringRef, subscribeHWCReport(monitor.muid, All))
+          .to(monitoringRef, subscribeAggPowerReport(monitor.muid))
+          .to(reportingRef, subscribeAggPowerReport(monitor.muid))
 
         val containers = docker.listContainersCmd().exec().asScala.map(container => Container(container.getId, container.getNames.mkString(",")))
-        containers.foreach(container => monitors += container.id -> papiReporting.monitor(container)(MAX).every(1.second).to(containerMeasurement))
+        containers.foreach(container => {
+          monitors += container.id -> {
+            val monitor = papiReporting.monitor(container)(MAX)
+            monitor.to(reportingRef, subscribeAggPowerReport(monitor.muid))
+          }
+        })
         Thread.sleep(1.second.toMillis)
 
         while (running) {
@@ -307,7 +316,10 @@ object Application extends App {
             monitors(container.id).cancel()
             monitors -= container.id
           })
-          currentContainers.diff(containers).foreach(container => monitors += container.id -> papiReporting.monitor(container)(MAX).every(1.second).to(containerMeasurement))
+          currentContainers.diff(containers).foreach(container => monitors += container.id -> {
+            val monitor = papiReporting.monitor(container)(MAX)
+            monitor.to(reportingRef, subscribeAggPowerReport(monitor.muid))
+          })
           containers.clear()
           containers ++= currentContainers
 
@@ -315,10 +327,15 @@ object Application extends App {
         }
 
         zkClient.release()
+        timer.stop()
       }
+
+      clockTimer.stop()
 
       likwidHelper.topologyFinalize()
       likwidHelper.affinityFinalize()
+      likwidHelper.powerFinalize()
+      likwidHelper.perfmonFinalize()
 
       influxdb.close()
 

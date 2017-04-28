@@ -22,23 +22,39 @@
  */
 package org.powerapi.module.rapl
 
-import org.powerapi.PowerModule
-import org.powerapi.module.hwc.{LikwidHelper, RAPLDomain}
-import org.powerapi.module.hwc.RAPLDomain.RAPLDomain
+import java.util.UUID
 
-class RAPLModule(likwidHelper: LikwidHelper, domain: RAPLDomain) extends PowerModule {
-  val sensor = Some((classOf[RAPLSensor], Seq[Any](likwidHelper, domain)))
-  val formula = Some((classOf[RAPLFormula], Seq[Any](domain)))
+import org.powerapi.PowerModule
+import org.powerapi.core.MessageBus
+import org.powerapi.core.target.Target
+import org.powerapi.module.hwc.{LikwidHelper, RAPLDomain}
+
+class RAPLCpuSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper) extends RAPLSensor(eventBus, muid, target, likwidHelper, RAPLDomain.PKG)
+
+class RAPLDramSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper) extends RAPLSensor(eventBus, muid, target, likwidHelper, RAPLDomain.DRAM)
+
+class RAPLCpuFormula(eventBus: MessageBus, muid: UUID, target: Target) extends RAPLFormula(eventBus, muid, target, RAPLDomain.PKG)
+
+class RAPLDramFormula(eventBus: MessageBus, muid: UUID, target: Target) extends RAPLFormula(eventBus, muid, target, RAPLDomain.DRAM)
+
+class RAPLCpuModule(likwidHelper: LikwidHelper) extends PowerModule {
+  val sensor = Some((classOf[RAPLCpuSensor], Seq[Any](likwidHelper)))
+  val formula = Some((classOf[RAPLCpuFormula], Seq[Any]()))
 }
 
-object RaplCpuModule {
-  def apply(likwidHelper: LikwidHelper): RAPLModule = {
-    new RAPLModule(likwidHelper, RAPLDomain.PKG)
+class RAPLDramModule(likwidHelper: LikwidHelper) extends PowerModule {
+  val sensor = Some((classOf[RAPLDramSensor], Seq[Any](likwidHelper)))
+  val formula = Some((classOf[RAPLDramFormula], Seq[Any]()))
+}
+
+object RAPLCpuModule {
+  def apply(likwidHelper: LikwidHelper): RAPLCpuModule = {
+    new RAPLCpuModule(likwidHelper)
   }
 }
 
-object RaplDramModule {
-  def apply(likwidHelper: LikwidHelper): RAPLModule = {
-    new RAPLModule(likwidHelper, RAPLDomain.DRAM)
+object RAPLDramModule {
+  def apply(likwidHelper: LikwidHelper): RAPLDramModule = {
+    new RAPLDramModule(likwidHelper)
   }
 }

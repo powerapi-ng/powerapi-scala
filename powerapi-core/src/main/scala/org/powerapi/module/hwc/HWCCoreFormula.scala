@@ -29,7 +29,7 @@ import com.twitter.util.Return
 import com.twitter.zk.{ZNode, ZkClient}
 import org.powerapi.core.MessageBus
 import org.powerapi.core.power._
-import org.powerapi.core.target.Target
+import org.powerapi.core.target.{All, Target}
 import org.powerapi.module.Formula
 import org.powerapi.module.PowerChannel.publishRawPowerReport
 import org.powerapi.module.hwc.HWCChannel.{HWCReport, subscribeHWCReport, unsubscribeHWCReport}
@@ -66,7 +66,7 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
 
     }
 
-    compute(Seq())
+    compute(Seq(0.0, 0.0, 0.0))
   }
 
   def compute(formula: Seq[Double]): Actor.Receive = {
@@ -74,9 +74,10 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
       //val now = System.nanoTime()
 
       val powers = for ((core, hwcs) <- msg.values.groupBy(_.hwThread.coreId)) yield {
-        val cycles = hwcs.filter(_.event.startsWith("CPU_CLK_UNHALTED_CORE"))
-        val cyclesVal = cycles.map(_.value).sum
-        val scaledCycles = cyclesVal
+        val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => hwc.value)
+        if(target == All) println(s"$core, $cycles")
+        /*val cyclesVal = cycles.map(_.value).sum
+        val scaledCycles = cyclesVal*/
         //val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
         //val refs = hwcs.filter(_.event.startsWith("CPU_CLK_UNHALTED_REF"))
         //val refsVal = refs.map(_.value).sum
@@ -94,7 +95,10 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
         }*/
 
         val formulaWoIdle = formula.updated(0, 0d)
-        formulaWoIdle.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(scaledCycles, tuple._2)))
+        val power = formulaWoIdle.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(cycles, tuple._2)))
+        println(formulaWoIdle)
+        println(power)
+        power
       }
 
       val accPower = {
@@ -107,6 +111,9 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
             0.W
         }
       }
+
+      if (target == All) println(powers)
+      if(target == All) println("=====")
 
       publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
   }

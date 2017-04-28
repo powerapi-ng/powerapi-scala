@@ -199,6 +199,11 @@ trait PowerModule {
   */
 trait PowerMonitoring {
   /**
+    * Internal event bus.
+    */
+  def eventBus: MessageBus
+
+  /**
     * Unique ID
     */
   def muid: UUID

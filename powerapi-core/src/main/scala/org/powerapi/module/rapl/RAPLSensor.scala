@@ -41,7 +41,7 @@ import org.powerapi.module.rapl.RAPLChannel.{Started, State, Stopped, publishRAP
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class RAPLSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper, domain: RAPLDomain)
+abstract class RAPLSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper, domain: RAPLDomain)
   extends Sensor(eventBus, muid, target) {
 
   // One core per socket for RAPL (no need to monitor each core)
@@ -54,16 +54,10 @@ class RAPLSensor(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper:
         .map(_.processorList.head)
     )
 
-    // Only on the first core, no need to call powerInit on all cores
-    likwidHelper.powerInit(0)
-
-    cores.get foreach likwidHelper.HPMaddThread
-
     subscribeMonitorTick(muid, target)(eventBus)(self)
   }
 
   def terminate(): Unit = {
-    likwidHelper.powerFinalize()
     cores = None
     unsubscribeMonitorTick(muid, target)(eventBus)(self)
   }

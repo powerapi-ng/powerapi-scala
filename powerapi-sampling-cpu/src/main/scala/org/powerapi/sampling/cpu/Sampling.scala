@@ -54,7 +54,8 @@ class PowersDisplay(filepath: String) extends org.powerapi.core.APIComponent {
   }
 
   def report(msg: AggregatePowerReport): Unit = {
-    output.append(s"${msg.power.toWatts}\n")
+    val power = msg.powerPerDevice.filter(_._1.startsWith("rapl-cpu")).values.map(_.toWatts).sum
+    output.append(s"$power\n")
     output.flush()
   }
 

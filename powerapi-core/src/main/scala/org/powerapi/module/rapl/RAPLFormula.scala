@@ -41,7 +41,7 @@ import scala.concurrent.duration.DurationLong
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class RAPLFormula(eventBus: MessageBus, muid: UUID, target: Target, domain: RAPLDomain) extends Formula(eventBus, muid, target) {
+abstract class RAPLFormula(eventBus: MessageBus, muid: UUID, target: Target, domain: RAPLDomain) extends Formula(eventBus, muid, target) {
 
   def init(): Unit = subscribeRAPLReport(muid, target, domain)(eventBus)(self)
 
@@ -55,7 +55,7 @@ class RAPLFormula(eventBus: MessageBus, muid: UUID, target: Target, domain: RAPL
 
       for ((energy, socket) <- msg.energies.zipWithIndex) {
         val power = energy * (1.seconds.toNanos / (now - old).toDouble)
-        publishRawPowerReport(muid, target, power.W, s"${domain.toString()}-S$socket", msg.tick)(eventBus)
+        publishRawPowerReport(muid, target, power.W, s"rapl-${domain.toString()}-S$socket", msg.tick)(eventBus)
       }
 
       context.become(compute(now) orElse formulaDefault)

@@ -32,7 +32,7 @@ import org.powerapi.module.hwc.{CHelper, HWCCoreSensorModule, LikwidHelper}
 
 import scala.sys
 import scala.collection.JavaConverters._
-import org.powerapi.module.rapl.RaplCpuModule
+import org.powerapi.module.rapl.RAPLCpuModule
 
 /**
   * Main application.
@@ -157,6 +157,20 @@ object Application extends App {
   likwidHelper.topologyInit()
   likwidHelper.affinityInit()
 
+  /** RAPL INIT */
+  // Only on the first core, no need to call powerInit on all cores
+  likwidHelper.powerInit(0)
+  likwidHelper.getAffinityDomains().domains
+    .filter(_.tag.startsWith("S"))
+    .map(_.processorList.head)
+    .foreach(core => likwidHelper.HPMaddThread(core))
+
+  /** PERFMON INIT */
+  if (likwidHelper.perfmonInit(likwidHelper.getCpuTopology().threadPool.map(_.apicId)) < 0) {
+    println("Failed to initialize LIKWID's performance monitoring module")
+    sys.exit(1)
+  }
+
   implicit val timer = new JavaTimer(true)
   val zkClient = ZkClient(zkUrl, Duration.fromSeconds(zkTimeout)).withAcl(OPEN_ACL_UNSAFE.asScala)
   val ModelRegex = ".+\\s+(.+)(?:\\s+v?\\d?)\\s+@.+".r
@@ -179,12 +193,14 @@ object Application extends App {
   }
 
   powerapi = Some(PowerMeter.loadModule(HWCCoreSensorModule(None, osHelper, likwidHelper, cHelper)))
-  groundTruth = Some(PowerMeter.loadModule(RaplCpuModule(likwidHelper)))
+  groundTruth = Some(PowerMeter.loadModule(RAPLCpuModule(likwidHelper)))
 
   Sampling("sampling", configuration, topology, powerapi.get, groundTruth.get).run()
 
   likwidHelper.topologyFinalize()
   likwidHelper.affinityFinalize()
+  likwidHelper.powerFinalize()
+  likwidHelper.perfmonFinalize()
 
   Processing("sampling", "processing", configuration).run()
 

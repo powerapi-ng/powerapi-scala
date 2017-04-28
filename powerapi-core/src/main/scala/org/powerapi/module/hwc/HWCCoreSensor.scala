@@ -33,7 +33,7 @@ import org.powerapi.core.MonitorChannel.{MonitorTick, subscribeMonitorTick, unsu
 import org.powerapi.module.hwc.HWCChannel._
 
 /**
-  * Collects hardware counters at the core level (for All, Process, and Container target).
+  * Collects hardware counters at the core level (for All, and Container target).
   * TODO: APP target
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
@@ -48,56 +48,50 @@ class HWCCoreSensor(eventBus: MessageBus, muid: UUID, target: Target,
   def init(): Unit = {
     hwThreads = Some(likwidHelper.getCpuTopology().threadPool)
 
-    val pidPerf = java.lang.Long.toHexString({
-      target match {
-        case All =>
-          -1
-        case Process(pid) =>
-          pid
-        case Container(id, _) =>
-          osHelper.cgroupMntPoint("perf_event") match {
-            case Some(path) =>
-              val fullId = new File(s"$path/docker").listFiles.filter(f => f.isDirectory && f.getName.startsWith(id)).map(_.getName).head
-              cHelper.open(s"$path/docker/$fullId", 0)
-            case _ =>
-              log.error("i/o exception, perf_event not mounted for the container {}", s"${id}")
-              -1
-          }
-        case _ =>
-          -1
-      }
-    })
+    target match {
+      case Container(id, _) =>
+        osHelper.cgroupMntPoint("perf_event") match {
+          case Some(path) =>
+            new File(s"$path/docker").listFiles.filter(f => f.isDirectory && f.getName.startsWith(id)).map(_.getName).headOption match {
+              case Some(fullId) =>
+                val fd = java.lang.Long.toHexString(cHelper.open(s"$path/docker/$fullId", 0))
+                val flags = java.lang.Long.toHexString(1L << 2)
+                val eventsExtended = events.map(event => s"$event:PERF_PID=$fd:PERF_FLAGS=$flags").mkString(",")
 
-    val flagsPerf = java.lang.Long.toHexString({
-      target match {
-        case _: Container =>
-          // PERF_FLAG_PID_CGROUP
-          1L << 2
-        case _ =>
-          0
-      }
-    })
+                groupId = Some(likwidHelper.perfmonAddEventSet(eventsExtended))
+                if (groupId.get < 0) {
+                  log.error("Failed to add events string {} to LIKWID's performance monitoring module", eventsExtended)
+                }
 
-    val eventsExtended = events.map(event => s"$event:PERF_PID=$pidPerf:PERF_FLAGS=$flagsPerf").mkString(",")
+                if (likwidHelper.perfmonSetupCounters(groupId.get) < 0) {
+                  log.error("Failed to setup group {} in LIKWID's performance monitoring module", s"$groupId")
+                }
 
-    if (likwidHelper.perfmonInit(hwThreads.get.map(_.apicId)) < 0) {
-      log.error("Failed to initialize LIKWID's performance monitoring module")
-    }
+              case _ =>
+                self ! PoisonPill
+            }
+          case _ =>
+            self ! PoisonPill
+        }
+      case All =>
+        val pid = java.lang.Long.toHexString(-1)
+        val flags = java.lang.Long.toHexString(0)
+        val eventsExtended = events.map(event => s"$event:PERF_PID=$pid:PERF_FLAGS=$flags").mkString(",")
 
-    groupId = Some(likwidHelper.perfmonAddEventSet(eventsExtended))
-    if (groupId.get < 0) {
-      log.error("Failed to add events string {} to LIKWID's performance monitoring module", eventsExtended)
-    }
+        groupId = Some(likwidHelper.perfmonAddEventSet(eventsExtended))
+        if (groupId.get < 0) {
+          log.error("Failed to add events string {} to LIKWID's performance monitoring module", eventsExtended)
+        }
 
-    if (likwidHelper.perfmonSetupCounters(groupId.get) < 0) {
-      log.error("Failed to setup group {} in LIKWID's performance monitoring module", s"$groupId")
+        if (likwidHelper.perfmonSetupCounters(groupId.get) < 0) {
+          log.error("Failed to setup group {} in LIKWID's performance monitoring module", s"$groupId")
+        }
     }
 
     subscribeMonitorTick(muid, target)(eventBus)(self)
   }
 
   def terminate(): Unit = {
-    likwidHelper.perfmonFinalize()
     hwThreads = None
     groupId = None
     unsubscribeMonitorTick(muid, target)(eventBus)(self)
@@ -105,7 +99,7 @@ class HWCCoreSensor(eventBus: MessageBus, muid: UUID, target: Target,
 
   def handler: Actor.Receive = {
     target match {
-      case _: Application =>
+      case t if t.isInstanceOf[Application] || t.isInstanceOf[Process] =>
         unsubscribeMonitorTick(muid, target)(eventBus)(self)
         self ! PoisonPill
         sensorDefault
@@ -116,17 +110,27 @@ class HWCCoreSensor(eventBus: MessageBus, muid: UUID, target: Target,
   }
 
   def startCollect(): Unit = {
-    likwidHelper.perfmonStartCounters()
+    groupId match {
+      case Some(id) =>
+        likwidHelper.perfmonStartGroupCounters(groupId.get)
+      case _ =>
+
+    }
   }
 
   def stopCollect(): Seq[HWC] = {
-    likwidHelper.perfmonStopCounters()
+    groupId match {
+      case Some(id) =>
+        likwidHelper.perfmonStopGroupCounters(id)
 
-    for {
-      hwThread <- hwThreads.get
-      (event, index) <- events.zipWithIndex
-    } yield {
-      HWC(hwThread, event, likwidHelper.perfmonGetLastResult(groupId.get, index, hwThread.apicId))
+        for {
+          hwThread <- hwThreads.get
+          (event, index) <- events.zipWithIndex
+        } yield {
+          HWC(hwThread, event, likwidHelper.perfmonGetLastResult(groupId.get, index, hwThread.apicId))
+        }
+      case _ =>
+        Seq()
     }
   }
 

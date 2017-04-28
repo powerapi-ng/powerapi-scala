@@ -47,10 +47,10 @@ case class CpuInfo(family: Int, model: Int, stepping: Int, clock: Long, turbo: I
 
 object RAPLDomain extends Enumeration {
   type RAPLDomain = Value
-  val PKG = Value("rapl-cpu")
+  val PKG = Value("cpu")
   val PP0 = Value
   val PP1 = Value
-  val DRAM = Value("rapl-dram")
+  val DRAM = Value("dram")
 }
 
 /**
@@ -62,12 +62,17 @@ object RAPLDomain extends Enumeration {
   */
 class LikwidHelper {
 
+  private var cpuTopology: Option[CpuTopology] = None
+  private var cpuInfo: Option[CpuInfo] = None
+  private var affinityDomains: Option[AffinityDomains] = None
+  private var powerInfo: Option[PowerInfo ] = None
+
   def useDirectMode(): Unit = {
     // Direct access
     LikwidLibrary.INSTANCE.HPMmode(0)
   }
 
-  def topologyInit(): Int = {
+  def topologyInit(): Unit = {
     LikwidLibrary.INSTANCE.topology_init()
   }
 
@@ -83,7 +88,7 @@ class LikwidHelper {
     LikwidLibrary.INSTANCE.affinity_finalize()
   }
 
-  def powerInit(i: Int): Int = {
+  def powerInit(i: Int): Unit = {
     LikwidLibrary.INSTANCE.power_init(i)
   }
 
@@ -100,15 +105,25 @@ class LikwidHelper {
   }
 
   def perfmonSetupCounters(groupId: Int): Int = {
-    LikwidLibrary.INSTANCE.perfmon_setupCounters(groupId)
+    synchronized {
+      LikwidLibrary.INSTANCE.perfmon_setupCounters(groupId)
+    }
   }
 
   def perfmonStartCounters(): Int = {
     LikwidLibrary.INSTANCE.perfmon_startCounters()
   }
 
+  def perfmonStartGroupCounters(groupId: Int): Int = {
+    LikwidLibrary.INSTANCE.perfmon_startGroupCounters(groupId)
+  }
+
   def perfmonStopCounters(): Int = {
     LikwidLibrary.INSTANCE.perfmon_stopCounters()
+  }
+
+  def perfmonStopGroupCounters(groupId: Int): Int = {
+    LikwidLibrary.INSTANCE.perfmon_stopGroupCounters(groupId)
   }
 
   def perfmonGetLastResult(groupId: Int, eventId: Int, hwThreadId: Int): Double = {
@@ -141,44 +156,60 @@ class LikwidHelper {
   }
 
   def getCpuTopology(): CpuTopology = {
-    val topology = LikwidLibrary.INSTANCE.get_cpuTopology()
-    val threadPool = topology.threadPool.toArray(topology.numHWThreads).asInstanceOf[Array[likwid.HWThread]].map {
-      hwThread =>
-        HWThread(hwThread.threadId, hwThread.coreId, hwThread.packageId, hwThread.apicId, hwThread.inCpuSet)
+    if (cpuTopology.isEmpty) {
+      val topology = LikwidLibrary.INSTANCE.get_cpuTopology()
+      val threadPool = topology.threadPool.toArray(topology.numHWThreads).asInstanceOf[Array[likwid.HWThread]].map {
+        hwThread =>
+          HWThread(hwThread.threadId, hwThread.coreId, hwThread.packageId, hwThread.apicId, hwThread.inCpuSet)
+      }
+      val cacheLevels = topology.cacheLevels.toArray(topology.numCacheLevels).asInstanceOf[Array[likwid.CacheLevel]].map {
+        cacheLevel =>
+          CacheLevel(cacheLevel.`type`, cacheLevel.associativity, cacheLevel.sets, cacheLevel.lineSize, cacheLevel.size, cacheLevel.threads, cacheLevel.inclusive)
+      }
+      cpuTopology = Some(CpuTopology(topology.numSockets, topology.numCoresPerSocket, topology.numThreadsPerCore, threadPool, cacheLevels))
     }
-    val cacheLevels = topology.cacheLevels.toArray(topology.numCacheLevels).asInstanceOf[Array[likwid.CacheLevel]].map {
-      cacheLevel =>
-        CacheLevel(cacheLevel.`type`, cacheLevel.associativity, cacheLevel.sets, cacheLevel.lineSize, cacheLevel.size, cacheLevel.threads, cacheLevel.inclusive)
-    }
-    CpuTopology(topology.numSockets, topology.numCoresPerSocket, topology.numThreadsPerCore, threadPool, cacheLevels)
+
+    cpuTopology.get
   }
 
   def getAffinityDomains(): AffinityDomains = {
-    val affinities = LikwidLibrary.INSTANCE.get_affinityDomains()
-    val domains = affinities.domains.toArray(affinities.numberOfAffinityDomains).asInstanceOf[Array[likwid.AffinityDomain]].map {
-      affinityDomain =>
-        AffinityDomain(affinityDomain.tag.data.getString(0), affinityDomain.numberOfCores, affinityDomain.processorList.getPointer.getIntArray(0, affinityDomain.numberOfProcessors))
+    if (affinityDomains.isEmpty) {
+      val affinities = LikwidLibrary.INSTANCE.get_affinityDomains()
+      val domains = affinities.domains.toArray(affinities.numberOfAffinityDomains).asInstanceOf[Array[likwid.AffinityDomain]].map {
+        affinityDomain =>
+          AffinityDomain(affinityDomain.tag.data.getString(0), affinityDomain.numberOfCores, affinityDomain.processorList.getPointer.getIntArray(0, affinityDomain.numberOfProcessors))
+      }
+      affinityDomains = Some(AffinityDomains(affinities.numberOfSocketDomains, affinities.numberOfNumaDomains, affinities.numberOfProcessorsPerSocket, affinities.numberOfCacheDomains, affinities.numberOfCoresPerCache, affinities.numberOfProcessorsPerCache, domains))
     }
-    AffinityDomains(affinities.numberOfSocketDomains, affinities.numberOfNumaDomains, affinities.numberOfProcessorsPerSocket, affinities.numberOfCacheDomains, affinities.numberOfCoresPerCache, affinities.numberOfProcessorsPerCache, domains)
+
+    affinityDomains.get
   }
 
   def getPowerInfo(): PowerInfo = {
-    val powerInfo = LikwidLibrary.INSTANCE.get_powerInfo()
-    val tb = TurboBoost(powerInfo.turbo.steps.getPointer.getDoubleArray(0, powerInfo.turbo.numSteps))
-    val powerDomains = powerInfo.domains.map {
-      powerDomain =>
-        PowerDomain(powerDomain.`type`, powerDomain.supportFlags, powerDomain.energyUnit, powerDomain.tdp, powerDomain.minPower, powerDomain.maxPower, powerDomain.maxTimeWindow)
+    if (powerInfo.isEmpty) {
+      val pInfo = LikwidLibrary.INSTANCE.get_powerInfo()
+      val tb = TurboBoost(pInfo.turbo.steps.getPointer.getDoubleArray(0, pInfo.turbo.numSteps))
+      val pDomains = pInfo.domains.map {
+        pDomain =>
+          PowerDomain(pDomain.`type`, pDomain.supportFlags, pDomain.energyUnit, pDomain.tdp, pDomain.minPower, pDomain.maxPower, pDomain.maxTimeWindow)
+      }
+      powerInfo = Some(PowerInfo(pInfo.baseFrequency, pInfo.minFrequency, tb, pInfo.hasRAPL > 0, pInfo.powerUnit, pInfo.timeUnit, pInfo.uncoreMinFreq, pInfo.uncoreMaxFreq, pInfo.perfBias, pDomains))
     }
-    PowerInfo(powerInfo.baseFrequency, powerInfo.minFrequency, tb, powerInfo.hasRAPL > 0, powerInfo.powerUnit, powerInfo.timeUnit, powerInfo.uncoreMinFreq, powerInfo.uncoreMaxFreq, powerInfo.perfBias, powerDomains)
+
+    powerInfo.get
   }
 
   def getCpuInfo(): CpuInfo = {
-    val cpuInfo = LikwidLibrary.INSTANCE.get_cpuInfo()
-    CpuInfo(
-      cpuInfo.family, cpuInfo.model, cpuInfo.stepping, cpuInfo.clock, cpuInfo.turbo, cpuInfo.osname.getString(0),
-      cpuInfo.name.getString(0), cpuInfo.short_name.getString(0), cpuInfo.features.getString(0), cpuInfo.isIntel, cpuInfo.supportUncore,
-      cpuInfo.featureFlags, cpuInfo.perf_version, cpuInfo.perf_num_ctr, cpuInfo.perf_width_ctr, cpuInfo.perf_num_fixed_ctr
-    )
+    if (cpuInfo.isEmpty) {
+      val cInfo = LikwidLibrary.INSTANCE.get_cpuInfo()
+      cpuInfo = Some(CpuInfo(
+        cInfo.family, cInfo.model, cInfo.stepping, cInfo.clock, cInfo.turbo, cInfo.osname.getString(0),
+        cInfo.name.getString(0), cInfo.short_name.getString(0), cInfo.features.getString(0), cInfo.isIntel, cInfo.supportUncore,
+        cInfo.featureFlags, cInfo.perf_version, cInfo.perf_num_ctr, cInfo.perf_width_ctr, cInfo.perf_num_fixed_ctr
+      ))
+    }
+
+    cpuInfo.get
   }
 }
 
