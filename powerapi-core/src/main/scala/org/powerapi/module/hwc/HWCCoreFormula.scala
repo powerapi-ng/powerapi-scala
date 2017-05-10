@@ -33,8 +33,15 @@ import org.powerapi.core.target.{All, Target}
 import org.powerapi.module.Formula
 import org.powerapi.module.PowerChannel.publishRawPowerReport
 import org.powerapi.module.hwc.HWCChannel.{HWCReport, subscribeHWCReport, unsubscribeHWCReport}
+import spray.json._
 
-import scala.concurrent.duration.FiniteDuration
+import scala.collection.immutable.ListMap
+
+case class PowerModel(socket: String, coefficients: Seq[Double])
+
+object PowerModelJsonProtocol extends DefaultJsonProtocol {
+  implicit val powerModelFormat = jsonFormat2(PowerModel)
+}
 
 /**
   * Formula that uses cycles and ref_cycles to compute the power estimation.
@@ -43,6 +50,9 @@ import scala.concurrent.duration.FiniteDuration
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
 class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper, zkClient: ZkClient) extends Formula(eventBus, muid, target) {
+  import PowerModelJsonProtocol._
+
+  val affinityDomains = likwidHelper.getAffinityDomains()
 
   def init(): Unit = subscribeHWCReport(muid, target)(eventBus)(self)
 
@@ -60,22 +70,41 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
       case Return(node) =>
         node.getData() onSuccess {
           case data: ZNode.Data =>
-            context.become(compute(new String(data.bytes).split(",").map(_.toDouble)) orElse formulaDefault)
+            context.become(compute(new String(data.bytes).parseJson.convertTo[Seq[PowerModel]]) orElse formulaDefault)
         }
       case _ =>
 
     }
 
-    compute(Seq(0.0, 0.0, 0.0))
+    compute(Seq())
   }
 
-  def compute(formula: Seq[Double]): Actor.Receive = {
+  def compute(formulae: Seq[PowerModel]): Actor.Receive = {
     case msg: HWCReport =>
       //val now = System.nanoTime()
 
-      val powers = for ((core, hwcs) <- msg.values.groupBy(_.hwThread.coreId)) yield {
+      val powers = for (socket <- affinityDomains.domains.filter(_.tag.startsWith("S"))) yield {
+        val formula = formulae.find(_.socket == socket.tag).get
+        val sIndex = socket.tag.substring(1).toInt
+        val socketHwcs = msg.values.filter(_.hwThread.packageId == sIndex)
+        assert(socketHwcs.length == socket.processorList.length * 2)
+
+        var index = 0
+        val sPowers = for ((core, hwcs) <- ListMap(socketHwcs.groupBy(_.hwThread.coreId).toSeq.sortBy(_._1): _*)) yield {
+          assert(hwcs.length == 4)
+
+          val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => acc + hwc.value)
+          val power = formula.coefficients(index) * cycles
+
+          index += 1
+          power
+        }
+
+        sPowers.sum
+      }
+
+      /*val powers = for ((core, hwcs) <- msg.values.groupBy(_.hwThread.coreId)) yield {
         val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => hwc.value)
-        if(target == All) println(s"$core, $cycles")
         /*val cyclesVal = cycles.map(_.value).sum
         val scaledCycles = cyclesVal*/
         //val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
@@ -95,11 +124,8 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
         }*/
 
         val formulaWoIdle = formula.updated(0, 0d)
-        val power = formulaWoIdle.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(cycles, tuple._2)))
-        println(formulaWoIdle)
-        println(power)
-        power
-      }
+        formulaWoIdle.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(cycles, tuple._2)))
+      }*/
 
       val accPower = {
         try {
@@ -111,9 +137,6 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
             0.W
         }
       }
-
-      if (target == All) println(powers)
-      if(target == All) println("=====")
 
       publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
   }

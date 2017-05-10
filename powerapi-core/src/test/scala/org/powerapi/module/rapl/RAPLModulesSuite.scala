@@ -37,46 +37,27 @@ class RAPLModulesSuite extends UnitTest with MockFactory {
     system.terminate()
   }
 
-  "The RAPLModule class" should "create the underlying classes (sensor/formula)" in {
-    val likwidHelper = mock[LikwidHelper]
-
-    val module = new RAPLModule(likwidHelper, RAPLDomain.DRAM)
-
-    module.sensor.get._1 should equal(classOf[RAPLSensor])
-    module.sensor.get._2.size should equal(2)
-    module.sensor.get._2(0) should equal(likwidHelper)
-    module.sensor.get._2(1) should equal(RAPLDomain.DRAM)
-
-    module.formula.get._1 should equal(classOf[RAPLFormula])
-    module.formula.get._2.size should equal(1)
-    module.formula.get._2(0) should equal(RAPLDomain.DRAM)
-  }
-
   "The RaplCpuModule object" should "build correctly the companion class" in {
     val likwidHelper = mock[LikwidHelper]
 
-    val module = RaplCpuModule(likwidHelper)
+    val module = RAPLCpuModule(likwidHelper)
 
     module.sensor.get._1 should equal(classOf[RAPLSensor])
     module.sensor.get._2(0) should equal(likwidHelper)
-    module.sensor.get._2(1) should equal(RAPLDomain.PKG)
 
     module.formula.get._1 should equal(classOf[RAPLFormula])
-    module.formula.get._2.size should equal(1)
-    module.formula.get._2(0) should equal(RAPLDomain.PKG)
+    module.formula.get._2.size should equal(0)
   }
 
   "The RaplDramModule object" should "build correctly the companion class" in {
     val likwidHelper = mock[LikwidHelper]
 
-    val module = RaplDramModule(likwidHelper)
+    val module = RAPLDramModule(likwidHelper)
 
     module.sensor.get._1 should equal(classOf[RAPLSensor])
     module.sensor.get._2(0) should equal(likwidHelper)
-    module.sensor.get._2(1) should equal(RAPLDomain.DRAM)
 
     module.formula.get._1 should equal(classOf[RAPLFormula])
-    module.formula.get._2.size should equal(1)
-    module.formula.get._2(0) should equal(RAPLDomain.DRAM)
+    module.formula.get._2.size should equal(0)
   }
 }

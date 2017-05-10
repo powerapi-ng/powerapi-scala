@@ -172,7 +172,7 @@ object Application extends App {
     running = false
   }
 
-  case class Config(mode: String = "", zkUrl: String = "", zkTimeout: Int = 10, influxHost: String = "", influxPort: Int = 8086, influxDatabase: String = "", duration: Int = 15)
+  case class Config(mode: String = "", zkUrl: String = "", zkTimeout: Int = 10, influxHost: String = "", influxPort: Int = 8086, influxDatabase: String = "", duration: Int = 15, hostnameFilepath: String = "/proc/sys/kernel/hostname")
 
   val parser = new scopt.OptionParser[Config]("active-learning") {
     cmd("idle") action { (_, c) =>
@@ -210,6 +210,9 @@ object Application extends App {
       opt[String]("influxDB") action { (x, c) =>
         c.copy(influxDatabase = x)
       } text "InfluxDB database"
+      opt[String]("hostnameFp") action { (x, c) =>
+        c.copy(hostnameFilepath = x)
+      }
     }
 
     checkConfig { c =>
@@ -229,7 +232,7 @@ object Application extends App {
       val influxdb = InfluxDB.connect(config.influxHost, config.influxPort, "", "")
       val db = influxdb.selectDatabase(config.influxDatabase)
 
-      val hostname = Source.fromFile("/proc/sys/kernel/hostname").mkString.trim
+      val hostname = Source.fromFile(config.hostnameFilepath).mkString.trim
       val docker = DockerClientBuilder.getInstance("unix:///var/run/docker.sock").build()
 
       val osHelper = new LinuxHelper()

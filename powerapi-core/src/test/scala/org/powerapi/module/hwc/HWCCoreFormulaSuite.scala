@@ -38,8 +38,10 @@ import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.module.FormulaChannel.{startFormula, stopFormula}
 import org.powerapi.module.Formulas
 import org.powerapi.module.PowerChannel.{RawPowerReport, subscribeRawPowerReport}
+import org.powerapi.module.hwc.PowerModelJsonProtocol._
 import org.powerapi.module.hwc.HWCChannel.{HWC, publishHWCReport}
 import org.scalamock.scalatest.MockFactory
+import spray.json._
 
 import scala.concurrent.duration.DurationInt
 import scala.collection.JavaConverters._
@@ -74,17 +76,21 @@ class HWCCoreFormulaSuite extends UnitTest with MockFactory {
   "A HWCCoreFormula" should "process a SensorReport and then publish a RawPowerReport" in new Bus {
     val muid = UUID.randomUUID()
     val target: Target = All
-    var formula = Seq(87.7358230435, 2.00553994023e-09, -1.00002335486e-18)
+    var formulae = Seq(PowerModel("S0", Seq(1, 2)), PowerModel("S1", Seq(10, 11)))
+    var formulaS0 = formulae.find(_.socket == "S0").get.coefficients
+    var formulaS1 = formulae.find(_.socket == "S1").get.coefficients
+
     implicit val timer = new JavaTimer(true)
 
     val likwidHelper = mock[LikwidHelper]
     likwidHelper.getCpuInfo _ expects() returning CpuInfo(0, 0, 0, 0, 0, "Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz", "", "", "", 0, 0, 0, 0, 0, 0, 0)
+    likwidHelper.getAffinityDomains _ expects() returning AffinityDomains(0, 0, 0, 0, 0, 0, Seq(AffinityDomain("S0", 2, Seq(0, 16, 2, 18)), AffinityDomain("S1", 2, Seq(1, 17, 3, 19))))
 
     var version = 0
 
     val zk = ZkClient("localhost:2181", Duration.fromSeconds(10)).withAcl(OPEN_ACL_UNSAFE.asScala)
     val zNode = Await.result(zk("/e5-2630").create(), Duration.fromSeconds(10))
-    Await.result(zNode.setData(new String(formula.mkString(",")).getBytes, version), Duration.fromSeconds(10))
+    Await.result(zNode.setData(formulae.toJson.toString.getBytes, version), Duration.fromSeconds(10))
     version += 1
 
     val tick1 = new Tick {
@@ -114,7 +120,7 @@ class HWCCoreFormulaSuite extends UnitTest with MockFactory {
 //      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC2", 0d)
 //    )
 
-    var values = Seq[HWC](
+    /*var values = Seq[HWC](
       HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 1E9),
       HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 1E9),
       HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC2", 34475589d),
@@ -123,28 +129,61 @@ class HWCCoreFormulaSuite extends UnitTest with MockFactory {
       HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
       HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_REF:FIXC2", 0d),
       HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC2", 0d)
+    )*/
+
+    var values = Seq[HWC](
+      HWC(HWThread(1, 2, 1, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 3),
+      HWC(HWThread(1, 2, 1, 1, 1), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(17, 2, 1, 17, 17), "CPU_CLK_UNHALTED_CORE:FIXC1", 3),
+      HWC(HWThread(17, 2, 1, 17, 17), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(3, 3, 1, 3, 3), "CPU_CLK_UNHALTED_CORE:FIXC1", 4),
+      HWC(HWThread(3, 3, 1, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(19, 3, 1, 19, 19), "CPU_CLK_UNHALTED_CORE:FIXC1", 4),
+      HWC(HWThread(19, 3, 1, 19, 19), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 1),
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(16, 0, 0, 16, 16), "CPU_CLK_UNHALTED_CORE:FIXC1", 1),
+      HWC(HWThread(16, 0, 0, 16, 16), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_CORE:FIXC1", 2),
+      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(18, 1, 0, 18, 18), "CPU_CLK_UNHALTED_CORE:FIXC1", 2),
+      HWC(HWThread(18, 1, 0, 18, 18), "CPU_CLK_UNHALTED_REF:FIXC1", -1)
     )
+
+    val expectedPower1 = 2 * formulaS0(0) + 4 * formulaS0(1) + 6 * formulaS1(0) + 8 * formulaS1(1)
 
     publishHWCReport(muid, target, values, tick1)(eventBus)
     var rawPowerReport = expectMsgClass(classOf[RawPowerReport])
     rawPowerReport.muid should equal(muid)
     rawPowerReport.target should equal(target)
-    rawPowerReport.power should (be > 16.W and be <= 17.W)
+    rawPowerReport.power should equal(expectedPower1.W)
     rawPowerReport.device should equal("cpu")
     rawPowerReport.tick should equal(tick1)
 
-    Await.result(zNode.setData(new String(Seq(87.7358230435, 2.00553994023e-08, -1.00002335486e-18).mkString(",")).getBytes, version), Duration.fromSeconds(10))
+    formulae = Seq(PowerModel("S0", Seq(10, 20)), PowerModel("S1", Seq(30, 40)))
+    formulaS0 = formulae.find(_.socket == "S0").get.coefficients
+    formulaS1 = formulae.find(_.socket == "S1").get.coefficients
+    Await.result(zNode.setData(formulae.toJson.toString.getBytes, version), Duration.fromSeconds(10))
     version += 1
     values = Seq[HWC](
-      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 1E9),
-      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 0E9),
-      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC2", 34475589d),
-      HWC(HWThread(1, 0, 0, 1, 1), "CPU_CLK_UNHALTED_REF:FIXC2", 34075589d),
-      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
-      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_CORE:FIXC1", 0d),
-      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_REF:FIXC2", 0d),
-      HWC(HWThread(3, 1, 0, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC2", 0d)
+      HWC(HWThread(1, 2, 1, 1, 1), "CPU_CLK_UNHALTED_CORE:FIXC1", 1),
+      HWC(HWThread(1, 2, 1, 1, 1), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(17, 2, 1, 17, 17), "CPU_CLK_UNHALTED_CORE:FIXC1", 1),
+      HWC(HWThread(17, 2, 1, 17, 17), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(3, 3, 1, 3, 3), "CPU_CLK_UNHALTED_CORE:FIXC1", 2),
+      HWC(HWThread(3, 3, 1, 3, 3), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(19, 3, 1, 19, 19), "CPU_CLK_UNHALTED_CORE:FIXC1", 2),
+      HWC(HWThread(19, 3, 1, 19, 19), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_CORE:FIXC1", 3),
+      HWC(HWThread(0, 0, 0, 0, 0), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(16, 0, 0, 16, 16), "CPU_CLK_UNHALTED_CORE:FIXC1", 3),
+      HWC(HWThread(16, 0, 0, 16, 16), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_CORE:FIXC1", 4),
+      HWC(HWThread(2, 1, 0, 2, 2), "CPU_CLK_UNHALTED_REF:FIXC1", -1),
+      HWC(HWThread(18, 1, 0, 18, 18), "CPU_CLK_UNHALTED_CORE:FIXC1", 4),
+      HWC(HWThread(18, 1, 0, 18, 18), "CPU_CLK_UNHALTED_REF:FIXC1", -1)
     )
+    val expectedPower2 = 6 * formulaS0(0) + 8 * formulaS0(1) + 2 * formulaS1(0) + 4 * formulaS1(1)
 
     Thread.sleep(5.seconds.toMillis)
 
@@ -152,7 +191,7 @@ class HWCCoreFormulaSuite extends UnitTest with MockFactory {
     rawPowerReport = expectMsgClass(classOf[RawPowerReport])
     rawPowerReport.muid should equal(muid)
     rawPowerReport.target should equal(target)
-    rawPowerReport.power should (be > 19.W and be <= 20.W)
+    rawPowerReport.power should equal(expectedPower2.W)
     rawPowerReport.device should equal("cpu")
     rawPowerReport.tick should equal(tick1)
 
