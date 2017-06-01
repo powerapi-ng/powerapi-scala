@@ -29,10 +29,11 @@ import com.paulgoldbaum.influxdbclient.{Database, InfluxDB, Point}
 import com.twitter.util.{Duration, JavaTimer}
 import com.twitter.zk.ZkClient
 import org.apache.zookeeper.ZooDefs.Ids.OPEN_ACL_UNSAFE
+import org.influxdb.InfluxDBFactory
 import org.powerapi.core.{LinuxHelper, Message}
 import org.powerapi.core.target.{All, Container}
 import org.powerapi.module.PowerChannel.{AggregatePowerReport, RawPowerReport, subscribeAggPowerReport}
-import org.powerapi.module.hwc.{CHelper, HWCCoreModule, HWCCoreSensorModule, LikwidHelper, PowerData, RAPLDomain}
+import org.powerapi.module.hwc.{CHelper, HWCCoreModule, HWCCoreSensorModule, LikwidHelper, PowerData, RAPLDomain, ZKTick}
 import org.powerapi.core.power._
 import org.powerapi.module.hwc.HWCChannel.{HWC, HWCReport, subscribeHWCReport}
 import org.powerapi.module.hwc.RAPLDomain.RAPLDomain
@@ -50,7 +51,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.sys
 import scala.util.{Failure, Success}
 
-class InfluxDBMonitoring(db: Database, measurement: String) extends Actor with ActorLogging {
+class InfluxDBMonitoring(db: Database, measurement: String, retentionPolicy: Option[String]) extends Actor with ActorLogging {
 
   def receive = accumulator(Map())
 
@@ -79,8 +80,8 @@ class InfluxDBMonitoring(db: Database, measurement: String) extends Actor with A
             var index = 0
             for ((core, hwcs) <- ListMap(hwThreads.groupBy(_.hwThread.coreId).toSeq.sortBy(_._1): _*)) {
               assert(hwcs.size == 4)
-              val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => hwc.value)
-              val refs = hwcs.filter(_.event == "CPU_CLK_UNHALTED_REF:FIXC2").foldLeft(0d)((acc, hwc) => hwc.value)
+              val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").map(_.value).sum
+              val refs = hwcs.filter(_.event == "CPU_CLK_UNHALTED_REF:FIXC2").map(_.value).sum
 
               point = point.addField(s"c$index", cycles)
               point = point.addField(s"r$index", refs)
@@ -90,11 +91,21 @@ class InfluxDBMonitoring(db: Database, measurement: String) extends Actor with A
             point
           }).toSeq
 
-          db.bulkWrite(points, precision = Precision.MILLISECONDS) onComplete {
-            case Success(result) =>
-              log.info("Flushing points: OK")
-            case Failure(t) =>
-              log.error("Flushing points: KO")
+          retentionPolicy match {
+            case Some(rp) =>
+              db.bulkWrite(points, precision = Precision.MILLISECONDS, retentionPolicy = rp) onComplete {
+                case Success(result) =>
+                  log.info("Flushing points: OK")
+                case Failure(t) =>
+                  log.error("Flushing points: KO")
+              }
+            case None =>
+              db.bulkWrite(points, precision = Precision.MILLISECONDS) onComplete {
+                case Success(result) =>
+                  log.info("Flushing points: OK")
+                case Failure(t) =>
+                  log.error("Flushing points: KO")
+              }
           }
 
           context.become(accumulator(acc - timestamp))
@@ -105,7 +116,7 @@ class InfluxDBMonitoring(db: Database, measurement: String) extends Actor with A
   }
 }
 
-class InfluxDBReporting(db: Database, measurement: String, hostname: String) extends Actor with ActorLogging {
+class InfluxDBReporting(db: Database, measurement: String, hostname: String, retentionPolicy: Option[String]) extends Actor with ActorLogging {
 
   def receive = accumulator(Seq(), Set(), Seq())
 
@@ -116,6 +127,8 @@ class InfluxDBReporting(db: Database, measurement: String, hostname: String) ext
       if (timestamps.size > 0 && !timestamps.contains(timestamp)) {
         var _points = Seq[Point]()
         val previousTimestamp = acc.head.ticks.head.timestamp
+
+        val (cpuIdle, hash) = acc.map(_.ticks.filter(_.isInstanceOf[ZKTick]).map(tick => {val zkTick = tick.asInstanceOf[ZKTick]; (zkTick.cpuIdle, zkTick.formulaeHash)}).find(_._2 != "none")).head.getOrElse(0.0, "none")
 
         val allPowers = acc.filter(_.targets.head == All).map(_.powerPerDevice).foldLeft(Map[String, Power]())((acc, map) => acc.++:(map))
         val gcpuPower = allPowers.filter(_._1.startsWith("rapl-cpu")).values.foldLeft(0.W)((acc, p) => acc + p)
@@ -128,8 +141,10 @@ class InfluxDBReporting(db: Database, measurement: String, hostname: String) ext
           .addField("gdram", gdramPower.toWatts)
           .addField("vcpu", vcpuPower.toWatts)
           .addField("vdram", vdramPower.toWatts)
+          .addField("vcpuidle", cpuIdle)
           .addTag("target", "All")
           .addTag("node", hostname)
+          .addTag("hash", hash)
 
         val containerReports = acc.filter(_.targets.head.isInstanceOf[Container])
 
@@ -143,17 +158,30 @@ class InfluxDBReporting(db: Database, measurement: String, hostname: String) ext
             .addField("gdram", gdramPower.toWatts)
             .addField("vcpu", vcpuPower.toWatts)
             .addField("vdram", vdramPower.toWatts)
+            .addField("vcpuidle", cpuIdle)
             .addTag("target", report.targets.head.asInstanceOf[Container].name)
             .addTag("node", hostname)
+            .addTag("hash", hash)
         })
 
         if (timestamps.size + 1 > 60) {
-          db.bulkWrite(points ++ _points, precision = Precision.MILLISECONDS) onComplete {
-            case Success(result) =>
-              log.info("Flushing points: OK")
-            case Failure(t) =>
-              log.error("Flushing points: KO")
+          retentionPolicy match {
+            case Some(rp) =>
+              db.bulkWrite(points ++ _points, precision = Precision.MILLISECONDS, retentionPolicy = rp) onComplete {
+                case Success(result) =>
+                  log.info("Flushing points: OK")
+                case Failure(t) =>
+                  log.error("Flushing points: KO")
+              }
+            case None =>
+              db.bulkWrite(points ++ _points, precision = Precision.MILLISECONDS) onComplete {
+                case Success(result) =>
+                  log.info("Flushing points: OK")
+                case Failure(t) =>
+                  log.error("Flushing points: KO")
+              }
           }
+
           context.become(accumulator(Seq(), Set(), Seq()))
         }
 
@@ -172,7 +200,7 @@ object Application extends App {
     running = false
   }
 
-  case class Config(mode: String = "", zkUrl: String = "", zkTimeout: Int = 10, influxHost: String = "", influxPort: Int = 8086, influxDatabase: String = "", duration: Int = 15, hostnameFilepath: String = "/proc/sys/kernel/hostname")
+  case class Config(mode: String = "", zkUrl: String = "", zkTimeout: Int = 10, influxHost: String = "", influxPort: Int = 8086, influxDatabase: String = "", influxRp: Option[String] = None, duration: Int = 15, hostnameFilepath: String = "/etc/hostname")
 
   val parser = new scopt.OptionParser[Config]("active-learning") {
     cmd("idle") action { (_, c) =>
@@ -210,9 +238,12 @@ object Application extends App {
       opt[String]("influxDB") action { (x, c) =>
         c.copy(influxDatabase = x)
       } text "InfluxDB database"
+      opt[String]("influxRp") action { (x, c) =>
+        c.copy(influxRp = Some(x))
+      } text "InfluxDB database"
       opt[String]("hostnameFp") action { (x, c) =>
         c.copy(hostnameFilepath = x)
-      }
+      } text "Hostname filepath"
     }
 
     checkConfig { c =>
@@ -272,7 +303,7 @@ object Application extends App {
         )
         pMeters :+= papiReporting
 
-        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "idlemon"))
+        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "idlemon", None))
         actors :+= monitoringRef
         val monitor = papiReporting.monitor(All)(MAX)
         monitors += hostname -> monitor
@@ -285,18 +316,19 @@ object Application extends App {
       else if (config.mode == "active") {
         implicit val timer = new JavaTimer(true)
 
+        val influxFix = InfluxDBFactory.connect(s"http://${config.influxHost}:${config.influxPort}")
         val zkClient = ZkClient(config.zkUrl, Duration.fromSeconds(config.zkTimeout)).withAcl(OPEN_ACL_UNSAFE.asScala)
 
         val papiReporting = PowerMeter.loadModule(
-          HWCCoreModule(None, osHelper, likwidHelper, cHelper, zkClient),
+          HWCCoreModule(None, osHelper, likwidHelper, cHelper, zkClient, influxFix, config.influxDatabase, config.influxRp.getOrElse("autogen")),
           RAPLCpuModule(likwidHelper),
           RAPLDramModule(likwidHelper)
         )
         pMeters :+= papiReporting
 
-        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "activemon"))
+        val monitoringRef = system.actorOf(Props(classOf[InfluxDBMonitoring], db, "activemon", config.influxRp))
         actors :+= monitoringRef
-        val reportingRef = system.actorOf(Props(classOf[InfluxDBReporting], db, "activerep" , hostname))
+        val reportingRef = system.actorOf(Props(classOf[InfluxDBReporting], db, "activerep" , hostname, config.influxRp))
         actors :+= reportingRef
         val monitor = papiReporting.monitor(All)(MAX)
         monitors += hostname -> monitor

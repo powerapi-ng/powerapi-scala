@@ -22,12 +22,16 @@
  */
 package org.powerapi.module.hwc
 
+import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 import akka.actor.Actor
 import com.twitter.util.Return
 import com.twitter.zk.{ZNode, ZkClient}
-import org.powerapi.core.MessageBus
+import org.influxdb.InfluxDB
+import org.influxdb.dto.Query
+import org.powerapi.core.{MessageBus, Tick}
 import org.powerapi.core.power._
 import org.powerapi.core.target.{All, Target}
 import org.powerapi.module.Formula
@@ -35,7 +39,10 @@ import org.powerapi.module.PowerChannel.publishRawPowerReport
 import org.powerapi.module.hwc.HWCChannel.{HWCReport, subscribeHWCReport, unsubscribeHWCReport}
 import spray.json._
 
-import scala.collection.immutable.ListMap
+import scala.collection.JavaConverters._
+
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.Await
 
 case class PowerModel(socket: String, coefficients: Seq[Double])
 
@@ -43,16 +50,19 @@ object PowerModelJsonProtocol extends DefaultJsonProtocol {
   implicit val powerModelFormat = jsonFormat2(PowerModel)
 }
 
+case class ZKTick(topic: String, timestamp: Long, cpuIdle: Double, formulaeHash: String) extends Tick
+
 /**
   * Formula that uses cycles and ref_cycles to compute the power estimation.
   * ref_cycles is only used to compute the frequency coefficient.
   *
   * @author <a href="mailto:maxime.colmant@gmail.com">Maxime Colmant</a>
   */
-class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper, zkClient: ZkClient) extends Formula(eventBus, muid, target) {
+class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHelper: LikwidHelper, zkClient: ZkClient, influx: InfluxDB, influxDB: String, influxRp: String) extends Formula(eventBus, muid, target) {
   import PowerModelJsonProtocol._
 
   val affinityDomains = likwidHelper.getAffinityDomains()
+  val powerInfo = likwidHelper.getPowerInfo()
 
   def init(): Unit = subscribeHWCReport(muid, target)(eventBus)(self)
 
@@ -63,73 +73,139 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
     val cpuModel = likwidHelper.getCpuInfo().osname match {
       case ModelRegex(model) => model.toLowerCase
     }
-    val zkNodeModel = zkClient(s"/$cpuModel")
-    val monitoring = zkNodeModel.getData.monitor()
+    try {
+      val zkNodeModel = zkClient(s"/$cpuModel")
+      val monitoring = zkNodeModel.getData.monitor()
 
-    monitoring.foreach {
-      case Return(node) =>
-        node.getData() onSuccess {
-          case data: ZNode.Data =>
-            context.become(compute(new String(data.bytes).parseJson.convertTo[Seq[PowerModel]]) orElse formulaDefault)
-        }
-      case _ =>
+      monitoring.foreach {
+        case Return(node) =>
+          node.getData() onSuccess {
+            case data: ZNode.Data =>
+              val bytes = Array[Byte]() ++ data.bytes
+              val formulae = {
+                if (new String(bytes) == "") Seq()
+                else new String(bytes).parseJson.convertTo[Seq[PowerModel]]
+              }
+              val hash = {
+                if (new String(bytes) == "") "none"
+                else MessageDigest.getInstance("MD5").digest(bytes).map(0xFF & _).map {
+                  "%02x".format(_)
+                }.mkString
+              }
+              context.become(compute(formulae, hash) orElse formulaDefault)
+            case _ =>
+
+          }
+        case _ =>
+
+      }
+    }
+    catch {
+      case e: Exception =>
 
     }
 
-    compute(Seq())
+    compute(Seq(), "none")
   }
 
-  def compute(formulae: Seq[PowerModel]): Actor.Receive = {
+  def compute(formulae: Seq[PowerModel], formulaeHash: String): Actor.Receive = {
     case msg: HWCReport =>
       //val now = System.nanoTime()
 
-      val powers = for (socket <- affinityDomains.domains.filter(_.tag.startsWith("S"))) yield {
-        val formula = formulae.find(_.socket == socket.tag).get
-        val sIndex = socket.tag.substring(1).toInt
-        val socketHwcs = msg.values.filter(_.hwThread.packageId == sIndex)
-        assert(socketHwcs.length == socket.processorList.length * 2)
+      // POLYNOMIAL
+      /*val queryBuilder = new Query(s"select * from $influxRp.activemon where time = ${msg.tick.timestamp}ms", influxDB)
+      var query = influx.query(queryBuilder, TimeUnit.MILLISECONDS)
 
-        var index = 0
-        val sPowers = for ((core, hwcs) <- ListMap(socketHwcs.groupBy(_.hwThread.coreId).toSeq.sortBy(_._1): _*)) yield {
-          assert(hwcs.length == 4)
-
-          val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => acc + hwc.value)
-          val power = formula.coefficients(index) * cycles
-
-          index += 1
-          power
-        }
-
-        sPowers.sum
+      while (query.getResults.get(0).getSeries == null || (query.getResults.get(0).getSeries.size == 1 && query.getResults.get(0).getSeries.get(0).getValues.size != 2)) {
+        Thread.sleep(5)
+        query = influx.query(queryBuilder, TimeUnit.MILLISECONDS)
       }
 
-      /*val powers = for ((core, hwcs) <- msg.values.groupBy(_.hwThread.coreId)) yield {
-        val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").foldLeft(0d)((acc, hwc) => hwc.value)
-        /*val cyclesVal = cycles.map(_.value).sum
-        val scaledCycles = cyclesVal*/
-        //val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
-        //val refs = hwcs.filter(_.event.startsWith("CPU_CLK_UNHALTED_REF"))
-        //val refsVal = refs.map(_.value).sum
-        //val scaledRefs = if (now - old <= 0) 0l else math.round(refsVal * (samplingInterval.toNanos / (now - old).toDouble))
+      val socketColumn = allColumns.zipWithIndex.find(_._1 == "socket").get._2
+      val coreColumns = allColumns.zipWithIndex.filter(_._1.startsWith("c")).map(_._2)
+      val rows = query.getResults.get(0).getSeries.get(0).getValues.asScala
 
-        /*var coefficient: Double = math.round(scaledCycles / scaledRefs.toDouble)
+      val allSocketHwcs: Map[String, Double] = (for (row <- rows) yield {
+        (row.get(socketColumn).asInstanceOf[String], (for (column <- coreColumns) yield row.get(column).asInstanceOf[Double]).sum)
+      }).toMap
 
-        if (coefficient.isNaN || coefficient < formulae.keys.min) coefficient = formulae.keys.min
+      */
 
-        if (coefficient > formulae.keys.max) coefficient = formulae.keys.max
+      val queryBuilder = new Query(s"select * from $influxRp.activemon where time > now() - 10s", influxDB)
+      var query = influx.query(queryBuilder, TimeUnit.MILLISECONDS)
 
-        if (!formulae.contains(coefficient)) {
-          val coefficientsBefore = formulae.keys.filter(_ < coefficient)
-          coefficient = coefficientsBefore.max
+      val allColumns = if (query.getResults.get(0).getSeries != null) query.getResults.get(0).getSeries.get(0).getColumns.asScala else Seq()
+      val socketColumn = if (query.getResults.get(0).getSeries != null) allColumns.zipWithIndex.find(_._1 == "socket").get._2 else -1
+      val coreColumns = if (query.getResults.get(0).getSeries != null) allColumns.zipWithIndex.filter(_._1.startsWith("c")).map(_._2) else Seq()
+
+        val powers = for (socket <- affinityDomains.domains.filter(_.tag.startsWith("S"))) yield {
+          if (formulae.nonEmpty) {
+            val model = formulae.find(_.socket == socket.tag).get
+            val sIndex = socket.tag.substring(1).toInt
+
+            val targetCycles = msg.values.filter(_.hwThread.packageId == sIndex).filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").map(_.value).sum
+            val socketCycles = {
+              if (query.getResults.get(0).getSeries != null) {
+                val socketLastRow = query.getResults.get(0).getSeries.get(0).getValues.asScala.filter(_.get(socketColumn) == socket.tag).last
+                (for (column <- coreColumns) yield socketLastRow.get(column).asInstanceOf[Double]).sum
+              }
+              else targetCycles
+            }
+
+
+            val formula = model.coefficients.updated(0, 0d)
+            val allPower = formula.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(socketCycles, tuple._2)))
+
+            val ratio: Double = {
+              if (socketCycles < 0) 0
+              else if (targetCycles / socketCycles > 1) 1
+              else targetCycles / socketCycles
+            }
+
+            val power = allPower * ratio
+            if (power < 0) 0
+            else power
+          }
+
+          else 0
+        }
+
+      // MULTIVARIATE -- TO REWRITE WITH INFLUX
+      /*val powers = for (socket <- affinityDomains.domains.filter(_.tag.startsWith("S"))) yield {
+          if (formulae.nonEmpty) {
+            val formula = formulae.find(_.socket == socket.tag).get
+            val sIndex = socket.tag.substring(1).toInt
+            val socketHwcs = msg.values.filter(_.hwThread.packageId == sIndex)
+            assert(socketHwcs.length == socket.processorList.length * 2)
+
+            var index = 1
+            val sPowers = for ((core, hwcs) <- ListMap(socketHwcs.groupBy(_.hwThread.coreId).toSeq.sortBy(_._1): _*)) yield {
+              assert(hwcs.length == 4)
+
+              val cycles = hwcs.filter(_.event == "CPU_CLK_UNHALTED_CORE:FIXC1").map(_.value).sum / 1e09
+              val power = formula.coefficients(index) * cycles
+
+              index += 1
+              power
+            }
+
+            val power = sPowers.sum
+
+            if (power < 0) 0
+            else if (power > powerInfo.domains(RAPLDomain.PKG.id).tdp) powerInfo.domains(RAPLDomain.PKG.id).tdp
+            else power
+          }
+
+          else 0
         }*/
 
-        val formulaWoIdle = formula.updated(0, 0d)
-        formulaWoIdle.zipWithIndex.foldLeft(0d)((acc, tuple) => acc + (tuple._1 * math.pow(cycles, tuple._2)))
-      }*/
 
       val accPower = {
         try {
-          powers.sum.W
+          if (powers.sum > affinityDomains.domains.count(_.tag.startsWith("S")) * powerInfo.domains(RAPLDomain.PKG.id).tdp) {
+            (affinityDomains.domains.count(_.tag.startsWith("S")) * powerInfo.domains(RAPLDomain.PKG.id).tdp).W
+          }
+          else powers.sum.W
         }
         catch {
           case _: Exception =>
@@ -138,6 +214,7 @@ class HWCCoreFormula(eventBus: MessageBus, muid: UUID, target: Target, likwidHel
         }
       }
 
-      publishRawPowerReport(muid, target, accPower, "cpu", msg.tick)(eventBus)
+      val tick = ZKTick(msg.tick.topic, msg.tick.timestamp, formulae.map(_.coefficients.head).sum, formulaeHash)
+      publishRawPowerReport(muid, target, accPower, "cpu", tick)(eventBus)
   }
 }

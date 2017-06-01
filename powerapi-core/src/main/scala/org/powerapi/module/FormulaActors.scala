@@ -42,7 +42,7 @@ abstract class Formula(eventBus: MessageBus, muid: UUID, target: Target) extends
   def receive: Actor.Receive = starting orElse default
 
   def starting: Actor.Receive = {
-    case msg: FormulaStart if msg.muid == muid && msg.target == target => start()
+    case msg: FormulaStart => start()
   }
 
   /**

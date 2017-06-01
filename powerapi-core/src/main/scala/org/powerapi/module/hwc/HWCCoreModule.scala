@@ -22,24 +22,26 @@
  */
 package org.powerapi.module.hwc
 
+import com.paulgoldbaum.influxdbclient.Database
 import com.twitter.zk.ZkClient
+import org.influxdb.InfluxDB
 import org.powerapi.PowerModule
 import org.powerapi.core.{LinuxHelper, OSHelper}
 
 import scala.concurrent.duration.FiniteDuration
 
 class HWCCoreModule(osHelper: OSHelper, likwidHelper: LikwidHelper, cHelper: CHelper, events: Seq[String],
-                    zkClient: ZkClient) extends PowerModule {
+                    zkClient: ZkClient, influx: InfluxDB, influxDB: String, influxRp: String) extends PowerModule {
 
   val sensor = Some((classOf[HWCCoreSensor], Seq[Any](osHelper, likwidHelper, cHelper, events)))
-  val formula = Some((classOf[HWCCoreFormula], Seq[Any](likwidHelper, zkClient)))
+  val formula = Some((classOf[HWCCoreFormula], Seq[Any](likwidHelper, zkClient, influx, influxDB, influxRp)))
 }
 
 object HWCCoreModule {
-  def apply(prefixConfig: Option[String] = None, osHelper: OSHelper, likwidHelper: LikwidHelper, cHelper: CHelper, zkClient: ZkClient): HWCCoreModule = {
+  def apply(prefixConfig: Option[String] = None, osHelper: OSHelper, likwidHelper: LikwidHelper, cHelper: CHelper, zkClient: ZkClient, influx: InfluxDB, influxDB: String, influxRp: String): HWCCoreModule = {
     val sensorConfig = new HWCCoreSensorConfiguration(prefixConfig)
 
-    new HWCCoreModule(osHelper, likwidHelper, cHelper, sensorConfig.events, zkClient)
+    new HWCCoreModule(osHelper, likwidHelper, cHelper, sensorConfig.events, zkClient, influx, influxDB, influxRp)
   }
 }
 

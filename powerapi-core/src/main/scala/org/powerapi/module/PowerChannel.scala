@@ -45,7 +45,7 @@ object PowerChannel extends Channel {
     * Publish a RawPowerReport in the right topic.
     */
   def publishRawPowerReport(muid: UUID, target: Target, power: Power, device: String, tick: Tick): MessageBus => Unit = {
-    publish(RawPowerReport(rawPowerReportMuid(muid), muid, target, power, device, tick))
+    publish(RawPowerReport(powerReportMuid(muid), muid, target, power, device, tick))
   }
 
   /**
@@ -59,18 +59,18 @@ object PowerChannel extends Channel {
     * Used to subscribe/unsubscribe to RawPowerReport on the right topic.
     */
   def subscribeRawPowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
-    subscribe(rawPowerReportMuid(muid))
+    subscribe(powerReportMuid(muid))
   }
 
   /**
     * Use to format a MUID to an associated topic.
     */
-  private def rawPowerReportMuid(muid: UUID): String = {
+  private def powerReportMuid(muid: UUID): String = {
     s"power:$muid"
   }
 
   def unsubscribeRawPowerReport(muid: UUID): MessageBus => ActorRef => Unit = {
-    unsubscribe(rawPowerReportMuid(muid))
+    unsubscribe(powerReportMuid(muid))
   }
 
   /**

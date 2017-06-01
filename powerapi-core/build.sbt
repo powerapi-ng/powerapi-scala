@@ -29,7 +29,8 @@ libraryDependencies ++= Seq(
     exclude("log4j", "log4j"),
   // BUG WITH NETTY, INFLUX SCALA API AND UTIL-ZK...!
   "io.netty" % "netty-all" % "4.1.3.Final",
-  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.5.2"
+  "com.paulgoldbaum" %% "scala-influxdb-client" % "0.5.2",
+  "org.influxdb" % "influxdb-java" % "2.5"
 )
 
 // Tests
