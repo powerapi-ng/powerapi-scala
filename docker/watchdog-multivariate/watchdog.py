@@ -102,10 +102,16 @@ def watch(influx, zk, time_range, threshold):
                     hash = hashlib.md5(json.dumps(pmodels).encode())
                     formulae_hash = hash.hexdigest()
 
-                    for socket in sockets:
-                        print("MODEL VALIDATION SOCKET %s HASH %s ==> CV (5 groups): %0.2fW ; MAE: %0.2fW" % (socket, formulae_hash, errors[socket][0], errors[socket][1]))
+                    now = pd.Timestamp(dt.datetime.now())
+                    df_models_stats = pd.DataFrame(columns = ["c", "x", "x2", "cv5", "mae", "hash", "socket"])
 
-                    print("=" * 30)
+                    for socket in sockets:
+                        model = list(filter(lambda model: model["socket"] == socket, pmodels))[0]
+                        socket_df = pd.DataFrame([[model["coefficients"][0], model["coefficients"][1], model["coefficients"][2], errors[socket][0], errors[socket][1], formulae_hash, socket]], columns = ["c", "x", "x2", "cv5", "mae", "hash", "socket"])
+                        df_models_stats = df_models_stats.append(socket_df)
+
+                    df_models_stats.index = [now, now]
+                    influx.write_points(dataframe = df_models_stats, measurement = "statsmodels", tag_columns = ["hash", "socket"])
 
 if __name__ == '__main__':
     setup()
