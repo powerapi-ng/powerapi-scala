@@ -87,8 +87,8 @@ class LibpfmCoreSensor(eventBus: MessageBus, muid: UUID, target: Target, libpfmH
           (core, event, Await.result(actor.?(msg.tick)(timeout), timeout.duration).asInstanceOf[HWCounter])
       }
 
-      publishPCReport(muid, target, allValues.groupBy(tuple3 => (tuple3._1, tuple3._2)).map {
-        case ((core, event), values) => Map[Int, Map[String, Seq[HWCounter]]](core -> Map(event -> values.map(_._3).toSeq))
-      }.foldLeft(Map[Int, Map[String, Seq[HWCounter]]]())((acc, elt) => acc ++ elt), msg.tick)(eventBus)
+      publishPCReport(muid, target, allValues.foldLeft(Map[Int, Map[String, Seq[HWCounter]]]()) {
+        case (acc, elt) => acc + (elt._1 -> (acc.getOrElse(elt._1, Map()) + (elt._2 -> (acc.getOrElse(elt._1, Map()).getOrElse(elt._2, Seq()) :+ elt._3))))
+      }, msg.tick)(eventBus)
   }
 }

@@ -121,6 +121,7 @@ class LibpfmCoreProcessSensorSuite extends UnitTest with MockFactory {
         values.size should equal(topology.size)
 
         for (value <- values) {
+          value._2.size should equal(events.size)
           for ((event, counters) <- value._2) {
             counters.map(_.value).sum should equal(results((value._1, event)))
           }
