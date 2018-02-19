@@ -24,11 +24,11 @@ package org.powerapi.sampling.cpu
 
 import java.io.File
 
-import org.apache.commons.io.filefilter.PrefixFileFilter
+import org.apache.commons.io.filefilter.RegexFileFilter
+import org.powerapi.module.libpfm.LibpfmHelper
 
 import scala.sys
 import scala.sys.process.stringSeqToProcess
-import org.powerapi.module.libpfm.LibpfmHelper
 
 /**
   * Main application.
@@ -42,7 +42,7 @@ object Application extends App {
   val backup = scala.collection.mutable.HashMap[String, (String, Option[Long])]()
 
   if (new File("/sys/devices/system/cpu/").exists()) {
-    for (file <- new File("/sys/devices/system/cpu/").list(new PrefixFileFilter("cpu"))) {
+    for (file <- new File("/sys/devices/system/cpu/").list(new RegexFileFilter("^cpu\\d+$"))) {
       val governor = Seq("cat", s"/sys/devices/system/cpu/$file/cpufreq/scaling_governor").lineStream.toArray.apply(0)
       val frequency = Seq("cat", s"/sys/devices/system/cpu/$file/cpufreq/scaling_setspeed").lineStream.toArray.apply(0)
 
