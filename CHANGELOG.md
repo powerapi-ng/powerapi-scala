@@ -1,5 +1,18 @@
 # Change Log
 
+## [4.2.1](https://github.com/Spirals-Team/powerapi/tree/4.2) (2018-02-19)
+[Full Changelog](https://github.com/Spirals-Team/powerapi/compare/4.2...4.2.1)
+
+**Implemented enhancements:**
+
+- Rework of PowerAPI Docker images : based on Ubuntu Xenial (LTS), use of distribution packages instead of building the dependencies from sources
+
+**Fixed bugs:**
+
+- CPU sampling: Add filter to CPU device(s) selection
+- RAPL: Remove MSR kernel module load (problems in Docker images)
+- Travis CI build: Docker images are now properly pushed to Docker hub
+
 ## [4.2](https://github.com/Spirals-Team/powerapi/tree/4.2) (2017-11-02)
 [Full Changelog](https://github.com/Spirals-Team/powerapi/compare/4.0...4.2)
 
