@@ -4,7 +4,7 @@ lazy val downloadBluecove = taskKey[File]("download-bluecove-app")
 lazy val downloadBluecoveGpl = taskKey[File]("download-bluecove-gpl-app")
 
 val shared = Seq(
-  version := "4.2",
+  version := "4.2.1",
   scalaVersion := "2.12.1",
   scalacOptions := Seq(
     "-language:existentials",
