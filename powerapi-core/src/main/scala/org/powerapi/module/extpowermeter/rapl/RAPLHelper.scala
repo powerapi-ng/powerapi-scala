@@ -42,7 +42,6 @@ class RAPLHelper(msrPath: String, cpuInfoPath: String, supportedArchis: Map[Int,
   /* Related to MSR reading */
   lazy val msrFile: Option[FileChannel] = {
     if (detectCpu) {
-      Seq("modprobe", "msr").!
       Some(new FileInputStream(msrPath).getChannel)
     }
     else None
