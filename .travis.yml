@@ -5,10 +5,6 @@ services:
 
 env:
   global:
-  - secure: BfP5e/OPM62e3ktm4RD2nuBJls2u8zdXg/YjNyght5dpD2vCjL6ZHWhgDM2mNFpzgYPiE3DPsSE7g2ZlsBUJCuK8a7lB5r+OiWFcWkilC1E9QX6OMcDTpEKb5A9InFGcpt0xbjY5+8qaIbaN8TJcdxaxeit0TZEvxeirQa5OOEY=
-  - secure: MLFJWju96LymkPNIsUeJelNN5J3BK55OV/RXVMONC5kDr4N7T4JyhT6KUa4k+FSJ0S1GTPQMWQQEkWDF1MlZXv5yGwW4h5rN3tt//vqyHk968SyqlhTdygqzx6tO6t3OsfQ2F1AqVWAWsHQckL+VmhEo53VqVXpsqLy9DyLYGjs=
-  - secure: FbLHLKNAtpj7ZVgSobOPgAgdLK3/P4sR6RcaOmpVRsgaqodTPx7VkzGpkf4rOqPwxKU3+96vr0TlIdPRYWAE39Y3gMb1dyZ34+CxsrJ3avJYc2+9NT3kmAuU33Iy1DCo3IEnR7pWVVEyR80ob0c1ASfPAW1JN8DhBRRERpkMyn4=
-  - secure: VLK9NI4yE+hLV8rgjiB0hOfQn1uFO7cEHHL4sEDZKNu1TgvwfTrEWEzMMLvG8pwK/7eG78xfNB489m/Imj7Y52xK6sZuY7Y78Y06mkepZS8PisAJiW59kHWH1Ci84DYHZ0y07NAgvCOSLS9l0ncgLdlGvRboR9KBYDMEWycwEn8=
   - secure: YdYgoOCsfP8etDVdbURY/HCqZhGUrWzOsgQcfBCnkbBueU0ugt48rX/BFTtrq/qIJp/N9YqDpw7Vz3X1mhfT3EMpNJRDkbHaMM1YxWX++PmGdVu71ZCiONd2/Q8h8uZP7MLgeD7nnMhls8LBgiCqqWUK0NXfMQwzALYechV42nw=
   - secure: a5ZD5zp0Nu1GQUMJeTL9fCNxbtKfRzXOafWsrCipP/qg+uKrbNVS5sbhCBu7WB/Qf1x8cQapyXgRcFX/13bTkB+SWYEcUeRK5FH0hByaWLbjxuQNx5QjoRZEgi7lgvEbgyFPnsqAKLPoKmauRGGAlkhZOwnLRFpdha/+b2lKRs8=
   - secure: D/lV1ExPr9QJci0sVGbXhyaESFC1fxwxFQ6u/CG0o8MuFMi+LHgp64Ga6BkKBy5xVhhMLOtW+wlYps7SBHUY/taWArhNBmuaIx567+2i0fAccM7QB3YcwPLeZLtu9aE+VF0QF5+4QolREqT7CWScW0Xwg4QsYkP+FXHxoTSnAyk=
@@ -24,8 +20,10 @@ language: scala
 
 scala:
   - 2.12.1
+
 jdk:
-- oraclejdk8
+  - oraclejdk8
+
 addons:
   hostname: localhost
 
