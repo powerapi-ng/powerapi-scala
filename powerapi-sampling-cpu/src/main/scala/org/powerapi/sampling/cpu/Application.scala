@@ -122,14 +122,17 @@ object Application extends App {
   }
 
   if (samplingOption._1) {
+    println("Starting sampling phase...")
     Sampling(samplingOption._2, configuration, libpfmHelper).run()
   }
 
   if (processingOption._1) {
+    println("Starting processing phase...")
     Processing(samplingOption._2, processingOption._2, configuration).run()
   }
 
   if (computingOption._1) {
+    println("Starting computation phase...")
     PolynomialCyclesRegression(processingOption._2, computingOption._2, configuration).run()
   }
 
