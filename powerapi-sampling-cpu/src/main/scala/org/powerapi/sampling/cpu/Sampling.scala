@@ -79,16 +79,18 @@ class CountersDisplay(basepath: String, events: Set[String]) extends Actor with 
   }
 
   def receive: Actor.Receive = {
-    case msg: PCReport => report(msg)
-    case msg: String => append(msg)
+    case msg: PCReport =>
+      report(msg)
+    case msg: String =>
+      append(msg)
   }
 
   def report(msg: PCReport): Unit = {
 
     for (event <- events) {
       val counter = msg.values.values.flatten.collect {
-        case (ev, counters) if ev == event => counters.map(_.value)
-      }.foldLeft(Seq[Long]())((acc, value) => acc ++ value).sum
+        case (hpcEvent, hpcValue) if hpcEvent == event => hpcValue.value
+      }.sum
 
       outputs(event).append(s"$counter\n")
       outputs(event).flush()

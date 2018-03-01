@@ -56,13 +56,10 @@ class LibpfmCoreCyclesFormula(eventBus: MessageBus, muid: UUID, target: Target, 
       val now = System.nanoTime()
 
       val powers = for (value <- msg.values) yield {
-        val cycles = value._2.getOrElse(cyclesThreadName, Seq(HWCounter(0)))
-        val refs = value._2.getOrElse(cyclesRefName, Seq(HWCounter(0)))
-        val cyclesVal = cycles.map(_.value).sum
-        val scaledCycles = if (now - old <= 0) 0l else math.round(cyclesVal * (samplingInterval.toNanos / (now - old).toDouble))
-
-        val refsVal = refs.map(_.value).sum
-        val scaledRefs = if (now - old <= 0) 0l else math.round(refsVal * (samplingInterval.toNanos / (now - old).toDouble))
+        val cycles = value._2.getOrElse(cyclesThreadName, HWCounter(0))
+        val refs = value._2.getOrElse(cyclesRefName, HWCounter(0))
+        val scaledCycles = if (now - old <= 0) 0l else math.round(cycles.value * (samplingInterval.toNanos / (now - old).toDouble))
+        val scaledRefs = if (now - old <= 0) 0l else math.round(refs.value * (samplingInterval.toNanos / (now - old).toDouble))
 
         var coefficient: Double = math.round(scaledCycles / scaledRefs.toDouble)
 
