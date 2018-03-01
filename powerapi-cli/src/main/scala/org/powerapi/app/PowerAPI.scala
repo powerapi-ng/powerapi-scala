@@ -24,12 +24,15 @@ package org.powerapi.app
 
 import java.lang.management.ManagementFactory
 
+import com.spotify.docker.client.exceptions.ContainerNotFoundException
+import com.spotify.docker.client.messages.ContainerInfo
+import com.spotify.docker.client.{DefaultDockerClient, DockerClient}
+
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.sys
 import scala.sys.process.stringSeqToProcess
 import scala.util.matching.Regex
-
 import org.powerapi.core.power._
 import org.powerapi.core.target._
 import org.powerapi.module.cpu.dvfs.CpuDvfsModule
@@ -39,7 +42,7 @@ import org.powerapi.module.extpowermeter.g5komegawatt.G5kOmegaWattModule
 import org.powerapi.module.extpowermeter.powerspy.PowerSpyModule
 import org.powerapi.module.extpowermeter.rapl.RAPLModule
 import org.powerapi.module.libpfm.{LibpfmCoreModule, LibpfmCoreProcessModule, LibpfmHelper, LibpfmModule, LibpfmProcessModule}
-import org.powerapi.reporter.{InfluxDisplay, ConsoleDisplay, FileDisplay, JFreeChartDisplay}
+import org.powerapi.reporter.{ConsoleDisplay, FileDisplay, InfluxDisplay, JFreeChartDisplay}
 import org.powerapi.{PowerDisplay, PowerMeter, PowerMonitoring}
 
 /**
@@ -58,6 +61,8 @@ object PowerAPI extends App {
 
   @volatile var powerMeters = Seq[PowerMeter]()
   @volatile var monitors = Seq[PowerMonitoring]()
+
+  val docker: DockerClient = new DefaultDockerClient("unix:///var/run/docker.sock")
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
     println("PowerAPI is shutting down ...")
@@ -94,7 +99,7 @@ object PowerAPI extends App {
         |usage: ./powerapi modules procfs-cpu-simple|sigar-cpu-simple|cpu-dvfs|libpfm|libpfm-process|libpfm-core|libpfm-core-process|powerspy|g5k-omegawatt|rapl|disk-simple (1, *) *--prefix [name]*
         |                          monitor (1, *)
         |                            --frequency $MILLISECONDS
-        |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [id, ...] (0, *) | all (0, 1)
+        |                            --self (0, 1) --pids [pid, ...] (0, *) --apps [app, ...] (0, *) --containers [name or ID, ...] (0, *) | all (0, 1)
         |                            --agg max|min|mean|median|sum
         |                            --console (0, 1) --file $FILEPATH (0, *) --chart (0, 1) --influx $HOST $PORT $USER $PWD $DB $MEASUREMENT (0, *)
         |                  duration [s]
@@ -153,7 +158,19 @@ object PowerAPI extends App {
       ), tail)
     case "--containers" :: value :: tail if validate(containersR, value) =>
       cliMonitorsSubcommand(options, currentMonitor + ('targets ->
-        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map(container => Container(container)))
+        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").flatMap {
+          container =>
+            try {
+              val targetInformation: ContainerInfo = docker.inspectContainer(container)
+              Some(Container(targetInformation.id(), targetInformation.name()))
+            }
+            catch {
+              case _: ContainerNotFoundException =>
+                println("Container '" + container + "' does not exist")
+                sys.exit(1)
+                None
+            }
+        })
       ), tail)
     case "--all" :: tail =>
       cliMonitorsSubcommand(options, currentMonitor + ('targets ->

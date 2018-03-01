@@ -34,7 +34,6 @@ class CpuSimpleModule(osHelper: OSHelper, tdp: Double, tdpFactor: Double) extend
 object ProcFSCpuSimpleModule extends CpuSimpleFormulaConfiguration {
   def apply(): CpuSimpleModule = {
     val linuxHelper = new LinuxHelper
-
     new CpuSimpleModule(linuxHelper, tdp, tdpFactor)
   }
 }
@@ -47,7 +46,6 @@ object SigarCpuSimpleModule extends CpuSimpleFormulaConfiguration with SigarHelp
 
   def apply(): CpuSimpleModule = {
     val sigarHelper = new SigarHelper(sigar)
-
     new CpuSimpleModule(sigarHelper, tdp, tdpFactor)
   }
 }
