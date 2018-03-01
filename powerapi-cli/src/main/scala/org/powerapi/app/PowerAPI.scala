@@ -24,7 +24,7 @@ package org.powerapi.app
 
 import java.lang.management.ManagementFactory
 
-import com.spotify.docker.client.exceptions.ContainerNotFoundException
+import com.spotify.docker.client.exceptions.{ContainerNotFoundException, DockerException}
 import com.spotify.docker.client.messages.ContainerInfo
 import com.spotify.docker.client.{DefaultDockerClient, DockerClient}
 
@@ -62,7 +62,7 @@ object PowerAPI extends App {
   @volatile var powerMeters = Seq[PowerMeter]()
   @volatile var monitors = Seq[PowerMonitoring]()
 
-  val docker: DockerClient = new DefaultDockerClient("unix:///var/run/docker.sock")
+  lazy val docker: DockerClient = new DefaultDockerClient("unix:///var/run/docker.sock")
 
   val shutdownHookThread = scala.sys.ShutdownHookThread {
     println("PowerAPI is shutting down ...")
@@ -158,17 +158,20 @@ object PowerAPI extends App {
       ), tail)
     case "--containers" :: value :: tail if validate(containersR, value) =>
       cliMonitorsSubcommand(options, currentMonitor + ('targets ->
-        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").flatMap {
+        (currentMonitor.getOrElse('targets, Set[Any]()).asInstanceOf[Set[Any]] ++ value.split(",").map {
           container =>
             try {
               val targetInformation: ContainerInfo = docker.inspectContainer(container)
-              Some(Container(targetInformation.id(), targetInformation.name()))
+              Container(targetInformation.id(), targetInformation.name())
             }
             catch {
               case _: ContainerNotFoundException =>
                 println("Container '" + container + "' does not exist")
                 sys.exit(1)
-                None
+
+              case _: DockerException =>
+                println("The Docker socket is unavailable, please check if Docker daemon is running and its socket exists at the following path : '/var/run/docker.sock'")
+                sys.exit(1)
             }
         })
       ), tail)
