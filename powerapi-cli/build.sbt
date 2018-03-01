@@ -1,5 +1,9 @@
 name := "powerapi-cli"
 
+libraryDependencies ++= Seq(
+  "com.spotify" % "docker-client" % "8.11.1"
+)
+
 mappings in Universal ++= {
   val dir = baseDirectory.value.getParentFile
 

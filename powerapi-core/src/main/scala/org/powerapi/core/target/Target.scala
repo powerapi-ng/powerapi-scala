@@ -60,7 +60,7 @@ case class Application(name: String) extends Target {
   * @author <a href="mailto:l.huertas.pro@gmail.com">Loïc Huertas</a>
   */
 case class Container(id: String, name: String = "unknown") extends Target {
-  override def toString: String = id
+  override def toString: String = name.substring(1)
 }
 
 /**
