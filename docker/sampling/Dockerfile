@@ -7,9 +7,9 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY powerapi-sampling-cpu/target/universal/stage /powerapi-sampling-cpu
+COPY powerapi-sampling-cpu/target/universal/stage /powerapi
 
-WORKDIR /powerapi-sampling-cpu
+WORKDIR /powerapi
 
-ENTRYPOINT ["/powerapi-sampling-cpu/bin/sampling-cpu"]
+ENTRYPOINT ["/powerapi/bin/sampling-cpu"]
 CMD ["--all", "results/sampling", "results/processing", "results/computing"]
