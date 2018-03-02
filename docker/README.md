@@ -1,68 +1,99 @@
 ## Docker version of PowerAPI
 
-Lightweight docker images of PowerAPI packaged as docker images.
-
-You have first to create a [data volume](https://docs.docker.com/engine/userguide/containers/dockervolumes/#creating-and-mounting-a-data-volume-container) to store the configuration files (`conf` directory) for PowerAPI.
-It will include all parameters needed to PowerAPI for configuring its internal components.
-The different parameters to set up are described inside the [Wiki](https://github.com/Spirals-Team/powerapi/wiki).
-
-We assume that two data volumes `powerapi-cli-conf` and `powerapi-sampling-conf` are created on the host system.
+Lightweight docker images of PowerAPI packaged as docker images.  
+The PowerAPI configuration directory is located at `/powerapi/conf` for all images.  
+Please refer to the [Wiki](https://github.com/Spirals-Team/powerapi/wiki) for more information about PowerAPI configuration.
 
 ### PowerAPI: CLI
 
-This image is used to run automatically a various choices of software-defined power meters.
+This image is used to run a various choices of software-defined power meters.
 
 #### Usage
 
-Show the help text:
+The minimal command line to run PowerAPI (print the help message):
 
 ```
-docker run --rm --privileged --net=host --pid=host \
---volumes-from powerapi-cli-conf \
-spirals/powerapi-cli
+docker run --rm --privileged spirals/powerapi-cli
 ```
 
-The `--privileged` option is used to get the root access to the host machine,
-the `--net=host` option is mandatory to be able to use the PowerSPY bluetooth power meter inside a container,
-and the `--pid=host` is required to be able to get an access to the running apps of the host machine.
+The `--privileged` flag gives all capabilities to the PowerAPI container. (required to get metrics about system usage for the various modules)
 
-A classic example with the `ProcFS` module can be:
 
-powerapi.conf:
+#### Example
 
-```
-powerapi.cpu.tdp = 35
-```
+##### Monitoring the machine using a PowerSpy power meter
 
-Associated docker command:
+Content of the `powerapi-cli.conf`, adapt the MAC address accordingly:
 
 ```
-docker run --rm --privileged --net=host --pid=host \
---volumes-from powerapi-cli-conf \
+powerspy.mac = "00:0B:CE:XX:XX:XX"
+```
+
+Command to run to start the monitoring using the PowerSpy power meter:
+
+```
+docker run \
+--rm --privileged --net=host \
+-v $PWD/powerapi-cli.conf:/powerapi/conf/powerapi-cli.conf \
 spirals/powerapi-cli \
-modules procfs-cpu-simple monitor --frequency 1000 --all --console
+modules powerspy monitor --frequency 1000 --console
 ```
+
+The `--net=host` option is mandatory to be able to access the host bluetooth card inside a container.  
+If you have problem to connect to the PowerSpy, please check your ability to pair with PowerSpy from the host machine using `bluetoothctl`.
+
+##### Monitoring a process using the ProcFS module (Linux only)
+
+Content of the `powerapi-cli.conf`, adapt the CPU TDP accordingly:
+
+```
+powerapi.cpu.tdp = 130
+```
+
+Command to run to start the monitoring of the `firefox` application and the `1234` PID using the ProcFS module:
+
+```
+docker run \
+--rm --privileged --pid=host \
+-v $PWD/powerapi-cli.conf:/powerapi/conf/powerapi-cli.conf \
+spirals/powerapi-cli \
+modules procfs-cpu-simple monitor --frequency 1000 --apps firefox --pids 1234 --console
+```
+
+The `--pid=host` flag is required to be able to monitor the processes running on the host machine.
+
+##### Monitoring a Docker container using the ProcFS module (Linux only)
+
+Content of the `powerapi-cli.conf`, adapt the CPU TDP accordingly:
+
+```
+powerapi.cpu.tdp = 130
+```
+
+Command to run to start the monitoring of the `stress` container using the ProcFS module:
+
+```
+docker run \
+--rm --privileged --net=host --pid=host \
+-v /sys:/sys -v /var/run/docker.sock:/var/run/docker.sock \
+-v $PWD/powerapi-cli.conf:/powerapi/conf/powerapi-cli.conf \
+spirals/powerapi-cli \
+modules procfs-cpu-simple monitor --frequency 1000 --containers stress --console
+```
+
+Access of the hosts `/sys` is required to access the Docker containers cgroups inside the container.  
+The Docker socket is used to resolve the name, short and full ID of the container and check its existence.
 
 ### PowerAPI: Sampling
 
-This image is used to build a CPU power model.
+This image is used to build a CPU power model used by the `libpfm` module of PowerAPI.
 
 #### Usage
 
-Launch the sampling:
+First you have to configure PowerAPI, create a `powerapi-sampling-cpu.conf` file and adapt accordingly the following settings:
 
 ```
-docker run --rm --privileged --net=host --pid=host \
---volumes-from powerapi-sampling-conf \
-spirals/powerapi-sampling
-```
-
-Example of a sampling configuration file:
-
-sampling.conf:
-
-```
-powerspy.mac = "00:0B:CE:07:1E:9B"
+powerspy.mac = "00:0B:CE:XX:XX:XX"
 
 powerapi.cpu.topology = [
   { core = 0, indexes = [0, 4] }
@@ -86,3 +117,16 @@ powerspy.interval = ${interval}
 powerapi.sampling.steps = [100, 25]
 powerapi.sampling.step-duration = 10
 ```
+
+Launch the CPU sampling with the following command:
+
+```
+docker run \
+--rm --privileged --net=host --pid=host \
+-v $PWD/powerapi-sampling-cpu.conf:/powerapi/conf/powerapi-sampling-cpu.conf \
+-v $PWD/powerapi-sampling-cpu-results:/powerapi/results \
+spirals/powerapi-sampling-cpu
+```
+
+The results of the sampling will be in the `powerapi-sampling-cpu-results` folder of the host.  
+The CPU power model will be located at the `powerapi-sampling-cpu-results/computing/libpfm-formula.conf ` path.
