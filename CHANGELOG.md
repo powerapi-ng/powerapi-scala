@@ -1,6 +1,17 @@
 # Change Log
 
-## [4.2.1](https://github.com/Spirals-Team/powerapi/tree/4.2) (2018-02-19)
+## [4.2.2](https://github.com/Spirals-Team/powerapi/tree/4.2.2) (2018-03-02)
+[Full Changelog](https://github.com/Spirals-Team/powerapi/compare/4.2.1...4.2.2)
+
+**Implemented enhancements:**
+
+- The containers can now be monitored using theirs Name, short and full ID.
+- Use of the container's name as target name instead of the full ID for the power measurements reporting.
+- Trying to monitor an unknown container is considered as fatal error and PowerAPI will shutdown.
+- Verify Docker socket availability when containers are monitored.
+- Use the same working directory (/powerapi) for cli and cpu sampling Docker images.
+
+## [4.2.1](https://github.com/Spirals-Team/powerapi/tree/4.2.1) (2018-02-19)
 [Full Changelog](https://github.com/Spirals-Team/powerapi/compare/4.2...4.2.1)
 
 **Implemented enhancements:**
