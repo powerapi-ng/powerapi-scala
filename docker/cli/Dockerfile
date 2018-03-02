@@ -7,8 +7,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY powerapi-cli/target/universal/stage /powerapi-cli
+COPY powerapi-cli/target/universal/stage /powerapi
 
-WORKDIR /powerapi-cli
+WORKDIR /powerapi
 
-ENTRYPOINT ["/powerapi-cli/bin/powerapi"]
+ENTRYPOINT ["/powerapi/bin/powerapi"]
