@@ -43,7 +43,7 @@ object PerformanceCounterChannel extends Channel {
   /**
     * Publish a PerformanceCounterReport in the event bus.
     */
-  def publishPCReport(muid: UUID, target: Target, values: Map[Int, Map[String, Seq[HWCounter]]], tick: Tick): MessageBus => Unit = {
+  def publishPCReport(muid: UUID, target: Target, values: Map[Int, Map[String, HWCounter]], tick: Tick): MessageBus => Unit = {
     publish(PCReport(pcReportToTopic(muid, target), muid, target, values, tick))
   }
 
@@ -109,7 +109,7 @@ object PerformanceCounterChannel extends Channel {
   case class PCReport(topic: String,
                       muid: UUID,
                       target: Target,
-                      values: Map[Int, Map[String, Seq[HWCounter]]],
+                      values: Map[Int, Map[String, HWCounter]],
                       tick: Tick) extends Message
 
   /**

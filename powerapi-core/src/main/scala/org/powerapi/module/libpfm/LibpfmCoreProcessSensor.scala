@@ -123,9 +123,7 @@ class LibpfmCoreProcessSensor(eventBus: MessageBus, muid: UUID, target: Target, 
             (core, event, Await.result(actor.?(msg.tick)(timeout), timeout.duration).asInstanceOf[HWCounter])
         }
 
-        publishPCReport(muid, target, allValues.groupBy(tuple3 => (tuple3._1, tuple3._2)).map {
-          case ((core, event), values) => Map[Int, Map[String, Seq[HWCounter]]](core -> Map(event -> values.map(_._3).toSeq))
-        }.foldLeft(Map[Int, Map[String, Seq[HWCounter]]]())((acc, elt) => acc ++ elt), msg.tick)(eventBus)
+        publishPCReport(muid, target, allValues.groupBy(_._1).mapValues(_.map { case (_, event, hpc) => Map(event -> hpc) }.reduce(_ ++ _)), msg.tick)(eventBus)
 
         context.become(sense(newIdentifiers) orElse sensorDefault)
       }

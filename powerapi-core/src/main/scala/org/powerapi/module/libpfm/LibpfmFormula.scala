@@ -25,15 +25,13 @@ package org.powerapi.module.libpfm
 import java.util.UUID
 
 import scala.concurrent.duration.FiniteDuration
-
 import akka.actor.Actor
-
 import org.powerapi.core.MessageBus
 import org.powerapi.core.power._
 import org.powerapi.core.target.Target
 import org.powerapi.module.Formula
 import org.powerapi.module.PowerChannel.publishRawPowerReport
-import org.powerapi.module.libpfm.PerformanceCounterChannel.{PCReport, subscribePCReport, unsubscribePCReport}
+import org.powerapi.module.libpfm.PerformanceCounterChannel.{HWCounter, PCReport, subscribePCReport, unsubscribePCReport}
 
 /**
   * This formula is designed to fit a multivariate power model.
@@ -57,8 +55,8 @@ class LibpfmFormula(eventBus: MessageBus, muid: UUID, target: Target, formula: M
         if (now - old <= 0) 0
         else {
           val value = msg.values.values.flatten.collect {
-            case (ev, counters) if ev == event => counters.map(_.value)
-          }.foldLeft(Seq[Long]())((acc, value) => acc ++ value).sum
+            case (hpcEvent, hpcValue) if hpcEvent == event => hpcValue.value
+          }.sum
 
           coeff * math.round(value * (samplingInterval.toNanos / (now - old).toDouble))
         }
